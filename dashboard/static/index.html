@@ -1949,14 +1949,22 @@
 
                         // Añadir resumen acumulado
                         const sumRow = document.createElement('tr');
+
+                        const totalGross = data.reduce((sum, item) => sum + (item.gross_pnl || item.pnl || 0), 0);
+                        const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
+                        const totalSlip = data.reduce((sum, item) => sum + (item.slippage_est || 0), 0);
+
+                        const totGrossColor = totalGross >= 0 ? 'var(--green)' : 'var(--red)';
+                        const totGrossPre = totalGross >= 0 ? '+' : '';
+
                         const totColor = totalNetValue >= 0 ? 'var(--green)' : 'var(--red)';
                         const totPre = totalNetValue >= 0 ? '+' : '';
-                        const totalFees = data.reduce((s, r) => s + (r.total_fees || 0), 0);
-                        const totalSlip = data.reduce((s, r) => s + (r.slippage_est || 0), 0);
+
                         sumRow.innerHTML = `
         <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--muted);">NETO ESTRATEGIA
             ACUMULADA:</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; color:var(--muted);">—</td>
+        <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totGrossColor};">
+            ${totGrossPre}$${totalGross.toFixed(2)}</td>
         <td style="padding:10px; font-family:'JetBrains Mono',monospace; color:#ff9800; font-weight:bold;">
             -$${totalFees.toFixed(2)}</td>
         <td style="padding:10px; font-family:'JetBrains Mono',monospace; color:#ff5722; font-weight:bold;">
