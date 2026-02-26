@@ -31,6 +31,7 @@ class BotState:
 
     # Señal
     signal:   str   = "HOLD"
+    regime:   str   = "NEUTRAL"  # Régimen de mercado detectado
     rsi:      float = 50.0
     ema_fast: float = 0.0
     ema_slow: float = 0.0
@@ -98,6 +99,7 @@ def update_state(
     position: dict | None = None,
     candles: list | None = None,
     timestamp: str | None = None,
+    regime: str = "NEUTRAL",
     **kwargs
 ) -> None:
     global _symbol_states
@@ -111,6 +113,7 @@ def update_state(
         bid=bid,
         ask=ask,
         signal=signal,
+        regime=regime,
         rsi=rsi,
         ema_fast=ema_fast,
         ema_slow=ema_slow,

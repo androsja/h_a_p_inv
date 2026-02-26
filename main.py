@@ -460,6 +460,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 position=pos_dict,
                 candles=candles_data,
                 timestamp=signal.timestamp.isoformat() if hasattr(signal, 'timestamp') and signal.timestamp else None,
+                regime=getattr(signal, 'regime', 'NEUTRAL'),
             )
 
             # ── 7. Display de estado (cada 10 iteraciones en simulación) ─────
