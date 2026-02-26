@@ -651,11 +651,66 @@ def main() -> None:
             log.info(f"  🔁 SESIÓN DE SIMULACIÓN #{session_num}")
             log.info(f"{'═'*60}")
 
-        broker = init_broker(args)
-        log.info(
-            f"Bróker inicializado: {broker.name} | "
-            f"Paper trading: {broker.is_paper_trading}"
-        )
+        try:
+            broker = init_broker(args)
+            log.info(
+                f"Bróker inicializado: {broker.name} | "
+                f"Paper trading: {broker.is_paper_trading}"
+            )
+        except Exception as e:
+            log.error(f"❌ Error al inicializar bróker para {args.symbol}: {e}. Saltando de activo.")
+            
+            # Registrar en dashboard que este activo se evaluó pero falló/no tiene datos
+            try:
+                from utils.state_writer import update_state
+                from datetime import datetime, timezone
+                update_state(
+                    mode=args.mode,
+                    status="error_skipping",
+                    symbol=args.symbol or "UNKNOWN",
+                    session=session_num,
+                    iteration=0,
+                    available_cash=getattr(broker, 'initial_cash', 10000.0) if 'broker' in locals() else 10000.0,
+                    pnl=0.0,
+                    win_rate=0.0,
+                    total_trades=0,
+                    insight="Sin datos suficientes de mercado."
+                )
+
+                res_file = Path("/app/data/backtest_results.json")
+                res_data = []
+                if res_file.exists():
+                    with open(res_file, "r") as f:
+                        res_data = json.load(f)
+                
+                # Filtrar deduplicado
+                res_data = [r for r in res_data if r.get("symbol") != args.symbol]
+                res_data.append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "symbol": args.symbol,
+                    "session_num": session_num,
+                    "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
+                    "win_rate": 0.0, "pnl": 0.0, "gross_pnl": 0.0, "total_fees": 0.0,
+                    "slippage_est": 0.0, "gross_profit": 0.0, "gross_loss": 0.0,
+                    "profit_factor": 0.0, "drawdown": 0.0,
+                    "insight": "Sin datos suficientes (Omitido)."
+                })
+                with open(res_file, "w") as f:
+                    json.dump(res_data, f, indent=2)
+            except Exception as e_dash:
+                log.error(f"Error actualizando dashboard para símbolo omitido: {e_dash}")
+
+            if is_simulated and all_symbols:
+                symbol_idx += 1
+                if symbol_idx >= len(all_symbols):
+                    log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
+                    symbol_idx = len(all_symbols) - 1 # Mantenerse al final
+                    smart_sleep(SESSION_PAUSE)
+                    continue
+                args.symbol = all_symbols[symbol_idx]
+            else:
+                 smart_sleep(SESSION_PAUSE)
+            continue
 
         # Detectamos si hay múltiples símbolos para Live Paper
         force_symbols = []
@@ -804,8 +859,15 @@ def main() -> None:
                     log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
                     while True:
                         time.sleep(10)
-                        break # En la siguiente iteración evaluará command.json de nuevo, y al final caerá aquí
-
+                        
+                        # Monitor command json to allow escape
+                        try:
+                            if os.path.exists("/app/data/command.json"):
+                                with open("/app/data/command.json") as f:
+                                    if json.load(f).get("reset_all"):
+                                        break # escape and let the main loop wipe
+                        except: pass
+                        
                     symbol_idx = len(all_symbols) - 1 # Mantenerse al final
                     continue
 
