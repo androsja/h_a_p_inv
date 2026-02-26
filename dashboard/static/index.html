@@ -2703,29 +2703,35 @@
         connectWS();
     </script>
     <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
-    <div id="sym-manager-overlay" class="modal-overlay" onclick="closeSymbolManager()"></div>
-    <div id="sym-manager-modal" class="symbol-modal"
-        style="max-height:80vh; overflow:hidden; display:flex; flex-direction:column; padding:0; width:90%; max-width:600px;">
-        <div
-            style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
-            <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
-                🎛️ Gestor Maestro de Símbolos
-            </h3>
-            <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
+    <div id="sym-manager-wrapper"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:999999; justify-content:center; align-items:center;">
+        <div id="sym-manager-overlay" onclick="closeSymbolManager()"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px);">
         </div>
-        <div style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
-            Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
-            deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
-        </div>
-        <div id="sym-manager-list"
-            style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
-            <!-- Lista inyectada por JS -->
-        </div>
-        <div
-            style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
-            <button onclick="closeSymbolManager()"
-                style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
-                Gestor</button>
+        <div id="sym-manager-modal"
+            style="position:relative; background:var(--bg-card); border:1px solid #3c404b; border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,0.8);">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
+                <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
+                    🎛️ Gestor Maestro de Símbolos
+                </h3>
+                <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
+            </div>
+            <div
+                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
+                Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
+                deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+            </div>
+            <div id="sym-manager-list"
+                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
+                <!-- Lista inyectada por JS -->
+            </div>
+            <div
+                style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
+                <button onclick="closeSymbolManager()"
+                    style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
+                    Gestor</button>
+            </div>
         </div>
     </div>
 
@@ -2820,10 +2826,8 @@
     <script>
         // ─── GESTOR DE SÍMBOLOS MAESTRO (assets.json) ───
         async function openSymbolManager() {
-            const modal = document.getElementById('sym-manager-modal');
-            const overlay = document.getElementById('sym-manager-overlay');
-            modal.classList.add('visible');
-            overlay.classList.add('visible');
+            const wrapper = document.getElementById('sym-manager-wrapper');
+            wrapper.style.display = 'flex';
 
             const listContainer = document.getElementById('sym-manager-list');
             listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
@@ -2857,8 +2861,7 @@
         }
 
         function closeSymbolManager() {
-            document.getElementById('sym-manager-modal').classList.remove('visible');
-            document.getElementById('sym-manager-overlay').classList.remove('visible');
+            document.getElementById('sym-manager-wrapper').style.display = 'none';
         }
 
         async function toggleMasterSymbol(symbol, isEnabled) {
