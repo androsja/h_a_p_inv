@@ -2726,8 +2726,17 @@
                 style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
                 <!-- Lista inyectada por JS -->
             </div>
+            <div id="sm-restart-warning"
+                style="display:none; padding:12px 15px; background:rgba(255,171,64,0.1); border-top:1px solid rgba(255,171,64,0.3); color:#ffab40; font-size:12px; text-align:center;">
+                &#9888;&#65039; Al cambiar s&iacute;mbolos, el Bot deber&aacute; reiniciar para aplicar los cambios en
+                el ciclo de exploraci&oacute;n.
+                <br><br>
+                <button onclick="resetSymbolManager()"
+                    style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-weight:bold; cursor:pointer;">Reiniciar
+                    Bot Ahora</button>
+            </div>
             <div
-                style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
+                style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right; border-radius: 0 0 12px 12px;">
                 <button onclick="closeSymbolManager()"
                     style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
                     Gestor</button>
@@ -2828,6 +2837,7 @@
         async function openSymbolManager() {
             const wrapper = document.getElementById('sym-manager-wrapper');
             wrapper.style.display = 'flex';
+            document.getElementById('sm-restart-warning').style.display = 'none';
 
             const listContainer = document.getElementById('sym-manager-list');
             listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
@@ -2837,21 +2847,20 @@
                 const data = await res.json();
                 if (data.status === 'success') {
                     let html = '';
-                    // Ordenamos alfabéticamente para facilitar la búsqueda en UI
                     const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
-
                     sortedAssets.forEach(item => {
-                        const isEn = item.enabled !== false; // Por defecto es true si no existe la llave
+                        const isEn = item.enabled !== false;
+                        // Damos ID únicoa cada tarjeta para actualizarlas sin redibujar todo
                         html += `
-                                <div class="sm-item ${isEn ? 'enabled' : 'disabled'}">
-                                    <div class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
-                                    <div style="font-size:10px; color:var(--muted); text-align:center; height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;" title="${item.name}">${item.name}</div>
-                                    <label class="switch">
-                                        <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
-                                        <span class="slider"></span>
-                                    </label>
-                                </div>
-                            `;
+                            <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}">
+                                <div id="sms-${item.symbol}" class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
+                                <div style="font-size:10px; color:var(--muted); text-align:center; height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;" title="${item.name}">${item.name}</div>
+                                <label class="switch">
+                                    <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        `;
                     });
                     listContainer.innerHTML = html;
                 }
@@ -2872,14 +2881,43 @@
                     body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
                 });
                 if (res.ok) {
-                    // Refrescar visual local
-                    openSymbolManager();
+                    // Actualizar tarjeta local sin redibujar toda la lista (preserva animación CSS del switch)
+                    const card = document.getElementById('smi-' + symbol);
+                    const symLbl = document.getElementById('sms-' + symbol);
+                    if (card && symLbl) {
+                        if (isEnabled) {
+                            card.classList.replace('disabled', 'enabled');
+                            symLbl.classList.replace('disabled', 'enabled');
+                        } else {
+                            card.classList.replace('enabled', 'disabled');
+                            symLbl.classList.replace('enabled', 'disabled');
+                        }
+                    }
+                    // Mostrar aviso de reinicio
+                    document.getElementById('sm-restart-warning').style.display = 'block';
                 } else {
-                    alert("Error guardando el símbolo.");
+                    alert("Error guardando el símbolo en el servidor.");
                 }
             } catch (e) {
                 console.error("Error toggleMasterSymbol:", e);
             }
+        }
+
+        async function resetSymbolManager() {
+            if (!confirm("⚠️ ¿Reiniciar el bot ahora?\n\nEsto borrará el historial acumulado y comenzará un nuevo ciclo con los símbolos actualizados."))
+                return;
+            try {
+                const res = await fetch('/api/reset_all', { method: 'POST' });
+                if (res.ok) {
+                    lastResultCount = 0;
+                    totalNetValue = 0;
+                    document.getElementById('results-table-body').innerHTML = '';
+                    closeSymbolManager();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert("Error reiniciando el bot.");
+                }
+            } catch (e) { console.error(e); }
         }
     </script>
 
