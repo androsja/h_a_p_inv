@@ -460,10 +460,13 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     # ── ESTRATEGIA B: Rebote Institucional (Estilo SMB Capital) ───────────
     # El precio colapsa irracionalmente separándose del VWAP (Z-Score < -2.0).
     # Oportunidad de compra estadística si la vela hace reversión confirmada (Cierre Verde o Martillo).
+    # IMPORTANTE: Solo comprar el "dip" si microscópicamente colapsó, pero MACROSCÓPICAMENTE
+    # la tendencia general sigue siendo alcista (Precio > EMA 200). De lo contrario es atajar un cuchillo.
     vwap_oversold = zscore_now < -2.0
     vwap_reversal = (close_now > open_now) or is_hammer
+    macro_bullish = close_now > ema_200_now
     
-    is_vwap_bounce = vwap_oversold and vwap_reversal
+    is_vwap_bounce = vwap_oversold and vwap_reversal and macro_bullish
     
     # ── EVALUACIÓN INDEPENDIENTE (Lógica OR) ──────────────────────────────
     if is_velez_setup:
