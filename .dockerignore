@@ -1,0 +1,35 @@
+# Archivos de Python compilados
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Entorno virtual local (no va dentro del contenedor)
+.venv/
+venv/
+env/
+
+# Variables de entorno reales (¡NUNCA subir al repositorio!)
+.env
+
+# Caché de datos de yfinance (se regenera automáticamente)
+data/cache/
+
+# Logs generados por el bot
+logs/
+
+# Archivos de IDE / Mac
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Pytest y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Archivos temporales
+*.tmp
+*.bak

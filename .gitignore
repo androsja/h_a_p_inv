@@ -1,0 +1,24 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+data/cache/
+logs/
+.DS_Store
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+
+# Bot Data & State
+data/state.json
+data/command.json
+data/backtest_results.json
+data/ml_dataset.csv
+data/*.joblib
+
+# OS Files
+.DS_Store

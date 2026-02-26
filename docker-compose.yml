@@ -1,0 +1,86 @@
+services:
+
+  # ─── Bot simulado ────────────────────────────────────────────────────────────
+  trading-bot-sim:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hapi-scalping-bot:latest
+    container_name: hapi_bot_simulated
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TRADING_MODE=SIMULATED
+      - HAPI_IS_TEST_MODE=true
+    command: [ "python", "main.py", "--mode", "SIMULATED" ]
+    volumes:
+      - bot_data:/app/data # Estado compartido con el dashboard
+      - bot_logs:/app/logs
+      - ./main.py:/app/main.py
+      - ./assets.json:/app/assets.json
+      - ./broker:/app/broker
+      - ./strategy:/app/strategy
+      - ./utils:/app/utils
+      - ./config.py:/app/config.py
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "256M"
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import sys; sys.exit(0)" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── Dashboard en tiempo real ────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    image: hapi-dashboard:latest
+    container_name: hapi_dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # → Abrir http://localhost:8080
+    volumes:
+      - bot_data:/app/data # Lee el state.json del bot
+      - bot_logs:/app/logs # Lee los logs del bot
+      - ./assets.json:/app/assets.json:ro # Read symbols count
+      - ./dashboard:/app/dashboard # <--- MOUNT DASHBOARD FOR HOT-RELOAD
+      - ./train_ai.py:/app/train_ai.py
+    depends_on:
+      - trading-bot-sim
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/state')" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─── Bot LIVE (activar con: docker compose --profile live up) ────────────────
+  trading-bot-live:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hapi-scalping-bot:latest
+    container_name: hapi_bot_live
+    restart: unless-stopped
+    profiles: [ live ]
+    env_file: .env
+    environment:
+      - TRADING_MODE=LIVE
+      - HAPI_IS_TEST_MODE=false
+    command: [ "python", "main.py", "--mode", "LIVE" ]
+    volumes:
+      - bot_data:/app/data
+      - bot_logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
+# ─── Volúmenes compartidos ────────────────────────────────────────────────────
+volumes:
+  bot_data: # state.json compartido entre bot y dashboard
+  bot_logs: # logs compartidos
