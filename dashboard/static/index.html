@@ -2914,7 +2914,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
                 });
-                if (res.ok) {
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
                     // Actualizar tarjeta local sin redibujar toda la lista (preserva animación CSS del switch)
                     const card = document.getElementById('smi-' + symbol);
                     const symLbl = document.getElementById('sms-' + symbol);
@@ -2930,7 +2931,9 @@
                     // Mostrar aviso de reinicio
                     document.getElementById('sm-restart-warning').style.display = 'block';
                 } else {
-                    alert("Error guardando el símbolo en el servidor.");
+                    alert("Error guardando el símbolo en el servidor: " + (data.message || "Desconocido"));
+                    // Revert the toggle visually
+                    setTimeout(() => openSymbolManager(), 500);
                 }
             } catch (e) {
                 console.error("Error toggleMasterSymbol:", e);

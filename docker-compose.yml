@@ -46,7 +46,7 @@ services:
     volumes:
       - bot_data:/app/data # Lee el state.json del bot
       - bot_logs:/app/logs # Lee los logs del bot
-      - ./assets.json:/app/assets.json:ro # Read symbols count
+      - ./assets.json:/app/assets.json # Read and update symbols enabled state
       - ./dashboard:/app/dashboard # <--- MOUNT DASHBOARD FOR HOT-RELOAD
       - ./train_ai.py:/app/train_ai.py
     depends_on:
