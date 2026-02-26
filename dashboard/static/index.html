@@ -1149,6 +1149,10 @@
 
             <!-- Derecho -->
             <div class="hdr-right" style="gap:5px;">
+                <button onclick="openSymbolManager()"
+                    style="background:#673ab7; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                    🎛️ GESTOR SÍMBOLOS
+                </button>
                 <button id="symbol-selection-trigger" class="symbol-selection-btn" onclick="toggleSymbolModal()">
                     🔍 Símbolos <span id="selected-count-badge" class="symbol-badge">0</span>
                 </button>
@@ -2697,12 +2701,190 @@
 
             connectWS();
         </script>
-        <!-- Symbol Selection Modal -->
+        <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
+        <div id="sym-manager-overlay" class="modal-overlay" onclick="closeSymbolManager()"></div>
+        <div id="sym-manager-modal" class="symbol-modal"
+            style="max-height:80vh; overflow:hidden; display:flex; flex-direction:column; padding:0; width:90%; max-width:600px;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
+                <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
+                    🎛️ Gestor Maestro de Símbolos
+                </h3>
+                <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
+            </div>
+            <div
+                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
+                Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
+                deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+            </div>
+            <div id="sym-manager-list"
+                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
+                <!-- Lista inyectada por JS -->
+            </div>
+            <div
+                style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
+                <button onclick="closeSymbolManager()"
+                    style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
+                    Gestor</button>
+            </div>
+        </div>
+
+        <style>
+            .sm-item {
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+                transition: 0.2s;
+            }
+
+            .sm-item.enabled {
+                border-color: var(--green);
+                background: rgba(0, 199, 129, 0.05);
+            }
+
+            .sm-item.disabled {
+                opacity: 0.6;
+            }
+
+            .sm-sym {
+                font-weight: bold;
+                font-size: 14px;
+                font-family: 'JetBrains Mono', monospace;
+            }
+
+            .sm-sym.enabled {
+                color: var(--green);
+            }
+
+            .sm-sym.disabled {
+                color: var(--muted);
+            }
+
+            /* Toggle Switch Hapi Style */
+            .switch {
+                position: relative;
+                display: inline-block;
+                width: 44px;
+                height: 24px;
+            }
+
+            .switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: #333;
+                transition: .4s;
+                border-radius: 24px;
+                border: 1px solid var(--border);
+            }
+
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 16px;
+                width: 16px;
+                left: 3px;
+                bottom: 3px;
+                background-color: #888;
+                transition: .4s;
+                border-radius: 50%;
+            }
+
+            input:checked+.slider {
+                background-color: var(--green);
+                border-color: var(--green);
+            }
+
+            input:checked+.slider:before {
+                transform: translateX(20px);
+                background-color: white;
+                box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            }
+        </style>
+
+        <script>
+            // ─── GESTOR DE SÍMBOLOS MAESTRO (assets.json) ───
+            async function openSymbolManager() {
+                const modal = document.getElementById('sym-manager-modal');
+                const overlay = document.getElementById('sym-manager-overlay');
+                modal.classList.add('visible');
+                overlay.classList.add('visible');
+
+                const listContainer = document.getElementById('sym-manager-list');
+                listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
+
+                try {
+                    const res = await fetch('/api/all_symbols');
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        let html = '';
+                        // Ordenamos alfabéticamente para facilitar la búsqueda en UI
+                        const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+                        sortedAssets.forEach(item => {
+                            const isEn = item.enabled !== false; // Por defecto es true si no existe la llave
+                            html += `
+                                <div class="sm-item ${isEn ? 'enabled' : 'disabled'}">
+                                    <div class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
+                                    <div style="font-size:10px; color:var(--muted); text-align:center; height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;" title="${item.name}">${item.name}</div>
+                                    <label class="switch">
+                                        <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        listContainer.innerHTML = html;
+                    }
+                } catch (e) {
+                    listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1;">Error de conexión.</div>';
+                }
+            }
+
+            function closeSymbolManager() {
+                document.getElementById('sym-manager-modal').classList.remove('visible');
+                document.getElementById('sym-manager-overlay').classList.remove('visible');
+            }
+
+            async function toggleMasterSymbol(symbol, isEnabled) {
+                try {
+                    const res = await fetch('/api/toggle_symbol', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
+                    });
+                    if (res.ok) {
+                        // Refrescar visual local
+                        openSymbolManager();
+                    } else {
+                        alert("Error guardando el símbolo.");
+                    }
+                } catch (e) {
+                    console.error("Error toggleMasterSymbol:", e);
+                }
+            }
+        </script>
+
+        <!-- Symbol Selection Modal (Para Live Paper) -->
         <div id="symbol-modal-overlay" class="modal-overlay" onclick="toggleSymbolModal()"></div>
         <div id="symbol-selection-modal" class="symbol-modal">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="margin:0; font-size: 14px; color: var(--accent);">Seleccionar Símbolos (Live
-                    Paper)</h3>
+                <h3 style="margin:0; font-size: 14px; color: var(--accent);">Seleccionar Símbolos (Live Paper)</h3>
                 <span onclick="toggleSymbolModal()" style="cursor:pointer; color:#888;">✕</span>
             </div>
 

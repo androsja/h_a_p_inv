@@ -230,6 +230,50 @@ async def get_active_symbols():
     except Exception as e:
         return {"status": "error", "symbols": []}
 
+@app.get("/api/all_symbols")
+async def get_all_symbols():
+    import json
+    assets_file = Path("/app/assets.json")
+    try:
+        if assets_file.exists():
+            with open(assets_file) as f:
+                data = json.load(f)
+                return {"status": "success", "assets": data.get('assets', [])}
+        return {"status": "error", "assets": []}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+class ToggleRequest(BaseModel):
+    symbol: str
+    enabled: bool
+
+@app.post("/api/toggle_symbol")
+async def toggle_symbol(req: ToggleRequest):
+    import json
+    assets_file = Path("/app/assets.json")
+    try:
+        if assets_file.exists():
+            with open(assets_file, "r") as f:
+                data = json.load(f)
+            
+            found = False
+            for asset in data.get("assets", []):
+                if asset.get("symbol") == req.symbol:
+                    asset["enabled"] = req.enabled
+                    found = True
+                    break
+            
+            if found:
+                with open(assets_file, "w") as f:
+                    json.dump(data, f, indent=4)
+                return {"status": "success", "message": f"{req.symbol} updated"}
+            else:
+                return {"status": "not_found", "message": "Symbol not found in assets.json"}
+                
+        return {"status": "error", "message": "assets.json missing"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 class DepositRequest(BaseModel):
     amount: float
 

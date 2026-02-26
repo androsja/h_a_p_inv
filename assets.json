@@ -240,6 +240,126 @@
             "symbol": "UNH",
             "name": "UnitedHealth Group",
             "type": "stock"
+        },
+        {
+            "symbol": "BABA",
+            "name": "Alibaba Group",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SHOP",
+            "name": "Shopify Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SQ",
+            "name": "Block Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ROKU",
+            "name": "Roku Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "DKNG",
+            "name": "DraftKings Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SPOT",
+            "name": "Spotify Technology",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "PFE",
+            "name": "Pfizer Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MRNA",
+            "name": "Moderna Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ABBV",
+            "name": "AbbVie Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GS",
+            "name": "Goldman Sachs Group",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MS",
+            "name": "Morgan Stanley",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "LMT",
+            "name": "Lockheed Martin",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "NOC",
+            "name": "Northrop Grumman",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "RTX",
+            "name": "RTX Corporation",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "DE",
+            "name": "Deere & Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "CAT",
+            "name": "Caterpillar Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MMM",
+            "name": "3M Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GE",
+            "name": "General Electric",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "F",
+            "name": "Ford Motor Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GM",
+            "name": "General Motors",
+            "type": "stock",
+            "enabled": false
         }
     ]
 }
