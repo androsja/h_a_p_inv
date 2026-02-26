@@ -2629,23 +2629,70 @@
                 ws.onerror = () => ws.close();
             }
 
-            async function resetAllData() {
-                if (!confirm("⚠️ ¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?\\n\\nEsto borrará todo el historial de entrenamiento de Inteligencia Artificial y no se puede deshacer."))
-                    return;
-                try {
-                    const res = await fetch('/api/reset_all', { method: 'POST' });
-                    if (res.ok) {
-                        alert("✅ Orden de limpieza ejecutada.\\n\\nEl servidor interno está purgando la base de datos... y al bot se le enviará una señal de reinicio.");
-                        lastResultCount = 0;
-                        totalNetValue = 0;
-                        document.getElementById('results-table-body').innerHTML = '';
-                        location.reload();
-                    } else {
-                        alert("Error reiniciando el bot.");
+            function resetAllData() {
+                // Montar un modal personalizado en vez de usar window.confirm nativo que falla en algunos navegadores
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0'; overlay.style.left = '0';
+                overlay.style.width = '100%'; overlay.style.height = '100%';
+                overlay.style.background = 'rgba(0,0,0,0.85)';
+                overlay.style.zIndex = '99999';
+                overlay.style.display = 'flex';
+                overlay.style.alignItems = 'center';
+                overlay.style.justifyContent = 'center';
+                overlay.style.backdropFilter = 'blur(4px)';
+
+                const modal = document.createElement('div');
+                modal.style.background = 'var(--bg-card)';
+                modal.style.padding = '30px';
+                modal.style.borderRadius = '12px';
+                modal.style.border = '1px solid var(--red)';
+                modal.style.width = '80%';
+                modal.style.maxWidth = '500px';
+                modal.style.boxShadow = '0 10px 40px rgba(255,0,0,0.2)';
+                modal.style.textAlign = 'center';
+
+                modal.innerHTML = `
+                    <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR MEMORIA (WIPE)</h2>
+                    <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?</p>
+                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de Inteligencia Artificial y no se puede deshacer.</p>
+                    <div style="display:flex; justify-content:center; gap:15px;">
+                        <button id="btn-cancel-wipe" style="background:var(--panel); color:var(--text); border:1px solid var(--border); padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
+                        <button id="btn-confirm-wipe" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">SÍ, PURGAR AHORA</button>
+                    </div>
+                `;
+
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+
+                document.getElementById('btn-cancel-wipe').onclick = () => {
+                    document.body.removeChild(overlay);
+                };
+
+                document.getElementById('btn-confirm-wipe').onclick = async () => {
+                    document.getElementById('btn-confirm-wipe').innerText = "Purgando...";
+                    document.getElementById('btn-confirm-wipe').disabled = true;
+                    try {
+                        const res = await fetch('/api/reset_all', { method: 'POST' });
+                        if (res.ok) {
+                            lastResultCount = 0;
+                            totalNetValue = 0;
+                            document.getElementById('results-table-body').innerHTML = '';
+                            modal.innerHTML = `
+                                <h2 style="color:var(--green); margin-top:0;">✅ Orden Ejecutada</h2>
+                                <p style="color:var(--text); margin-bottom:25px;">El servidor interno está purgando la base de datos... reiniciando bot.</p>
+                            `;
+                            setTimeout(() => location.reload(), 2500);
+                        } else {
+                            modal.innerHTML = `<h2 style="color:var(--red);">Error reiniciando el bot.</h2>`;
+                            setTimeout(() => document.body.removeChild(overlay), 2000);
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        modal.innerHTML = `<h2 style="color:var(--red);">Error de conexión.</h2>`;
+                        setTimeout(() => document.body.removeChild(overlay), 2000);
                     }
-                } catch (e) {
-                    console.error(e);
-                }
+                };
             }
 
             connectWS();
