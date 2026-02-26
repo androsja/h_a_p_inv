@@ -46,6 +46,8 @@ from broker.hapi_mock import HapiMock
 from strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
 from strategy.risk_manager import RiskManager, AccountState, OpenPosition
 from strategy.ml_predictor import ml_predictor
+from utils.trade_journal import record_trade as journal_record_trade
+from utils.trade_journal import record_trade as journal_record_trade
 from dataclasses import asdict
 import threading
 
@@ -307,6 +309,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 
             # ── 4. Gestionar SALIDA (si hay posición abierta) ────────────────
             if position is not None:
+                position.hold_bars = getattr(position, "hold_bars", 0) + 1
                 should_exit, exit_reason = risk_mgr.should_exit(position, quote.bid)
 
                 # Eliminamos la regla de "panic sell" del indicador, dejamos que el Trailing Stop decida
@@ -335,6 +338,19 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         if hasattr(position, 'ml_features') and position.ml_features:
                             log.info(f"SAVING TRADE: {symbol} Pnl={pnl} Features={position.ml_features}")
                             ml_predictor.save_trade(symbol, position.ml_features, pnl)
+                            # 📓 Bitácora completa de trading (para análisis y mejora de algoritmos)
+                            journal_record_trade(
+                                symbol=symbol,
+                                session=session_num,
+                                entry_price=position.entry_price,
+                                exit_price=sell_plan.limit_price,
+                                qty=position.qty,
+                                stop_loss=position.initial_stop,
+                                take_profit=position.take_profit,
+                                hold_bars=getattr(position, 'hold_bars', 0),
+                                exit_reason=reason.split(' ')[0].replace('🔒','TRAILING_STOP').replace('��','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
+                                ml_features=position.ml_features,
+                            )
                             
                         # En LIVE registrar el capital como T+1 pendiente
                         if not is_mock:

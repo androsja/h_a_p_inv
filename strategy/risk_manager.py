@@ -36,6 +36,7 @@ class OpenPosition:
     highest_price: float = 0.0  # Máximo precio alcanzado (para trailing stop)
     initial_stop:  float = 0.0  # SL original (para referencia)
     ml_features:   dict  = field(default_factory=dict) # Features al momento de abrir la posición
+    hold_bars:     int   = 0    # Iteraciones que lleva abierta la posición
 
     def __post_init__(self):
         if self.highest_price == 0.0:
