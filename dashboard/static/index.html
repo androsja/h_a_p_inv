@@ -1507,342 +1507,343 @@
     <div id="symbol-tabs-container"
         style="display:none; background:var(--panel); border-bottom:1px solid rgba(255,255,255,0.05); padding: 5px 16px; overflow-x:auto; white-space:nowrap; gap:10px; align-items:center;">
         <!-- Tabs go here -->
-        <script>
-            'use strict';
+    </div>
+    <script>
+        'use strict';
 
-            // ═══════════════════════════════════════════════════════
-            // RELOJ
-            // ═══════════════════════════════════════════════════════
-            setInterval(() => {
-                const clock = document.getElementById('clock');
-                if (clock) {
-                    clock.textContent = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
-                }
-            }, 1000);
+        // ═══════════════════════════════════════════════════════
+        // RELOJ
+        // ═══════════════════════════════════════════════════════
+        setInterval(() => {
+            const clock = document.getElementById('clock');
+            if (clock) {
+                clock.textContent = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
+            }
+        }, 1000);
 
-            // ═══════════════════════════════════════════════════════
-            // SISTEMA DE PESTAÑAS
-            // ═══════════════════════════════════════════════════════
-            const TAB_IDS = ['candles', 'pnl', 'indicators', 'trades', 'results', 'log'];
+        // ═══════════════════════════════════════════════════════
+        // SISTEMA DE PESTAÑAS
+        // ═══════════════════════════════════════════════════════
+        const TAB_IDS = ['candles', 'pnl', 'indicators', 'trades', 'results', 'log'];
 
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const tab = btn.dataset.tab;
-                    // Ocultar todo
-                    TAB_IDS.forEach(id => {
-                        document.getElementById(`tab-${id}`).classList.remove('visible');
-                        document.getElementById(`tbtn-${id}`).classList.remove('active');
-                    });
-                    // Mostrar el seleccionado
-                    document.getElementById(`tab-${tab}`).classList.add('visible');
-                    btn.classList.add('active');
-                    // Redimensionar charts si aplica
-                    if (tab === 'candles') {
-                        candleChart.applyOptions({
-                            width: document.getElementById('candle-chart').clientWidth,
-                            height: document.getElementById('candle-chart').clientHeight,
-                        });
-                    }
-                    if (tab === 'pnl') pnlChart.resize();
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                // Ocultar todo
+                TAB_IDS.forEach(id => {
+                    document.getElementById(`tab-${id}`).classList.remove('visible');
+                    document.getElementById(`tbtn-${id}`).classList.remove('active');
                 });
-            });
-
-            // ═══════════════════════════════════════════════════════
-            // ─── SYMBOL SELECTOR LOGIC ───
-            let selectedSymbols = [];
-            let suggestedSymbols = [];
-            let focusSymbol = null; // Símbolo que el usuario está viendo actualmente
-            let manualFocus = false; // Si el usuario cambió de pestaña manualmente
-
-            function toggleSymbolModal() {
-                const modal = document.getElementById('symbol-selection-modal');
-                const overlay = document.getElementById('symbol-modal-overlay');
-                modal.classList.toggle('visible');
-                overlay.classList.toggle('visible');
-                if (modal.classList.contains('visible')) {
-                    renderSuggested();
-                    renderTags();
+                // Mostrar el seleccionado
+                document.getElementById(`tab-${tab}`).classList.add('visible');
+                btn.classList.add('active');
+                // Redimensionar charts si aplica
+                if (tab === 'candles') {
+                    candleChart.applyOptions({
+                        width: document.getElementById('candle-chart').clientWidth,
+                        height: document.getElementById('candle-chart').clientHeight,
+                    });
                 }
-            }
+                if (tab === 'pnl') pnlChart.resize();
+            });
+        });
 
-            async function loadSuggestions() {
-                try {
-                    const res = await fetch('/api/active_symbols');
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        suggestedSymbols = data.symbols;
-                        renderSuggested();
-                    }
-                } catch (e) { console.error("Error loading suggestions", e); }
-            }
+        // ═══════════════════════════════════════════════════════
+        // ─── SYMBOL SELECTOR LOGIC ───
+        let selectedSymbols = [];
+        let suggestedSymbols = [];
+        let focusSymbol = null; // Símbolo que el usuario está viendo actualmente
+        let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
-            function renderSuggested() {
-                const container = document.getElementById('suggested-symbols');
-                if (!container) return;
-                container.innerHTML = suggestedSymbols.map(sym => {
-                    const isSelected = selectedSymbols.includes(sym);
-                    return `<div class="suggestion-pill ${isSelected ? 'selected' : ''}" onclick="toggleSymbol('${sym}')">${sym}</div>`;
-                }).join('');
+        function toggleSymbolModal() {
+            const modal = document.getElementById('symbol-selection-modal');
+            const overlay = document.getElementById('symbol-modal-overlay');
+            modal.classList.toggle('visible');
+            overlay.classList.toggle('visible');
+            if (modal.classList.contains('visible')) {
+                renderSuggested();
+                renderTags();
             }
+        }
 
-            function renderTags() {
-                const container = document.getElementById('selected-tags');
-                if (!container) return;
-                if (selectedSymbols.length === 0) {
-                    container.innerHTML = '<span style="color:#444; font-size:11px; padding:5px;">Ninguno seleccionado</span>';
-                } else {
-                    container.innerHTML = selectedSymbols.map(sym => `
+        async function loadSuggestions() {
+            try {
+                const res = await fetch('/api/active_symbols');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    suggestedSymbols = data.symbols;
+                    renderSuggested();
+                }
+            } catch (e) { console.error("Error loading suggestions", e); }
+        }
+
+        function renderSuggested() {
+            const container = document.getElementById('suggested-symbols');
+            if (!container) return;
+            container.innerHTML = suggestedSymbols.map(sym => {
+                const isSelected = selectedSymbols.includes(sym);
+                return `<div class="suggestion-pill ${isSelected ? 'selected' : ''}" onclick="toggleSymbol('${sym}')">${sym}</div>`;
+            }).join('');
+        }
+
+        function renderTags() {
+            const container = document.getElementById('selected-tags');
+            if (!container) return;
+            if (selectedSymbols.length === 0) {
+                container.innerHTML = '<span style="color:#444; font-size:11px; padding:5px;">Ninguno seleccionado</span>';
+            } else {
+                container.innerHTML = selectedSymbols.map(sym => `
     <div class="symbol-tag">
         ${sym}
         <span class="remove" onclick="toggleSymbol('${sym}')">×</span>
     </div>
     `).join('');
-                }
-                document.getElementById('selected-count-badge').textContent = selectedSymbols.length;
             }
+            document.getElementById('selected-count-badge').textContent = selectedSymbols.length;
+        }
 
-            function toggleSymbol(sym) {
-                sym = sym.toUpperCase().trim();
-                if (selectedSymbols.includes(sym)) {
-                    selectedSymbols = selectedSymbols.filter(s => s !== sym);
-                } else {
-                    selectedSymbols.push(sym);
-                }
+        function toggleSymbol(sym) {
+            sym = sym.toUpperCase().trim();
+            if (selectedSymbols.includes(sym)) {
+                selectedSymbols = selectedSymbols.filter(s => s !== sym);
+            } else {
+                selectedSymbols.push(sym);
+            }
+            renderTags();
+            renderSuggested();
+        }
+
+        function addCustomSymbol() {
+            const input = document.getElementById('custom-symbol-input');
+            const sym = input.value.toUpperCase().trim();
+            if (sym && !selectedSymbols.includes(sym)) {
+                selectedSymbols.push(sym);
+                input.value = '';
                 renderTags();
                 renderSuggested();
             }
+        }
 
-            function addCustomSymbol() {
-                const input = document.getElementById('custom-symbol-input');
-                const sym = input.value.toUpperCase().trim();
-                if (sym && !selectedSymbols.includes(sym)) {
-                    selectedSymbols.push(sym);
-                    input.value = '';
-                    renderTags();
-                    renderSuggested();
-                }
-            }
+        function selectAllSymbols() {
+            selectedSymbols = [...suggestedSymbols];
+            renderTags();
+            renderSuggested();
+        }
 
-            function selectAllSymbols() {
-                selectedSymbols = [...suggestedSymbols];
-                renderTags();
-                renderSuggested();
-            }
+        loadSuggestions();
 
-            loadSuggestions();
+        // GAUGE WIN RATE
+        // ═══════════════════════════════════════════════════════
+        function updateGauge(pct) {
+            const offset = 116 - (116 * Math.min(100, Math.max(0, pct)) / 100);
+            document.getElementById('gauge-arc').style.strokeDashoffset = offset;
+        }
 
-            // GAUGE WIN RATE
-            // ═══════════════════════════════════════════════════════
-            function updateGauge(pct) {
-                const offset = 116 - (116 * Math.min(100, Math.max(0, pct)) / 100);
-                document.getElementById('gauge-arc').style.strokeDashoffset = offset;
-            }
-
-            // ═══════════════════════════════════════════════════════
-            // MINI PnL CHART (Chart.js)
-            // ═══════════════════════════════════════════════════════
-            const pnlCtx = document.getElementById('pnl-chart').getContext('2d');
-            const pnlDataset = {
-                labels: [], datasets: [{
-                    data: [], borderColor: '#00d4aa',
-                    backgroundColor: (c) => {
-                        try {
-                            const g = c.chart.ctx.createLinearGradient(0, 0, 0, 300);
-                            g.addColorStop(0, 'rgba(0,212,170,0.25)');
-                            g.addColorStop(1, 'rgba(0,212,170,0)');
-                            return g;
-                        } catch (e) { return 'rgba(0,212,170,0.1)'; }
-                    },
-                    fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
-                }]
-            };
-            const pnlChart = new Chart(pnlCtx, {
-                type: 'line', data: pnlDataset,
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    animation: { duration: 400 },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0d1626', borderColor: 'rgba(255,255,255,0.1)',
-                            borderWidth: 1, titleColor: '#546180', bodyColor: '#e2e8f0',
-                            callbacks: { label: i => ` PnL: $${i.raw.toFixed(2)}` }
-                        }
-                    },
-                    scales: {
-                        x: { display: false },
-                        y: {
-                            position: 'right',
-                            grid: { color: 'rgba(255,255,255,0.04)' },
-                            ticks: { color: '#546180', font: { family: 'JetBrains Mono', size: 11 }, callback: v => `$${v.toFixed(0)}` }
-                        }
+        // ═══════════════════════════════════════════════════════
+        // MINI PnL CHART (Chart.js)
+        // ═══════════════════════════════════════════════════════
+        const pnlCtx = document.getElementById('pnl-chart').getContext('2d');
+        const pnlDataset = {
+            labels: [], datasets: [{
+                data: [], borderColor: '#00d4aa',
+                backgroundColor: (c) => {
+                    try {
+                        const g = c.chart.ctx.createLinearGradient(0, 0, 0, 300);
+                        g.addColorStop(0, 'rgba(0,212,170,0.25)');
+                        g.addColorStop(1, 'rgba(0,212,170,0)');
+                        return g;
+                    } catch (e) { return 'rgba(0,212,170,0.1)'; }
+                },
+                fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+            }]
+        };
+        const pnlChart = new Chart(pnlCtx, {
+            type: 'line', data: pnlDataset,
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 400 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0d1626', borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1, titleColor: '#546180', bodyColor: '#e2e8f0',
+                        callbacks: { label: i => ` PnL: $${i.raw.toFixed(2)}` }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        position: 'right',
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#546180', font: { family: 'JetBrains Mono', size: 11 }, callback: v => `$${v.toFixed(0)}` }
                     }
                 }
-            });
-            let pnlHistory = [];
-
-            // ═══════════════════════════════════════════════════════
-            // CANDLESTICK CHART (TradingView Lightweight Charts)
-            // ═══════════════════════════════════════════════════════
-            const candleEl = document.getElementById('candle-chart');
-            const candleChart = LightweightCharts.createChart(candleEl, {
-                width: candleEl.clientWidth || 800,
-                height: candleEl.clientHeight || 400,
-                layout: { background: { color: '#07101f' }, textColor: '#546180' },
-                grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
-                timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true, secondsVisible: false },
-            });
-
-            const candleSeries = candleChart.addCandlestickSeries({
-                upColor: '#00e676', downColor: '#ff3d5a',
-                borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
-                wickUpColor: 'rgba(0,230,118,0.6)', wickDownColor: 'rgba(255,61,90,0.6)',
-            });
-            const ema200Series = candleChart.addLineSeries({
-                color: '#ffd740', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'EMA200',
-            });
-            const vwapSeries = candleChart.addLineSeries({
-                color: '#a78bfa', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'VWAP',
-            });
-
-            // Redimensionar al cambiar tamaño de ventana
-            new ResizeObserver(() => {
-                if (document.getElementById('tab-candles').classList.contains('visible')) {
-                    candleChart.applyOptions({ width: candleEl.clientWidth, height: candleEl.clientHeight });
-                }
-            }).observe(candleEl);
-
-            // Estado del gráfico
-            let prevSymbol = '';
-            let prevCandleTs = 0;
-            let tradeMarkersList = [];
-
-            function updateCandleChart(state) {
-                const candles = state.candles;
-                if (!candles || candles.length < 2) return;
-                const sym = state.symbol || '';
-                const lastTs = candles[candles.length - 1]?.time || 0;
-                const symbolChanged = sym !== prevSymbol;
-                if (symbolChanged) {
-                    // Símbolo nuevo: cargar todo desde cero 
-                    prevSymbol = sym; prevCandleTs = 0; tradeMarkersList = [];
-                    try {
-                        candleSeries.setData(candles);
-                        ema200Series.setData(candles.map(c => ({ time: c.time, value: state.ema_200 || 0 })));
-                        vwapSeries.setData(candles.map(c => ({ time: c.time, value: state.vwap || 0 })));
-                        candleChart.timeScale().scrollToRealTime();
-                    } catch (e) { }
-                } else if (lastTs > prevCandleTs) {
-                    // Solo actualizar la última vela
-                    try {
-                        const last = candles[candles.length - 1];
-                        candleSeries.update(last);
-                        if (state.ema_200) ema200Series.update({ time: last.time, value: state.ema_200 });
-                        if (state.vwap) vwapSeries.update({ time: last.time, value: state.vwap });
-                    } catch (e) { }
-                }
-                prevCandleTs = lastTs;
             }
+        });
+        let pnlHistory = [];
 
-            // ═══════════════════════════════════════════════════════
-            // LOG
-            // ═══════════════════════════════════════════════════════
-            const MAX_LOG = 200;
-            let logLines = [];
-            function classifyLog(l) {
-                if (l.includes('🟢 BUY') || l.includes('ORDER_FILLED | BUY')) return 'order-buy';
-                if (l.includes('🔴 SELL') || l.includes('ORDER_FILLED | SELL')) return 'order-sell';
-                if (l.includes('| ERROR')) return 'error';
-                if (l.includes('| WARNING')) return 'warning';
-                if (l.includes('| INFO')) return 'info';
-                return 'default';
+        // ═══════════════════════════════════════════════════════
+        // CANDLESTICK CHART (TradingView Lightweight Charts)
+        // ═══════════════════════════════════════════════════════
+        const candleEl = document.getElementById('candle-chart');
+        const candleChart = LightweightCharts.createChart(candleEl, {
+            width: candleEl.clientWidth || 800,
+            height: candleEl.clientHeight || 400,
+            layout: { background: { color: '#07101f' }, textColor: '#546180' },
+            grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
+            timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true, secondsVisible: false },
+        });
+
+        const candleSeries = candleChart.addCandlestickSeries({
+            upColor: '#00e676', downColor: '#ff3d5a',
+            borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
+            wickUpColor: 'rgba(0,230,118,0.6)', wickDownColor: 'rgba(255,61,90,0.6)',
+        });
+        const ema200Series = candleChart.addLineSeries({
+            color: '#ffd740', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'EMA200',
+        });
+        const vwapSeries = candleChart.addLineSeries({
+            color: '#a78bfa', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'VWAP',
+        });
+
+        // Redimensionar al cambiar tamaño de ventana
+        new ResizeObserver(() => {
+            if (document.getElementById('tab-candles').classList.contains('visible')) {
+                candleChart.applyOptions({ width: candleEl.clientWidth, height: candleEl.clientHeight });
             }
-            function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-            function appendLog(lines) {
-                if (!lines || !lines.length) return;
-                logLines.push(...lines.filter(l => l.trim()));
-                if (logLines.length > MAX_LOG) logLines = logLines.slice(-MAX_LOG);
-                const term = document.getElementById('log-terminal');
-                const wasBottom = term.scrollTop + term.clientHeight >= term.scrollHeight - 20;
-                term.innerHTML = logLines.map(l =>
-                    `<span class="log-line ${classifyLog(l)}">${esc(l)}</span>`
-                ).join('\n');
-                if (wasBottom) term.scrollTop = term.scrollHeight;
+        }).observe(candleEl);
+
+        // Estado del gráfico
+        let prevSymbol = '';
+        let prevCandleTs = 0;
+        let tradeMarkersList = [];
+
+        function updateCandleChart(state) {
+            const candles = state.candles;
+            if (!candles || candles.length < 2) return;
+            const sym = state.symbol || '';
+            const lastTs = candles[candles.length - 1]?.time || 0;
+            const symbolChanged = sym !== prevSymbol;
+            if (symbolChanged) {
+                // Símbolo nuevo: cargar todo desde cero 
+                prevSymbol = sym; prevCandleTs = 0; tradeMarkersList = [];
+                try {
+                    candleSeries.setData(candles);
+                    ema200Series.setData(candles.map(c => ({ time: c.time, value: state.ema_200 || 0 })));
+                    vwapSeries.setData(candles.map(c => ({ time: c.time, value: state.vwap || 0 })));
+                    candleChart.timeScale().scrollToRealTime();
+                } catch (e) { }
+            } else if (lastTs > prevCandleTs) {
+                // Solo actualizar la última vela
+                try {
+                    const last = candles[candles.length - 1];
+                    candleSeries.update(last);
+                    if (state.ema_200) ema200Series.update({ time: last.time, value: state.ema_200 });
+                    if (state.vwap) vwapSeries.update({ time: last.time, value: state.vwap });
+                } catch (e) { }
             }
+            prevCandleTs = lastTs;
+        }
 
-            // ═══════════════════════════════════════════════════════
-            // OPERACIONES Y NOTIFICACIONES
-            // ═══════════════════════════════════════════════════════
-            let lastTradeCount = 0;
+        // ═══════════════════════════════════════════════════════
+        // LOG
+        // ═══════════════════════════════════════════════════════
+        const MAX_LOG = 200;
+        let logLines = [];
+        function classifyLog(l) {
+            if (l.includes('🟢 BUY') || l.includes('ORDER_FILLED | BUY')) return 'order-buy';
+            if (l.includes('🔴 SELL') || l.includes('ORDER_FILLED | SELL')) return 'order-sell';
+            if (l.includes('| ERROR')) return 'error';
+            if (l.includes('| WARNING')) return 'warning';
+            if (l.includes('| INFO')) return 'info';
+            return 'default';
+        }
+        function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+        function appendLog(lines) {
+            if (!lines || !lines.length) return;
+            logLines.push(...lines.filter(l => l.trim()));
+            if (logLines.length > MAX_LOG) logLines = logLines.slice(-MAX_LOG);
+            const term = document.getElementById('log-terminal');
+            const wasBottom = term.scrollTop + term.clientHeight >= term.scrollHeight - 20;
+            term.innerHTML = logLines.map(l =>
+                `<span class="log-line ${classifyLog(l)}">${esc(l)}</span>`
+            ).join('\n');
+            if (wasBottom) term.scrollTop = term.scrollHeight;
+        }
 
-            function showToast(trade) {
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                const isBuy = trade.side === 'BUY';
-                toast.className = `toast ${trade.side}`;
+        // ═══════════════════════════════════════════════════════
+        // OPERACIONES Y NOTIFICACIONES
+        // ═══════════════════════════════════════════════════════
+        let lastTradeCount = 0;
 
-                toast.innerHTML = `
+        function showToast(trade) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const isBuy = trade.side === 'BUY';
+            toast.className = `toast ${trade.side}`;
+
+            toast.innerHTML = `
         <div class="toast-side">${isBuy ? '🟢 ORDEN EJECUTADA: COMPRA' : '🔴 ORDEN EJECUTADA: VENTA'}</div>
         <div class="toast-details">
             Activo: <b>${trade.symbol || ''}</b><br>
             Precio: $${(trade.price || 0).toFixed(2)}<br>
             ${!isBuy ? `PnL: <span style="color:${trade.pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${trade.pnl >= 0 ?
-                        '+' : ''}${(trade.pnl || 0).toFixed(2)}</span>` : ''}
+                    '+' : ''}${(trade.pnl || 0).toFixed(2)}</span>` : ''}
         </div>
         `;
-                container.appendChild(toast);
+            container.appendChild(toast);
 
-                // Redirigir automáticamente a la pestaña de Operaciones (o Velas si se prefiere)
-                // if (document.querySelector('.tab-btn[data-tab="trades"]')) {
-                // document.querySelector('.tab-btn[data-tab="trades"]').click();
-                // }
+            // Redirigir automáticamente a la pestaña de Operaciones (o Velas si se prefiere)
+            // if (document.querySelector('.tab-btn[data-tab="trades"]')) {
+            // document.querySelector('.tab-btn[data-tab="trades"]').click();
+            // }
 
-                // Sonido opcional si hubiera (bip)
-                // const audio = new Audio(isBuy ? 'buy.mp3' : 'sell.mp3'); audio.play();
+            // Sonido opcional si hubiera (bip)
+            // const audio = new Audio(isBuy ? 'buy.mp3' : 'sell.mp3'); audio.play();
 
-                // Eliminar a los 5 segundos
-                setTimeout(() => {
-                    toast.classList.add('toast-fadeout');
-                    toast.addEventListener('animationend', () => toast.remove());
-                }, 5000);
-            }
+            // Eliminar a los 5 segundos
+            setTimeout(() => {
+                toast.classList.add('toast-fadeout');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, 5000);
+        }
 
-            // ═══════════════════════════════════════════════════════
-            // RESULTADOS Y TABLA DE BITÁCORA ML
-            // ═══════════════════════════════════════════════════════
-            let lastResultCount = 0;
-            let totalNetValue = 0;
-            let TOTAL_SYMBOLS = 46; // Fallback default
+        // ═══════════════════════════════════════════════════════
+        // RESULTADOS Y TABLA DE BITÁCORA ML
+        // ═══════════════════════════════════════════════════════
+        let lastResultCount = 0;
+        let totalNetValue = 0;
+        let TOTAL_SYMBOLS = 46; // Fallback default
 
-            async function fetchConfig() {
-                try {
-                    const res = await fetch('/api/config');
-                    const data = await res.json();
-                    if (data && data.total_symbols) {
-                        TOTAL_SYMBOLS = data.total_symbols;
-                    }
-                } catch (e) { console.error("Error loading config:", e); }
-            }
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                if (data && data.total_symbols) {
+                    TOTAL_SYMBOLS = data.total_symbols;
+                }
+            } catch (e) { console.error("Error loading config:", e); }
+        }
 
-            // Fetch config once on load
-            fetchConfig();
+        // Fetch config once on load
+        fetchConfig();
 
-            async function loadResults() {
-                try {
-                    const res = await fetch('/api/results');
-                    const data = await res.json();
+        async function loadResults() {
+            try {
+                const res = await fetch('/api/results');
+                const data = await res.json();
 
-                    const tbody = document.getElementById('results-table-body');
-                    window.completedSessions = {}; // Store highest session num per symbol
-                    if (!data || data.length === 0) {
-                        if (lastResultCount !== 0) {
-                            lastResultCount = 0;
-                            totalNetValue = 0;
-                            if (tbody) tbody.innerHTML = '';
-                            const summaryDiv = document.getElementById('ml-progress');
-                            if (summaryDiv) summaryDiv.innerHTML = `
+                const tbody = document.getElementById('results-table-body');
+                window.completedSessions = {}; // Store highest session num per symbol
+                if (!data || data.length === 0) {
+                    if (lastResultCount !== 0) {
+                        lastResultCount = 0;
+                        totalNetValue = 0;
+                        if (tbody) tbody.innerHTML = '';
+                        const summaryDiv = document.getElementById('ml-progress');
+                        if (summaryDiv) summaryDiv.innerHTML = `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
             <span>Progreso del Explorador (Símbolos únicos evaluados): <b>0 / ${TOTAL_SYMBOLS}</b></span>
             <div>
@@ -1856,48 +1857,48 @@
             <div style="width:0%; height:100%; background:var(--green); transition:width 0.5s;"></div>
         </div>
         `;
-                        }
-                        return;
                     }
+                    return;
+                }
 
-                    if (data.length !== lastResultCount) {
-                        lastResultCount = data.length;
-                        totalNetValue = data.reduce((sum, item) => {
-                            const g = item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0;
-                            const f = item.total_fees || 0;
-                            const s = item.slippage_est || 0;
-                            return sum + (g - f - s);
-                        }, 0);
-                        const totalTradesAllSessions = data.reduce((sum, item) => sum + (item.total_trades || 0), 0);
+                if (data.length !== lastResultCount) {
+                    lastResultCount = data.length;
+                    totalNetValue = data.reduce((sum, item) => {
+                        const g = item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0;
+                        const f = item.total_fees || 0;
+                        const s = item.slippage_est || 0;
+                        return sum + (g - f - s);
+                    }, 0);
+                    const totalTradesAllSessions = data.reduce((sum, item) => sum + (item.total_trades || 0), 0);
 
-                        // Calcular cuántas sesiones únicas (por símbolo) se han corrido
-                        const uniqueSymbolsCount = new Set(data.map(d => d.symbol)).size;
-                        const completionPercent = Math.min((uniqueSymbolsCount / TOTAL_SYMBOLS) * 100, 100);
+                    // Calcular cuántas sesiones únicas (por símbolo) se han corrido
+                    const uniqueSymbolsCount = new Set(data.map(d => d.symbol)).size;
+                    const completionPercent = Math.min((uniqueSymbolsCount / TOTAL_SYMBOLS) * 100, 100);
 
-                        const tbody = document.getElementById('results-table-body');
+                    const tbody = document.getElementById('results-table-body');
 
-                        // Actualizar UI del progreso
-                        let summaryDiv = document.getElementById('ml-progress');
-                        if (!summaryDiv) {
-                            summaryDiv = document.createElement('div');
-                            summaryDiv.id = 'ml-progress';
-                            summaryDiv.style.padding = '10px 15px';
-                            summaryDiv.style.marginBottom = '15px';
-                            summaryDiv.style.background = 'rgba(255,255,255,0.03)';
-                            summaryDiv.style.borderRadius = '8px';
-                            summaryDiv.style.fontSize = '12px';
+                    // Actualizar UI del progreso
+                    let summaryDiv = document.getElementById('ml-progress');
+                    if (!summaryDiv) {
+                        summaryDiv = document.createElement('div');
+                        summaryDiv.id = 'ml-progress';
+                        summaryDiv.style.padding = '10px 15px';
+                        summaryDiv.style.marginBottom = '15px';
+                        summaryDiv.style.background = 'rgba(255,255,255,0.03)';
+                        summaryDiv.style.borderRadius = '8px';
+                        summaryDiv.style.fontSize = '12px';
 
-                            // Insertarlo en el contenedor fijo superior
-                            const parentContainer = document.getElementById('ml-progress-container');
-                            if (parentContainer) parentContainer.appendChild(summaryDiv);
-                        }
-                        if (summaryDiv) {
-                            const isLivePaper = document.body.classList.contains('mode-live-paper');
-                            if (isLivePaper) {
-                                summaryDiv.style.display = 'none';
-                            } else {
-                                summaryDiv.style.display = 'block';
-                                summaryDiv.innerHTML = `
+                        // Insertarlo en el contenedor fijo superior
+                        const parentContainer = document.getElementById('ml-progress-container');
+                        if (parentContainer) parentContainer.appendChild(summaryDiv);
+                    }
+                    if (summaryDiv) {
+                        const isLivePaper = document.body.classList.contains('mode-live-paper');
+                        if (isLivePaper) {
+                            summaryDiv.style.display = 'none';
+                        } else {
+                            summaryDiv.style.display = 'block';
+                            summaryDiv.innerHTML = `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
             <span>Progreso del Explorador (Símbolos únicos evaluados): <b>${uniqueSymbolsCount} /
                     ${TOTAL_SYMBOLS}</b></span>
@@ -1913,32 +1914,32 @@
             </div>
         </div>
         `;
-                            }
+                        }
+                    }
+
+                    tbody.innerHTML = '';
+
+                    [...data].reverse().forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+
+                        if (!window.completedSessions[row.symbol] || window.completedSessions[row.symbol] < row.session_num) {
+                            window.completedSessions[row.symbol] = row.session_num;
                         }
 
-                        tbody.innerHTML = '';
+                        const grossPnl = row.gross_pnl !== undefined ? row.gross_pnl : row.pnl || 0;
+                        const fees = row.total_fees !== undefined ? row.total_fees : 0;
+                        const slip = row.slippage_est !== undefined ? row.slippage_est : 0;
+                        const netPnl = grossPnl - fees - slip;
 
-                        [...data].reverse().forEach(row => {
-                            const tr = document.createElement('tr');
-                            tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                        const isWin = netPnl >= 0;
+                        const pnlColor = isWin ? 'var(--green)' : 'var(--red)';
+                        const prefix = isWin ? '+' : '';
 
-                            if (!window.completedSessions[row.symbol] || window.completedSessions[row.symbol] < row.session_num) {
-                                window.completedSessions[row.symbol] = row.session_num;
-                            }
+                        const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                        const grossPfx = grossPnl >= 0 ? '+' : '';
 
-                            const grossPnl = row.gross_pnl !== undefined ? row.gross_pnl : row.pnl || 0;
-                            const fees = row.total_fees !== undefined ? row.total_fees : 0;
-                            const slip = row.slippage_est !== undefined ? row.slippage_est : 0;
-                            const netPnl = grossPnl - fees - slip;
-
-                            const isWin = netPnl >= 0;
-                            const pnlColor = isWin ? 'var(--green)' : 'var(--red)';
-                            const prefix = isWin ? '+' : '';
-
-                            const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
-                            const grossPfx = grossPnl >= 0 ? '+' : '';
-
-                            tr.innerHTML = `
+                        tr.innerHTML = `
         <td style="padding:10px; font-weight:bold;">${row.symbol}</td>
         <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
         <td style="padding:10px;">${row.total_trades}</td>
@@ -1955,23 +1956,23 @@
             style="padding:10px; text-align:left; max-width:280px; font-size:0.8em; line-height:1.3; color:var(--muted);">
             ${row.insight || 'Sin datos de IA.'}</td>
         `;
-                            tbody.appendChild(tr);
-                        });
+                        tbody.appendChild(tr);
+                    });
 
-                        // Añadir resumen acumulado
-                        const sumRow = document.createElement('tr');
+                    // Añadir resumen acumulado
+                    const sumRow = document.createElement('tr');
 
-                        const totalGross = data.reduce((sum, item) => sum + (item.gross_pnl || item.pnl || 0), 0);
-                        const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
-                        const totalSlip = data.reduce((sum, item) => sum + (item.slippage_est || 0), 0);
+                    const totalGross = data.reduce((sum, item) => sum + (item.gross_pnl || item.pnl || 0), 0);
+                    const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
+                    const totalSlip = data.reduce((sum, item) => sum + (item.slippage_est || 0), 0);
 
-                        const totGrossColor = totalGross >= 0 ? 'var(--green)' : 'var(--red)';
-                        const totGrossPre = totalGross >= 0 ? '+' : '';
+                    const totGrossColor = totalGross >= 0 ? 'var(--green)' : 'var(--red)';
+                    const totGrossPre = totalGross >= 0 ? '+' : '';
 
-                        const totColor = totalNetValue >= 0 ? 'var(--green)' : 'var(--red)';
-                        const totPre = totalNetValue >= 0 ? '+' : '';
+                    const totColor = totalNetValue >= 0 ? 'var(--green)' : 'var(--red)';
+                    const totPre = totalNetValue >= 0 ? '+' : '';
 
-                        sumRow.innerHTML = `
+                    sumRow.innerHTML = `
         <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--muted);">NETO ESTRATEGIA
             ACUMULADA:</td>
         <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totGrossColor};">
@@ -1985,17 +1986,17 @@
         <td style="padding:10px; font-weight:bold; color:var(--text);">$${(10000 + totalNetValue).toFixed(2)}</td>
         <td colspan="2" style="padding:10px;"></td>
         `;
-                        tbody.appendChild(sumRow);
+                    tbody.appendChild(sumRow);
 
-                        // Añadir fila de retiro a banco (simulación final)
-                        const withdrawalFee = 1.99; // Tarifa estándar aproximada de retiro de Hapi
-                        const netToBank = (10000 + totalNetValue) - withdrawalFee;
-                        const finalProfit = netToBank - 10000;
-                        const finalColor = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
-                        const finalPre = finalProfit >= 0 ? '+' : '';
+                    // Añadir fila de retiro a banco (simulación final)
+                    const withdrawalFee = 1.99; // Tarifa estándar aproximada de retiro de Hapi
+                    const netToBank = (10000 + totalNetValue) - withdrawalFee;
+                    const finalProfit = netToBank - 10000;
+                    const finalColor = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+                    const finalPre = finalProfit >= 0 ? '+' : '';
 
-                        const cashoutRow = document.createElement('tr');
-                        cashoutRow.innerHTML = `
+                    const cashoutRow = document.createElement('tr');
+                    cashoutRow.innerHTML = `
         <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--text); font-size:1.1em; background:rgba(0,0,0,0.2);">
             💰 ESTIMADO REAL RETIRADO AL BANCO (Fee -$${withdrawalFee}):
         </td>
@@ -2010,31 +2011,31 @@
             <span style="font-size:0.85em; color:var(--muted);">¿Ganaste algo? -> ${finalProfit > 0 ? 'Sí ✅' : 'No ❌'}</span>
         </td>
         `;
-                        tbody.appendChild(cashoutRow);
-                    }
-                } catch (e) {
-                    console.error("Error en loadResults:", e);
+                    tbody.appendChild(cashoutRow);
                 }
+            } catch (e) {
+                console.error("Error en loadResults:", e);
             }
+        }
 
-            async function runAITraining() {
-                const btn = document.querySelector('button[onclick="runAITraining()"]');
-                const originalText = btn ? btn.innerHTML : '🧠 Analizar mis Errores con IA (Live)';
-                try {
-                    if (btn) {
-                        btn.innerHTML = '⏳ Analizando...';
-                        btn.disabled = true;
-                    }
-                    const res = await fetch('/api/train_ai', { method: 'POST' });
-                    const data = await res.json();
+        async function runAITraining() {
+            const btn = document.querySelector('button[onclick="runAITraining()"]');
+            const originalText = btn ? btn.innerHTML : '🧠 Analizar mis Errores con IA (Live)';
+            try {
+                if (btn) {
+                    btn.innerHTML = '⏳ Analizando...';
+                    btn.disabled = true;
+                }
+                const res = await fetch('/api/train_ai', { method: 'POST' });
+                const data = await res.json();
 
-                    if (btn) {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }
+                if (btn) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
 
-                    if (data.status === 'success') {
-                        const modalHtml = `
+                if (data.status === 'success') {
+                    const modalHtml = `
                         <div id="ai-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
                             <div style="background:var(--bg-card); padding:30px; border-radius:12px; border:1px solid var(--border); width:80%; max-width:800px; max-height:85vh; overflow-y:auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
                                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
@@ -2044,59 +2045,59 @@
                                 <pre style="white-space:pre-wrap; font-family:'JetBrains Mono', monospace; font-size:13px; color:var(--text); background:rgba(0,0,0,0.3); padding:20px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">${esc(data.output)}</pre>
                             </div>
                         </div>`;
-                        document.body.insertAdjacentHTML('beforeend', modalHtml);
-                    } else {
-                        alert("Error ejecutando IA: " + data.message);
-                    }
-                } catch (e) {
-                    console.error("Error AI endpoint:", e);
-                    alert("Error de conexión al ejecutar IA.");
-                    if (btn) {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                } else {
+                    alert("Error ejecutando IA: " + data.message);
+                }
+            } catch (e) {
+                console.error("Error AI endpoint:", e);
+                alert("Error de conexión al ejecutar IA.");
+                if (btn) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 }
             }
+        }
 
-            // ═══════════════════════════════════════════════════════
-            // PAPER TRADING & BANK MODAL
-            // ═══════════════════════════════════════════════════════
-            // loadActiveSymbols has been removed - using loadSuggestions now.
+        // ═══════════════════════════════════════════════════════
+        // PAPER TRADING & BANK MODAL
+        // ═══════════════════════════════════════════════════════
+        // loadActiveSymbols has been removed - using loadSuggestions now.
 
-            async function startPaperTrade() {
-                if (selectedSymbols.length === 0) return alert("Selecciona al menos un símbolo para analizar.");
-                const symbolsList = selectedSymbols.join(',');
-                if (!confirm(`🚀 ¿Deseas iniciar Live Paper Trading para [${symbolsList}]? Esto reseteará la sesión actual.`))
-                    return;
+        async function startPaperTrade() {
+            if (selectedSymbols.length === 0) return alert("Selecciona al menos un símbolo para analizar.");
+            const symbolsList = selectedSymbols.join(',');
+            if (!confirm(`🚀 ¿Deseas iniciar Live Paper Trading para [${symbolsList}]? Esto reseteará la sesión actual.`))
+                return;
 
-                try {
-                    const res = await fetch('/api/paper_trade_start', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ symbols: symbolsList })
-                    });
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        alert(data.message);
-                        location.reload();
-                    } else alert("Error: " + data.message);
-                } catch (e) { alert("Error connecting to start paper trade"); }
-            }
+            try {
+                const res = await fetch('/api/paper_trade_start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: symbolsList })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else alert("Error: " + data.message);
+            } catch (e) { alert("Error connecting to start paper trade"); }
+        }
 
-            async function stopPaperTrade() {
-                if (!confirm("⚠️ ¿Deseas detener el modo LIVE y volver a la simulación global de todos los símbolos?")) return;
-                try {
-                    const res = await fetch('/api/paper_trade_stop', { method: 'POST' });
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        alert(data.message);
-                        location.reload();
-                    } else alert("Error: " + data.message);
-                } catch (e) { alert("Error deteniendo live paper trading"); }
-            }
+        async function stopPaperTrade() {
+            if (!confirm("⚠️ ¿Deseas detener el modo LIVE y volver a la simulación global de todos los símbolos?")) return;
+            try {
+                const res = await fetch('/api/paper_trade_stop', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else alert("Error: " + data.message);
+            } catch (e) { alert("Error deteniendo live paper trading"); }
+        }
 
-            function openBankModal() {
-                const modalHtml = `
+        function openBankModal() {
+            const modalHtml = `
         <div id="bank-modal-overlay"
             style="position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center;">
             <div style="background:#1e212b; padding:25px; border-radius:10px; border:1px solid #3c404b; width:350px;">
@@ -2121,43 +2122,43 @@
                     style="width:100%; padding:8px; background:transparent; color:#888; border:1px solid #444; border-radius:5px; cursor:pointer;">CERRAR</button>
             </div>
         </div>`;
-                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        async function handleBank(action) {
+            const amt = parseFloat(document.getElementById('bank-amount').value);
+            if (!amt || amt <= 0) return alert("Monto inválido"); try {
+                const res = await fetch(`/api/bank/${action}`, {
+                    method: 'POST', body: JSON.stringify({ amount: amt }), headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json(); if (data.status === 'success') {
+                    alert(data.message);
+                    document.getElementById('bank-modal-overlay').remove();
+                } else {
+                    alert("Error: " + data.message);
+                }
+            } catch (e) { alert(" Error connecting to Bank API"); }
+        }
+
+        // Llamada inicial 
+        loadResults();
+
+        function renderTrades(trades) {
+            if (!trades) return; if (trades.length > lastTradeCount && lastTradeCount !== 0) {
+                // Detectamos nuevas operaciones
+                const newTrades = trades.slice(lastTradeCount);
+                newTrades.forEach(t => showToast(t));
             }
 
-            async function handleBank(action) {
-                const amt = parseFloat(document.getElementById('bank-amount').value);
-                if (!amt || amt <= 0) return alert("Monto inválido"); try {
-                    const res = await fetch(`/api/bank/${action}`, {
-                        method: 'POST', body: JSON.stringify({ amount: amt }), headers: { 'Content-Type': 'application/json' }
-                    });
-                    const data = await res.json(); if (data.status === 'success') {
-                        alert(data.message);
-                        document.getElementById('bank-modal-overlay').remove();
-                    } else {
-                        alert("Error: " + data.message);
-                    }
-                } catch (e) { alert(" Error connecting to Bank API"); }
+            if (trades.length === lastTradeCount) return;
+            lastTradeCount = trades.length;
+
+            const list = document.getElementById('trades-list');
+            if (trades.length === 0) {
+                list.innerHTML = '<div class="no-trades">Sin operaciones aún…</div>';
+                return;
             }
-
-            // Llamada inicial 
-            loadResults();
-
-            function renderTrades(trades) {
-                if (!trades) return; if (trades.length > lastTradeCount && lastTradeCount !== 0) {
-                    // Detectamos nuevas operaciones
-                    const newTrades = trades.slice(lastTradeCount);
-                    newTrades.forEach(t => showToast(t));
-                }
-
-                if (trades.length === lastTradeCount) return;
-                lastTradeCount = trades.length;
-
-                const list = document.getElementById('trades-list');
-                if (trades.length === 0) {
-                    list.innerHTML = '<div class="no-trades">Sin operaciones aún…</div>';
-                    return;
-                }
-                list.innerHTML = [...trades].reverse().map(t => `
+            list.innerHTML = [...trades].reverse().map(t => `
             <div class="trade-card">
                 <span class="trade-pill ${t.side.toLowerCase()}">${t.side}</span>
                 <div class="trade-field">
@@ -2176,28 +2177,28 @@
                 </div>
             </div>
             `).join('');
-            }
+        }
 
-            // ═══════════════════════════════════════════════════════
-            // POSICIÓN ABIERTA
-            // ═══════════════════════════════════════════════════════
-            function renderPosition(state) {
-                const area = document.getElementById('pos-area');
-                const pos = state.position;
-                if (!pos) {
-                    area.innerHTML = '<div style="padding:12px 16px;font-size:11px;color:var(--muted);">🏖 Sin posición abierta</div > ';
-                    return;
-                }
-                const entry = pos.entry_price, sl = pos.stop_loss, tp = pos.take_profit;
-                const bid = state.bid ?? entry;
-                const pct = Math.max(0, Math.min(100, ((bid - sl) / (tp - sl)) * 100));
-                const pnl = (bid - entry) * pos.qty;
-                area.innerHTML = `
+        // ═══════════════════════════════════════════════════════
+        // POSICIÓN ABIERTA
+        // ═══════════════════════════════════════════════════════
+        function renderPosition(state) {
+            const area = document.getElementById('pos-area');
+            const pos = state.position;
+            if (!pos) {
+                area.innerHTML = '<div style="padding:12px 16px;font-size:11px;color:var(--muted);">🏖 Sin posición abierta</div > ';
+                return;
+            }
+            const entry = pos.entry_price, sl = pos.stop_loss, tp = pos.take_profit;
+            const bid = state.bid ?? entry;
+            const pct = Math.max(0, Math.min(100, ((bid - sl) / (tp - sl)) * 100));
+            const pnl = (bid - entry) * pos.qty;
+            area.innerHTML = `
             <div class="pos-area">
                 <div class="pos-sym">${pos.symbol}</div>
                 <div class="pos-qty">${pos.qty.toFixed(4)} acciones · entrada $${entry.toFixed(2)}</div>
                 <div class="pos-pnl-val" style="color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'};">${pnl >= 0 ? '+' :
-                        ''}$${pnl.toFixed(2)}</div>
+                    ''}$${pnl.toFixed(2)}</div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:${pct}%;"></div>
                 </div>
@@ -2214,168 +2215,168 @@
                 </div>
             </div>
             `;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // CONFLUENCIAS
+        // ═══════════════════════════════════════════════════════
+        function renderConfirmations(confs) {
+            const list = document.getElementById('confirm-list');
+            if (!confs || confs.length === 0) {
+                list.innerHTML = '<div class="confirm-item muted">Sin señal activa</div>';
+                return;
             }
+            list.innerHTML = confs.map(c => {
+                const cls = c.startsWith('✅') ? 'ok' : c.startsWith('❌') ? 'block' : 'muted';
+                return `<div class="confirm-item ${cls}">${esc(c)}</div>`;
+            }).join('');
+        }
 
-            // ═══════════════════════════════════════════════════════
-            // CONFLUENCIAS
-            // ═══════════════════════════════════════════════════════
-            function renderConfirmations(confs) {
-                const list = document.getElementById('confirm-list');
-                if (!confs || confs.length === 0) {
-                    list.innerHTML = '<div class="confirm-item muted">Sin señal activa</div>';
-                    return;
-                }
-                list.innerHTML = confs.map(c => {
-                    const cls = c.startsWith('✅') ? 'ok' : c.startsWith('❌') ? 'block' : 'muted';
-                    return `<div class="confirm-item ${cls}">${esc(c)}</div>`;
-                }).join('');
-            }
+        async function setFocusSymbol(sym) {
+            if (focusSymbol === sym) return;
+            focusSymbol = sym;
+            manualFocus = true;
+            console.log("Focus changed to:", sym);
 
-            async function setFocusSymbol(sym) {
-                if (focusSymbol === sym) return;
-                focusSymbol = sym;
-                manualFocus = true;
-                console.log("Focus changed to:", sym);
-
-                // Si el símbolo no es el que el bot está procesando activamente,
-                // traemos su historia vía API para mostrar el gráfico.
-                try {
-                    const res = await fetch(`/api/history?symbol=${sym}`);
-                    const data = await res.json();
-                    if (data.status === 'success' && data.candles) {
-                        const cdata = data.candles;
-                        candleSeries.setData(cdata);
-                        // Actualizar indicadores visuales
-                        if (cdata.length > 0) {
-                            const last = cdata[cdata.length - 1];
-                            document.getElementById('ind-price').textContent = `$${last.close.toFixed(2)}`;
-                        }
+            // Si el símbolo no es el que el bot está procesando activamente,
+            // traemos su historia vía API para mostrar el gráfico.
+            try {
+                const res = await fetch(`/api/history?symbol=${sym}`);
+                const data = await res.json();
+                if (data.status === 'success' && data.candles) {
+                    const cdata = data.candles;
+                    candleSeries.setData(cdata);
+                    // Actualizar indicadores visuales
+                    if (cdata.length > 0) {
+                        const last = cdata[cdata.length - 1];
+                        document.getElementById('ind-price').textContent = `$${last.close.toFixed(2)}`;
                     }
-                } catch (e) { console.error("Error fetching history for focus", e); }
-
-                updateSymbolTabs();
-            }
-
-            function updateSymbolTabs(forceSymbols = []) {
-                const container = document.getElementById('symbol-tabs-container');
-                if (forceSymbols.length === 0 && !focusSymbol) {
-                    container.style.display = 'none';
-                    return;
                 }
-                container.style.display = 'flex';
+            } catch (e) { console.error("Error fetching history for focus", e); }
 
-                const symbols = forceSymbols.length > 0 ? forceSymbols : (selectedSymbols.length > 0 ? selectedSymbols :
-                    [focusSymbol]);
+            updateSymbolTabs();
+        }
 
-                container.innerHTML = symbols.map(s => {
-                    const isActive = (s === focusSymbol);
-                    return `
+        function updateSymbolTabs(forceSymbols = []) {
+            const container = document.getElementById('symbol-tabs-container');
+            if (forceSymbols.length === 0 && !focusSymbol) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'flex';
+
+            const symbols = forceSymbols.length > 0 ? forceSymbols : (selectedSymbols.length > 0 ? selectedSymbols :
+                [focusSymbol]);
+
+            container.innerHTML = symbols.map(s => {
+                const isActive = (s === focusSymbol);
+                return `
             <div class="symbol-tab ${isActive ? 'active' : ''}" onclick="setFocusSymbol('${s}')">
                 ${s}
             </div>
             `;
-                }).join('');
+            }).join('');
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // ACTUALIZACIÓN PRINCIPAL
+        // ═══════════════════════════════════════════════════════
+        let prevBid = 0;
+        let currentSymbol = null;
+
+        // Seleccionador manual de symbol eliminado: la estrategia corre en estricto modo secuencial.
+
+        function updateUI(fullState) {
+            if (!fullState) return;
+
+            // Si hay símbolos forzados, actualizar pestañas
+            if (fullState.force_symbols) {
+                updateSymbolTabs(fullState.force_symbols);
             }
 
-            // ═══════════════════════════════════════════════════════
-            // ACTUALIZACIÓN PRINCIPAL
-            // ═══════════════════════════════════════════════════════
-            let prevBid = 0;
-            let currentSymbol = null;
+            // Seleccionar el estado del símbolo enfocado
+            // focusSymbol puede venir de hacer clic en una pestaña
+            let state = fullState[focusSymbol] || fullState._main || fullState;
 
-            // Seleccionador manual de symbol eliminado: la estrategia corre en estricto modo secuencial.
+            // Si el estado seleccionado no es válido (ej. focusSymbol viejo), buscar el primero disponible
+            if (!state.symbol || state.symbol === '─') {
+                const availableSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
+                if (availableSyms.length > 0) {
+                    state = fullState[availableSyms[0]];
+                    if (!manualFocus) focusSymbol = state.symbol;
+                }
+            }
 
-            function updateUI(fullState) {
-                if (!fullState) return;
+            const sym = state.symbol || '─';
+            const bid = state.bid ?? 0;
+            const ask = state.ask ?? 0;
 
-                // Si hay símbolos forzados, actualizar pestañas
-                if (fullState.force_symbols) {
-                    updateSymbolTabs(fullState.force_symbols);
+            // Si el bot cambió de símbolo y el usuario NO está mirando una pestaña específica,
+            // (En monitoreo paralelo real, esto es menos común pero lo dejamos como fallback)
+            if (!manualFocus && sym !== '─' && sym !== focusSymbol) {
+                focusSymbol = sym;
+            }
+
+            // Actualizar la fecha simulada
+            const simDateDisplay = document.getElementById('sim-date');
+            if (simDateDisplay && state.timestamp) {
+                try {
+                    const d = new Date(state.timestamp);
+                    simDateDisplay.textContent = d.toISOString().split('T')[0];
+                } catch (e) { }
+            }
+
+            // Auto-actualizar ML Dataset si hay cambio de símbolo
+            if (currentSymbol !== null && sym !== '─' && sym !== currentSymbol) {
+                loadResults();
+            }
+            if (sym !== '─') {
+                currentSymbol = sym;
+            }
+
+            // Actualizar la fila "En progreso..." en la tabla de resultados
+            if (sym !== '─') {
+                let currentRow = document.getElementById('current-session-row');
+                const tbody = document.getElementById('results-table-body');
+
+                if (!currentRow && tbody) {
+                    currentRow = document.createElement('tr');
+                    currentRow.id = 'current-session-row';
+                    tbody.insertBefore(currentRow, tbody.firstChild);
                 }
 
-                // Seleccionar el estado del símbolo enfocado
-                // focusSymbol puede venir de hacer clic en una pestaña
-                let state = fullState[focusSymbol] || fullState._main || fullState;
+                if (currentRow) {
+                    // Si previamente estaba en "Esperando resultados..."
+                    const noData = document.querySelector('.no-trades');
+                    if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
 
-                // Si el estado seleccionado no es válido (ej. focusSymbol viejo), buscar el primero disponible
-                if (!state.symbol || state.symbol === '─') {
-                    const availableSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
-                    if (availableSyms.length > 0) {
-                        state = fullState[availableSyms[0]];
-                        if (!manualFocus) focusSymbol = state.symbol;
-                    }
-                }
+                    const pnl = (state.available_cash || 10000) - (state.initial_cash || 10000);
+                    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+                    const pnlSign = pnl > 0 ? '+' : '';
 
-                const sym = state.symbol || '─';
-                const bid = state.bid ?? 0;
-                const ask = state.ask ?? 0;
+                    currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
 
-                // Si el bot cambió de símbolo y el usuario NO está mirando una pestaña específica,
-                // (En monitoreo paralelo real, esto es menos común pero lo dejamos como fallback)
-                if (!manualFocus && sym !== '─' && sym !== focusSymbol) {
-                    focusSymbol = sym;
-                }
+                    // Buscamos si ya existe una fila TR para este symbol en el log final histórico.
+                    // window.completedSessions tiene el último num de session TERMINADA.
+                    // Si la sesion actual del state es <= a esa sesión terminada, NO debe renderizarse progreso todavía.
+                    const highestCompletedSession = (window.completedSessions || {})[sym] || 0;
+                    const currentSession = state.session || 0;
 
-                // Actualizar la fecha simulada
-                const simDateDisplay = document.getElementById('sim-date');
-                if (simDateDisplay && state.timestamp) {
-                    try {
-                        const d = new Date(state.timestamp);
-                        simDateDisplay.textContent = d.toISOString().split('T')[0];
-                    } catch (e) { }
-                }
+                    if (currentSession > 0 && currentSession <= highestCompletedSession) {
+                        currentRow.style.display = 'none'; // ocultarlo 
+                    } else {
+                        // Validar también que la tabla de abajo no tenga textContent matcheando ya
+                        const tbody = document.getElementById('results-table-body');
+                        const alreadyRendered = Array.from(tbody.querySelectorAll('tr')).some(r => r.id !== 'current-session-row' && r.cells[0] && r.cells[0].textContent.trim() === sym);
 
-                // Auto-actualizar ML Dataset si hay cambio de símbolo
-                if (currentSymbol !== null && sym !== '─' && sym !== currentSymbol) {
-                    loadResults();
-                }
-                if (sym !== '─') {
-                    currentSymbol = sym;
-                }
-
-                // Actualizar la fila "En progreso..." en la tabla de resultados
-                if (sym !== '─') {
-                    let currentRow = document.getElementById('current-session-row');
-                    const tbody = document.getElementById('results-table-body');
-
-                    if (!currentRow && tbody) {
-                        currentRow = document.createElement('tr');
-                        currentRow.id = 'current-session-row';
-                        tbody.insertBefore(currentRow, tbody.firstChild);
-                    }
-
-                    if (currentRow) {
-                        // Si previamente estaba en "Esperando resultados..."
-                        const noData = document.querySelector('.no-trades');
-                        if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
-
-                        const pnl = (state.available_cash || 10000) - (state.initial_cash || 10000);
-                        const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-                        const pnlSign = pnl > 0 ? '+' : '';
-
-                        currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
-
-                        // Buscamos si ya existe una fila TR para este symbol en el log final histórico.
-                        // window.completedSessions tiene el último num de session TERMINADA.
-                        // Si la sesion actual del state es <= a esa sesión terminada, NO debe renderizarse progreso todavía.
-                        const highestCompletedSession = (window.completedSessions || {})[sym] || 0;
-                        const currentSession = state.session || 0;
-
-                        if (currentSession > 0 && currentSession <= highestCompletedSession) {
-                            currentRow.style.display = 'none'; // ocultarlo 
+                        if (alreadyRendered && currentSession <= 1 && highestCompletedSession >= 1) {
+                            currentRow.style.display = 'none';
                         } else {
-                            // Validar también que la tabla de abajo no tenga textContent matcheando ya
-                            const tbody = document.getElementById('results-table-body');
-                            const alreadyRendered = Array.from(tbody.querySelectorAll('tr')).some(r => r.id !== 'current-session-row' && r.cells[0] && r.cells[0].textContent.trim() === sym);
-
-                            if (alreadyRendered && currentSession <= 1 && highestCompletedSession >= 1) {
-                                currentRow.style.display = 'none';
-                            } else {
-                                currentRow.style.display = 'table-row';
-                            }
+                            currentRow.style.display = 'table-row';
                         }
+                    }
 
-                        currentRow.innerHTML = `
+                    currentRow.innerHTML = `
             <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sym} 🔄</td>
             <td style="padding:10px; color:var(--muted);">#${state.session || 0}</td>
             <td style="padding:10px;">${state.total_trades || 0}</td>
@@ -2390,273 +2391,273 @@
                 ${state.is_waiting ? `⏳ Esperando próximo escaneo (${state.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...'}
             </td >
                             `;
-                    }
                 }
-
-                // Actualizar indicadores solo si es el símbolo enfocado
-                const isFocusActive = (sym === focusSymbol);
-                if (isFocusActive) {
-                    // Header
-                    document.getElementById('hdr-price').textContent = bid ? `$${bid.toFixed(2)} ` : '$─.──';
-                    const chg = prevBid > 0 ? bid - prevBid : 0;
-                    const chgEl = document.getElementById('hdr-change');
-                    if (chg !== 0) {
-                        chgEl.textContent = `${chg > 0 ? '+' : ''}${chg.toFixed(3)} `;
-                        chgEl.style.color = chg > 0 ? 'var(--green)' : 'var(--red)';
-                    }
-                    prevBid = bid;
-
-                    const sig = state.signal || 'HOLD';
-                    const sigEl = document.getElementById('hdr-sig');
-                    sigEl.textContent = sig;
-                    sigEl.className = `sig - badge ${sig} `;
-
-                    // Gráfico de velas
-                    if (state.candles && state.candles.length > 0) {
-                        candleSeries.setData(state.candles);
-                    }
-
-                    // Símbolo en header
-                    const symDisplay = document.getElementById('hdr-sym');
-                    if (symDisplay) {
-                        symDisplay.textContent = `AUTO 🔄 (${sym})`;
-                    }
-
-                    // Indicadores pestaña
-                    document.getElementById('ind-price').textContent = bid ? `$${bid.toFixed(2)} ` : '─';
-                    document.getElementById('ind-ema12').textContent = (state.ema_fast || 0).toFixed(4);
-                    document.getElementById('ind-ema26').textContent = (state.ema_slow || 0).toFixed(4);
-                    document.getElementById('ind-ema200').textContent = (state.ema_200 || 0).toFixed(4);
-                    document.getElementById('ind-rsi').textContent = (state.rsi || 0).toFixed(1);
-                    document.getElementById('ind-macd').textContent = (state.macd_hist || 0).toFixed(4);
-                    document.getElementById('ind-vwap').textContent = (state.vwap || 0).toFixed(2);
-                    document.getElementById('ind-atr').textContent = (state.atr || 0).toFixed(4);
-                }
-
-                // Sidebar estadísticas (esto es global de la cuenta)
-                const init = state.initial_cash ?? 10000;
-                const avail = state.available_cash ?? init;
-                const pnl = avail - init;
-
-                const pnlEl = document.getElementById('pnl-val');
-                pnlEl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} `;
-                pnlEl.className = `pnl-big-val ${pnl > 0 ? 'g' : pnl < 0 ? 'r' : 'n'} `;
-
-                const isLivePaperModeVal = document.body.classList.contains('mode-live-paper');
-                if (isLivePaperModeVal) {
-                    if (document.getElementById('session-label')) document.getElementById('session-label').style.display = 'none';
-                    if (document.getElementById('iter-label')) document.getElementById('iter-label').style.display = 'none';
-                } else {
-                    if (document.getElementById('session-label')) document.getElementById('session-label').style.display = 'block';
-                    if (document.getElementById('iter-label')) document.getElementById('iter-label').style.display = 'block';
-                }
-
-                document.getElementById('session-num').textContent = state.session ?? 1;
-                document.getElementById('iter-num').textContent = state.iteration ?? 0;
-                document.getElementById('cash-avail').textContent = `$${avail.toFixed(2)} `;
-                document.getElementById('cash-settle').textContent = `$${(state.settlement ?? 0).toFixed(2)} `;
-
-                const wr = state.win_rate ?? 0;
-                const total = state.total_trades ?? 0;
-                const wins = state.winning_trades ?? 0;
-
-                document.getElementById('wr-val').textContent = `${wr.toFixed(1)}% `;
-                document.getElementById('trades-val').textContent = `${total} trade${total !== 1 ? 's' : ''} `;
-                document.getElementById('wins-val').textContent = wins;
-                document.getElementById('losses-val').textContent = total - wins;
-
-                // Countdown visibility 
-                const cdContainer = document.getElementById('scan-countdown');
-                if (cdContainer) {
-                    if (state.is_waiting && state.next_scan_in > 0) {
-                        cdContainer.style.display = 'flex';
-                        document.getElementById('countdown-val').textContent = `${state.next_scan_in} s`;
-                    } else {
-                        cdContainer.style.display = 'none';
-                    }
-                }
-
-                updateGauge(wr);
-
-                const gp = state.gross_profit ?? 0;
-                const gl = Math.abs(state.gross_loss ?? 0);
-                const pf = gl > 0 ? gp / gl : null;
-                const pfEl = document.getElementById('pf-val');
-                pfEl.textContent = pf != null ? pf.toFixed(2) : '─';
-                pfEl.className = `kv - val ${pf == null ? '' : pf >= 1.5 ? 'g' : pf >= 1 ? 'y' : 'r'} `;
-
-                // Header modo y distinción visual
-                const isLive = state.mode === 'LIVE';
-                const isLivePaperMode = state.mode === 'LIVE_PAPER';
-
-                let modeText = 'SIM 🔵';
-                if (isLive) modeText = 'LIVE 🔴';
-                if (isLivePaperMode) modeText = 'LIVE PAPER (REPLAY) 🟠';
-
-                document.getElementById('mode-chip').textContent = modeText;
-
-                // Botones visibilidad
-                const inAnyLive = isLive || isLivePaperMode;
-                document.getElementById('btn-start-paper').style.display = inAnyLive ? 'none' : 'flex';
-                document.getElementById('symbol-selection-trigger').style.display = isLive ? 'none' : 'flex';
-                document.getElementById('btn-stop-paper').style.display = inAnyLive ? 'flex' : 'none';
-
-                // Body class para CSS
-                document.body.classList.remove('mode-live', 'mode-live-paper');
-                if (isLive) document.body.classList.add('mode-live');
-                if (isLivePaperMode) document.body.classList.add('mode-live-paper');
-
-                // Mostrar/ocultar botón de actualización en modal
-                const updateC = document.getElementById('update-symbols-container');
-                if (updateC) updateC.style.display = isLivePaperMode ? 'block' : 'none';
-
-                // PnL chart — solo agregar punto si cambió
-                const ts = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
-                pnlHistory.push({ x: ts, y: pnl });
-                if (pnlHistory.length > 300) pnlHistory.shift();
-                pnlDataset.datasets[0].borderColor = pnl >= 0 ? '#00d4aa' : '#ff3d5a';
-                pnlDataset.labels = pnlHistory.map(p => p.x);
-                pnlDataset.datasets[0].data = pnlHistory.map(p => p.y);
-                // Solo actualizar el PnL chart si la pestaña está visible (para no gastar CPU)
-                if (document.getElementById('tab-pnl').classList.contains('visible')) {
-                    pnlChart.update('none');
-                }
-
-                // Candlestick
-                updateCandleChart(state);
-
-                // Confluencias
-                renderConfirmations(state.confirmations);
-
-                // Posición
-                renderPosition(state);
-
-                // Trades
-                renderTrades(state.trades);
-
-                // Log
-                if (state.logs) appendLog(state.logs);
-
-                // ─── Tab Indicadores ───
-                const price = state.bid ?? 0;
-                const ema200 = state.ema_200 ?? 0;
-                const vwap = state.vwap ?? 0;
-                const atr = state.atr ?? 0;
-                const rsi = state.rsi ?? 50;
-                const macd = state.macd_hist ?? 0;
-
-                document.getElementById('ind-price').textContent = price ? `$${price.toFixed(2)} ` : '─';
-                document.getElementById('ind-ema12').textContent = state.ema_fast ? `$${state.ema_fast.toFixed(2)} ` :
-                    '─';
-                document.getElementById('ind-ema26').textContent = state.ema_slow ? `$${state.ema_slow.toFixed(2)} ` :
-                    '─';
-                document.getElementById('ind-ema200').textContent = ema200 ? `$${ema200.toFixed(2)} ` : '─';
-
-                const vsEma = ema200 > 0 ? ((price - ema200) / ema200 * 100) : null;
-                const vsEmaEl = document.getElementById('ind-vs-ema200');
-                if (vsEma != null) {
-                    vsEmaEl.textContent = `${vsEma >= 0 ? '▲' : ''} ${Math.abs(vsEma).toFixed(2)}% ${vsEma >= 0 ?
-                        '(alcista)' : '(bajista)'
-                        } `;
-                    vsEmaEl.style.color = vsEma >= 0 ? 'var(--green)' : 'var(--red)';
-                }
-
-                document.getElementById('ind-rsi').textContent = rsi.toFixed(1);
-                document.getElementById('rsi-needle').style.left = `${rsi}% `;
-                const rsiState = rsi > 65 ? '🔴 Sobrecomprado' : rsi < 35 ? '🟢 Sobreventa (oportunidad)'
-                    : '✅ Zona neutral'; document.getElementById('ind-rsi-state').textContent = rsiState;
-                document.getElementById('ind-rsi-state').style.color = rsi > 65 ? 'var(--red)' : rsi < 35
-                    ? 'var(--green)' : 'var(--accent)';
-                document.getElementById('ind-macd').textContent = macd.toFixed(4);
-                document.getElementById('ind-macd').style.color = macd > 0 ? 'var(--green)' : 'var(--red)';
-                document.getElementById('ind-macd-dir').textContent = macd > 0 ? '📈 Positivo (alcista)' : '📉 Negativo (bajista)';
-
-                document.getElementById('ind-vwap').textContent = vwap ? `$${vwap.toFixed(2)} ` : '─';
-                const vsVwap = vwap > 0 ? ((price - vwap) / vwap * 100) : null;
-                const vsVwapEl = document.getElementById('ind-vs-vwap');
-                if (vsVwap != null) {
-                    vsVwapEl.textContent = vsVwap >= 0 ? `▲ ${vsVwap.toFixed(2)}% (por encima)` : `▼ ${Math.abs(vsVwap).toFixed(2)}% (por debajo)`;
-                    vsVwapEl.style.color = vsVwap >= 0 ? 'var(--green)' : 'var(--red)';
-                }
-                document.getElementById('ind-vwap-spread').textContent = vwap > 0 ? `$${Math.abs(price -
-                    vwap).toFixed(2)
-                    } de distancia` : '─';
-
-                document.getElementById('ind-atr').textContent = atr ? `$${atr.toFixed(2)} ` : '─';
-                const atrPct = price > 0 && atr > 0 ? (atr / price * 100) : 0;
-                const atrSlDist = atr * 1.5;
-                document.getElementById('ind-atr-pct').textContent = atrPct ? `${atrPct.toFixed(2)}% ` : '─';
-                document.getElementById('ind-atr-sl').textContent = atrSlDist ? `$${atrSlDist.toFixed(2)} (precio SL ≈ $${(price - atrSlDist).toFixed(2)})` : '─';
-                const atrStateEl = document.getElementById('ind-atr-state');
-                if (atrPct > 3) {
-                    atrStateEl.textContent = '🔴 Alta — Bot bloqueado'; atrStateEl.style.color = 'var(--red)';
-                } else if (atrPct > 1.5) {
-                    atrStateEl.textContent = '🟡 Media — Operable con cautela'; atrStateEl.style.color =
-                        'var(--yellow)';
-                } else {
-                    atrStateEl.textContent = '🟢 Baja — Condiciones óptimas'; atrStateEl.style.color =
-                        'var(--green)';
-                }
-
-                document.getElementById('ind-cash-init').textContent = `$${init.toFixed(2)} `;
-                document.getElementById('ind-cash-avail').textContent = `$${avail.toFixed(2)} `;
-                document.getElementById('ind-gp').textContent = `$${gp.toFixed(2)} `;
-                document.getElementById('ind-gl').textContent = `$${gl.toFixed(2)} `;
             }
 
-            // ═══════════════════════════════════════════════════════
-            // WEBSOCKET
-            // ═══════════════════════════════════════════════════════
-            function connectWS() {
-                const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-                const ws = new WebSocket(`${proto}://${location.host}/ws`);
+            // Actualizar indicadores solo si es el símbolo enfocado
+            const isFocusActive = (sym === focusSymbol);
+            if (isFocusActive) {
+                // Header
+                document.getElementById('hdr-price').textContent = bid ? `$${bid.toFixed(2)} ` : '$─.──';
+                const chg = prevBid > 0 ? bid - prevBid : 0;
+                const chgEl = document.getElementById('hdr-change');
+                if (chg !== 0) {
+                    chgEl.textContent = `${chg > 0 ? '+' : ''}${chg.toFixed(3)} `;
+                    chgEl.style.color = chg > 0 ? 'var(--green)' : 'var(--red)';
+                }
+                prevBid = bid;
 
-                ws.onopen = () => {
-                    document.getElementById('status-dot').classList.remove('off');
-                    document.getElementById('status-text').textContent = 'Bot activo';
-                    document.getElementById('status-text').style.color = 'var(--green)';
-                    setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
-                };
+                const sig = state.signal || 'HOLD';
+                const sigEl = document.getElementById('hdr-sig');
+                sigEl.textContent = sig;
+                sigEl.className = `sig - badge ${sig} `;
 
-                ws.onmessage = (e) => {
-                    try { updateUI(JSON.parse(e.data)); }
-                    catch (err) { /* silencioso */ }
-                };
+                // Gráfico de velas
+                if (state.candles && state.candles.length > 0) {
+                    candleSeries.setData(state.candles);
+                }
 
-                ws.onclose = () => {
-                    document.getElementById('status-dot').classList.add('off');
-                    document.getElementById('status-text').textContent = 'Reconectando…';
-                    document.getElementById('status-text').style.color = 'var(--muted)';
-                    setTimeout(connectWS, 3000);
-                };
+                // Símbolo en header
+                const symDisplay = document.getElementById('hdr-sym');
+                if (symDisplay) {
+                    symDisplay.textContent = `AUTO 🔄 (${sym})`;
+                }
 
-                ws.onerror = () => ws.close();
+                // Indicadores pestaña
+                document.getElementById('ind-price').textContent = bid ? `$${bid.toFixed(2)} ` : '─';
+                document.getElementById('ind-ema12').textContent = (state.ema_fast || 0).toFixed(4);
+                document.getElementById('ind-ema26').textContent = (state.ema_slow || 0).toFixed(4);
+                document.getElementById('ind-ema200').textContent = (state.ema_200 || 0).toFixed(4);
+                document.getElementById('ind-rsi').textContent = (state.rsi || 0).toFixed(1);
+                document.getElementById('ind-macd').textContent = (state.macd_hist || 0).toFixed(4);
+                document.getElementById('ind-vwap').textContent = (state.vwap || 0).toFixed(2);
+                document.getElementById('ind-atr').textContent = (state.atr || 0).toFixed(4);
             }
 
-            function resetAllData() {
-                // Montar un modal personalizado en vez de usar window.confirm nativo que falla en algunos navegadores
-                const overlay = document.createElement('div');
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0'; overlay.style.left = '0';
-                overlay.style.width = '100%'; overlay.style.height = '100%';
-                overlay.style.background = 'rgba(0,0,0,0.85)';
-                overlay.style.zIndex = '99999';
-                overlay.style.display = 'flex';
-                overlay.style.alignItems = 'center';
-                overlay.style.justifyContent = 'center';
-                overlay.style.backdropFilter = 'blur(4px)';
+            // Sidebar estadísticas (esto es global de la cuenta)
+            const init = state.initial_cash ?? 10000;
+            const avail = state.available_cash ?? init;
+            const pnl = avail - init;
 
-                const modal = document.createElement('div');
-                modal.style.background = 'var(--bg-card)';
-                modal.style.padding = '30px';
-                modal.style.borderRadius = '12px';
-                modal.style.border = '1px solid var(--red)';
-                modal.style.width = '80%';
-                modal.style.maxWidth = '500px';
-                modal.style.boxShadow = '0 10px 40px rgba(255,0,0,0.2)';
-                modal.style.textAlign = 'center';
+            const pnlEl = document.getElementById('pnl-val');
+            pnlEl.textContent = `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} `;
+            pnlEl.className = `pnl-big-val ${pnl > 0 ? 'g' : pnl < 0 ? 'r' : 'n'} `;
 
-                modal.innerHTML = `
+            const isLivePaperModeVal = document.body.classList.contains('mode-live-paper');
+            if (isLivePaperModeVal) {
+                if (document.getElementById('session-label')) document.getElementById('session-label').style.display = 'none';
+                if (document.getElementById('iter-label')) document.getElementById('iter-label').style.display = 'none';
+            } else {
+                if (document.getElementById('session-label')) document.getElementById('session-label').style.display = 'block';
+                if (document.getElementById('iter-label')) document.getElementById('iter-label').style.display = 'block';
+            }
+
+            document.getElementById('session-num').textContent = state.session ?? 1;
+            document.getElementById('iter-num').textContent = state.iteration ?? 0;
+            document.getElementById('cash-avail').textContent = `$${avail.toFixed(2)} `;
+            document.getElementById('cash-settle').textContent = `$${(state.settlement ?? 0).toFixed(2)} `;
+
+            const wr = state.win_rate ?? 0;
+            const total = state.total_trades ?? 0;
+            const wins = state.winning_trades ?? 0;
+
+            document.getElementById('wr-val').textContent = `${wr.toFixed(1)}% `;
+            document.getElementById('trades-val').textContent = `${total} trade${total !== 1 ? 's' : ''} `;
+            document.getElementById('wins-val').textContent = wins;
+            document.getElementById('losses-val').textContent = total - wins;
+
+            // Countdown visibility 
+            const cdContainer = document.getElementById('scan-countdown');
+            if (cdContainer) {
+                if (state.is_waiting && state.next_scan_in > 0) {
+                    cdContainer.style.display = 'flex';
+                    document.getElementById('countdown-val').textContent = `${state.next_scan_in} s`;
+                } else {
+                    cdContainer.style.display = 'none';
+                }
+            }
+
+            updateGauge(wr);
+
+            const gp = state.gross_profit ?? 0;
+            const gl = Math.abs(state.gross_loss ?? 0);
+            const pf = gl > 0 ? gp / gl : null;
+            const pfEl = document.getElementById('pf-val');
+            pfEl.textContent = pf != null ? pf.toFixed(2) : '─';
+            pfEl.className = `kv - val ${pf == null ? '' : pf >= 1.5 ? 'g' : pf >= 1 ? 'y' : 'r'} `;
+
+            // Header modo y distinción visual
+            const isLive = state.mode === 'LIVE';
+            const isLivePaperMode = state.mode === 'LIVE_PAPER';
+
+            let modeText = 'SIM 🔵';
+            if (isLive) modeText = 'LIVE 🔴';
+            if (isLivePaperMode) modeText = 'LIVE PAPER (REPLAY) 🟠';
+
+            document.getElementById('mode-chip').textContent = modeText;
+
+            // Botones visibilidad
+            const inAnyLive = isLive || isLivePaperMode;
+            document.getElementById('btn-start-paper').style.display = inAnyLive ? 'none' : 'flex';
+            document.getElementById('symbol-selection-trigger').style.display = isLive ? 'none' : 'flex';
+            document.getElementById('btn-stop-paper').style.display = inAnyLive ? 'flex' : 'none';
+
+            // Body class para CSS
+            document.body.classList.remove('mode-live', 'mode-live-paper');
+            if (isLive) document.body.classList.add('mode-live');
+            if (isLivePaperMode) document.body.classList.add('mode-live-paper');
+
+            // Mostrar/ocultar botón de actualización en modal
+            const updateC = document.getElementById('update-symbols-container');
+            if (updateC) updateC.style.display = isLivePaperMode ? 'block' : 'none';
+
+            // PnL chart — solo agregar punto si cambió
+            const ts = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
+            pnlHistory.push({ x: ts, y: pnl });
+            if (pnlHistory.length > 300) pnlHistory.shift();
+            pnlDataset.datasets[0].borderColor = pnl >= 0 ? '#00d4aa' : '#ff3d5a';
+            pnlDataset.labels = pnlHistory.map(p => p.x);
+            pnlDataset.datasets[0].data = pnlHistory.map(p => p.y);
+            // Solo actualizar el PnL chart si la pestaña está visible (para no gastar CPU)
+            if (document.getElementById('tab-pnl').classList.contains('visible')) {
+                pnlChart.update('none');
+            }
+
+            // Candlestick
+            updateCandleChart(state);
+
+            // Confluencias
+            renderConfirmations(state.confirmations);
+
+            // Posición
+            renderPosition(state);
+
+            // Trades
+            renderTrades(state.trades);
+
+            // Log
+            if (state.logs) appendLog(state.logs);
+
+            // ─── Tab Indicadores ───
+            const price = state.bid ?? 0;
+            const ema200 = state.ema_200 ?? 0;
+            const vwap = state.vwap ?? 0;
+            const atr = state.atr ?? 0;
+            const rsi = state.rsi ?? 50;
+            const macd = state.macd_hist ?? 0;
+
+            document.getElementById('ind-price').textContent = price ? `$${price.toFixed(2)} ` : '─';
+            document.getElementById('ind-ema12').textContent = state.ema_fast ? `$${state.ema_fast.toFixed(2)} ` :
+                '─';
+            document.getElementById('ind-ema26').textContent = state.ema_slow ? `$${state.ema_slow.toFixed(2)} ` :
+                '─';
+            document.getElementById('ind-ema200').textContent = ema200 ? `$${ema200.toFixed(2)} ` : '─';
+
+            const vsEma = ema200 > 0 ? ((price - ema200) / ema200 * 100) : null;
+            const vsEmaEl = document.getElementById('ind-vs-ema200');
+            if (vsEma != null) {
+                vsEmaEl.textContent = `${vsEma >= 0 ? '▲' : ''} ${Math.abs(vsEma).toFixed(2)}% ${vsEma >= 0 ?
+                    '(alcista)' : '(bajista)'
+                    } `;
+                vsEmaEl.style.color = vsEma >= 0 ? 'var(--green)' : 'var(--red)';
+            }
+
+            document.getElementById('ind-rsi').textContent = rsi.toFixed(1);
+            document.getElementById('rsi-needle').style.left = `${rsi}% `;
+            const rsiState = rsi > 65 ? '🔴 Sobrecomprado' : rsi < 35 ? '🟢 Sobreventa (oportunidad)'
+                : '✅ Zona neutral'; document.getElementById('ind-rsi-state').textContent = rsiState;
+            document.getElementById('ind-rsi-state').style.color = rsi > 65 ? 'var(--red)' : rsi < 35
+                ? 'var(--green)' : 'var(--accent)';
+            document.getElementById('ind-macd').textContent = macd.toFixed(4);
+            document.getElementById('ind-macd').style.color = macd > 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('ind-macd-dir').textContent = macd > 0 ? '📈 Positivo (alcista)' : '📉 Negativo (bajista)';
+
+            document.getElementById('ind-vwap').textContent = vwap ? `$${vwap.toFixed(2)} ` : '─';
+            const vsVwap = vwap > 0 ? ((price - vwap) / vwap * 100) : null;
+            const vsVwapEl = document.getElementById('ind-vs-vwap');
+            if (vsVwap != null) {
+                vsVwapEl.textContent = vsVwap >= 0 ? `▲ ${vsVwap.toFixed(2)}% (por encima)` : `▼ ${Math.abs(vsVwap).toFixed(2)}% (por debajo)`;
+                vsVwapEl.style.color = vsVwap >= 0 ? 'var(--green)' : 'var(--red)';
+            }
+            document.getElementById('ind-vwap-spread').textContent = vwap > 0 ? `$${Math.abs(price -
+                vwap).toFixed(2)
+                } de distancia` : '─';
+
+            document.getElementById('ind-atr').textContent = atr ? `$${atr.toFixed(2)} ` : '─';
+            const atrPct = price > 0 && atr > 0 ? (atr / price * 100) : 0;
+            const atrSlDist = atr * 1.5;
+            document.getElementById('ind-atr-pct').textContent = atrPct ? `${atrPct.toFixed(2)}% ` : '─';
+            document.getElementById('ind-atr-sl').textContent = atrSlDist ? `$${atrSlDist.toFixed(2)} (precio SL ≈ $${(price - atrSlDist).toFixed(2)})` : '─';
+            const atrStateEl = document.getElementById('ind-atr-state');
+            if (atrPct > 3) {
+                atrStateEl.textContent = '🔴 Alta — Bot bloqueado'; atrStateEl.style.color = 'var(--red)';
+            } else if (atrPct > 1.5) {
+                atrStateEl.textContent = '🟡 Media — Operable con cautela'; atrStateEl.style.color =
+                    'var(--yellow)';
+            } else {
+                atrStateEl.textContent = '🟢 Baja — Condiciones óptimas'; atrStateEl.style.color =
+                    'var(--green)';
+            }
+
+            document.getElementById('ind-cash-init').textContent = `$${init.toFixed(2)} `;
+            document.getElementById('ind-cash-avail').textContent = `$${avail.toFixed(2)} `;
+            document.getElementById('ind-gp').textContent = `$${gp.toFixed(2)} `;
+            document.getElementById('ind-gl').textContent = `$${gl.toFixed(2)} `;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // WEBSOCKET
+        // ═══════════════════════════════════════════════════════
+        function connectWS() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('status-dot').classList.remove('off');
+                document.getElementById('status-text').textContent = 'Bot activo';
+                document.getElementById('status-text').style.color = 'var(--green)';
+                setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
+            };
+
+            ws.onmessage = (e) => {
+                try { updateUI(JSON.parse(e.data)); }
+                catch (err) { /* silencioso */ }
+            };
+
+            ws.onclose = () => {
+                document.getElementById('status-dot').classList.add('off');
+                document.getElementById('status-text').textContent = 'Reconectando…';
+                document.getElementById('status-text').style.color = 'var(--muted)';
+                setTimeout(connectWS, 3000);
+            };
+
+            ws.onerror = () => ws.close();
+        }
+
+        function resetAllData() {
+            // Montar un modal personalizado en vez de usar window.confirm nativo que falla en algunos navegadores
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0'; overlay.style.left = '0';
+            overlay.style.width = '100%'; overlay.style.height = '100%';
+            overlay.style.background = 'rgba(0,0,0,0.85)';
+            overlay.style.zIndex = '99999';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.backdropFilter = 'blur(4px)';
+
+            const modal = document.createElement('div');
+            modal.style.background = 'var(--bg-card)';
+            modal.style.padding = '30px';
+            modal.style.borderRadius = '12px';
+            modal.style.border = '1px solid var(--red)';
+            modal.style.width = '80%';
+            modal.style.maxWidth = '500px';
+            modal.style.boxShadow = '0 10px 40px rgba(255,0,0,0.2)';
+            modal.style.textAlign = 'center';
+
+            modal.innerHTML = `
                     <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR MEMORIA (WIPE)</h2>
                     <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?</p>
                     <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de Inteligencia Artificial y no se puede deshacer.</p>
@@ -2666,179 +2667,178 @@
                     </div>
                 `;
 
-                overlay.appendChild(modal);
-                document.body.appendChild(overlay);
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
 
-                document.getElementById('btn-cancel-wipe').onclick = () => {
-                    document.body.removeChild(overlay);
-                };
+            document.getElementById('btn-cancel-wipe').onclick = () => {
+                document.body.removeChild(overlay);
+            };
 
-                document.getElementById('btn-confirm-wipe').onclick = async () => {
-                    document.getElementById('btn-confirm-wipe').innerText = "Purgando...";
-                    document.getElementById('btn-confirm-wipe').disabled = true;
-                    try {
-                        const res = await fetch('/api/reset_all', { method: 'POST' });
-                        if (res.ok) {
-                            lastResultCount = 0;
-                            totalNetValue = 0;
-                            document.getElementById('results-table-body').innerHTML = '';
-                            modal.innerHTML = `
+            document.getElementById('btn-confirm-wipe').onclick = async () => {
+                document.getElementById('btn-confirm-wipe').innerText = "Purgando...";
+                document.getElementById('btn-confirm-wipe').disabled = true;
+                try {
+                    const res = await fetch('/api/reset_all', { method: 'POST' });
+                    if (res.ok) {
+                        lastResultCount = 0;
+                        totalNetValue = 0;
+                        document.getElementById('results-table-body').innerHTML = '';
+                        modal.innerHTML = `
                                 <h2 style="color:var(--green); margin-top:0;">✅ Orden Ejecutada</h2>
                                 <p style="color:var(--text); margin-bottom:25px;">El servidor interno está purgando la base de datos... reiniciando bot.</p>
                             `;
-                            setTimeout(() => location.reload(), 2500);
-                        } else {
-                            modal.innerHTML = `<h2 style="color:var(--red);">Error reiniciando el bot.</h2>`;
-                            setTimeout(() => document.body.removeChild(overlay), 2000);
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        modal.innerHTML = `<h2 style="color:var(--red);">Error de conexión.</h2>`;
+                        setTimeout(() => location.reload(), 2500);
+                    } else {
+                        modal.innerHTML = `<h2 style="color:var(--red);">Error reiniciando el bot.</h2>`;
                         setTimeout(() => document.body.removeChild(overlay), 2000);
                     }
-                };
-            }
+                } catch (e) {
+                    console.error(e);
+                    modal.innerHTML = `<h2 style="color:var(--red);">Error de conexión.</h2>`;
+                    setTimeout(() => document.body.removeChild(overlay), 2000);
+                }
+            };
+        }
 
-            connectWS();
-        </script>
-        <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
-        <div id="sym-manager-overlay" class="modal-overlay" onclick="closeSymbolManager()"></div>
-        <div id="sym-manager-modal" class="symbol-modal"
-            style="max-height:80vh; overflow:hidden; display:flex; flex-direction:column; padding:0; width:90%; max-width:600px;">
-            <div
-                style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
-                <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
-                    🎛️ Gestor Maestro de Símbolos
-                </h3>
-                <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
-            </div>
-            <div
-                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
-                Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
-                deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
-            </div>
-            <div id="sym-manager-list"
-                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
-                <!-- Lista inyectada por JS -->
-            </div>
-            <div
-                style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
-                <button onclick="closeSymbolManager()"
-                    style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
-                    Gestor</button>
-            </div>
+        connectWS();
+    </script>
+    <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
+    <div id="sym-manager-overlay" class="modal-overlay" onclick="closeSymbolManager()"></div>
+    <div id="sym-manager-modal" class="symbol-modal"
+        style="max-height:80vh; overflow:hidden; display:flex; flex-direction:column; padding:0; width:90%; max-width:600px;">
+        <div
+            style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
+            <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
+                🎛️ Gestor Maestro de Símbolos
+            </h3>
+            <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
         </div>
+        <div style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
+            Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
+            deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+        </div>
+        <div id="sym-manager-list"
+            style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
+            <!-- Lista inyectada por JS -->
+        </div>
+        <div
+            style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right;">
+            <button onclick="closeSymbolManager()"
+                style="background:var(--accent); color:var(--bg); border:none; border-radius:4px; padding:8px 16px; font-weight:bold; cursor:pointer;">Cerrar
+                Gestor</button>
+        </div>
+    </div>
 
-        <style>
-            .sm-item {
-                background: var(--bg);
-                border: 1px solid var(--border);
-                border-radius: 6px;
-                padding: 10px;
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                align-items: center;
-                gap: 8px;
-                transition: 0.2s;
-            }
+    <style>
+        .sm-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
 
-            .sm-item.enabled {
-                border-color: var(--green);
-                background: rgba(0, 199, 129, 0.05);
-            }
+        .sm-item.enabled {
+            border-color: var(--green);
+            background: rgba(0, 199, 129, 0.05);
+        }
 
-            .sm-item.disabled {
-                opacity: 0.6;
-            }
+        .sm-item.disabled {
+            opacity: 0.6;
+        }
 
-            .sm-sym {
-                font-weight: bold;
-                font-size: 14px;
-                font-family: 'JetBrains Mono', monospace;
-            }
+        .sm-sym {
+            font-weight: bold;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+        }
 
-            .sm-sym.enabled {
-                color: var(--green);
-            }
+        .sm-sym.enabled {
+            color: var(--green);
+        }
 
-            .sm-sym.disabled {
-                color: var(--muted);
-            }
+        .sm-sym.disabled {
+            color: var(--muted);
+        }
 
-            /* Toggle Switch Hapi Style */
-            .switch {
-                position: relative;
-                display: inline-block;
-                width: 44px;
-                height: 24px;
-            }
+        /* Toggle Switch Hapi Style */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
 
-            .switch input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-            }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-            .slider {
-                position: absolute;
-                cursor: pointer;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: #333;
-                transition: .4s;
-                border-radius: 24px;
-                border: 1px solid var(--border);
-            }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
 
-            .slider:before {
-                position: absolute;
-                content: "";
-                height: 16px;
-                width: 16px;
-                left: 3px;
-                bottom: 3px;
-                background-color: #888;
-                transition: .4s;
-                border-radius: 50%;
-            }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #888;
+            transition: .4s;
+            border-radius: 50%;
+        }
 
-            input:checked+.slider {
-                background-color: var(--green);
-                border-color: var(--green);
-            }
+        input:checked+.slider {
+            background-color: var(--green);
+            border-color: var(--green);
+        }
 
-            input:checked+.slider:before {
-                transform: translateX(20px);
-                background-color: white;
-                box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-            }
-        </style>
+        input:checked+.slider:before {
+            transform: translateX(20px);
+            background-color: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+    </style>
 
-        <script>
-            // ─── GESTOR DE SÍMBOLOS MAESTRO (assets.json) ───
-            async function openSymbolManager() {
-                const modal = document.getElementById('sym-manager-modal');
-                const overlay = document.getElementById('sym-manager-overlay');
-                modal.classList.add('visible');
-                overlay.classList.add('visible');
+    <script>
+        // ─── GESTOR DE SÍMBOLOS MAESTRO (assets.json) ───
+        async function openSymbolManager() {
+            const modal = document.getElementById('sym-manager-modal');
+            const overlay = document.getElementById('sym-manager-overlay');
+            modal.classList.add('visible');
+            overlay.classList.add('visible');
 
-                const listContainer = document.getElementById('sym-manager-list');
-                listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
+            const listContainer = document.getElementById('sym-manager-list');
+            listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
 
-                try {
-                    const res = await fetch('/api/all_symbols');
-                    const data = await res.json();
-                    if (data.status === 'success') {
-                        let html = '';
-                        // Ordenamos alfabéticamente para facilitar la búsqueda en UI
-                        const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
+            try {
+                const res = await fetch('/api/all_symbols');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    let html = '';
+                    // Ordenamos alfabéticamente para facilitar la búsqueda en UI
+                    const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-                        sortedAssets.forEach(item => {
-                            const isEn = item.enabled !== false; // Por defecto es true si no existe la llave
-                            html += `
+                    sortedAssets.forEach(item => {
+                        const isEn = item.enabled !== false; // Por defecto es true si no existe la llave
+                        html += `
                                 <div class="sm-item ${isEn ? 'enabled' : 'disabled'}">
                                     <div class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
                                     <div style="font-size:10px; color:var(--muted); text-align:center; height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;" title="${item.name}">${item.name}</div>
@@ -2848,89 +2848,89 @@
                                     </label>
                                 </div>
                             `;
-                        });
-                        listContainer.innerHTML = html;
-                    }
-                } catch (e) {
-                    listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1;">Error de conexión.</div>';
-                }
-            }
-
-            function closeSymbolManager() {
-                document.getElementById('sym-manager-modal').classList.remove('visible');
-                document.getElementById('sym-manager-overlay').classList.remove('visible');
-            }
-
-            async function toggleMasterSymbol(symbol, isEnabled) {
-                try {
-                    const res = await fetch('/api/toggle_symbol', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
                     });
-                    if (res.ok) {
-                        // Refrescar visual local
-                        openSymbolManager();
-                    } else {
-                        alert("Error guardando el símbolo.");
-                    }
-                } catch (e) {
-                    console.error("Error toggleMasterSymbol:", e);
+                    listContainer.innerHTML = html;
                 }
+            } catch (e) {
+                listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1;">Error de conexión.</div>';
             }
-        </script>
+        }
 
-        <!-- Symbol Selection Modal (Para Live Paper) -->
-        <div id="symbol-modal-overlay" class="modal-overlay" onclick="toggleSymbolModal()"></div>
-        <div id="symbol-selection-modal" class="symbol-modal">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h3 style="margin:0; font-size: 14px; color: var(--accent);">Seleccionar Símbolos (Live Paper)</h3>
-                <span onclick="toggleSymbolModal()" style="cursor:pointer; color:#888;">✕</span>
-            </div>
+        function closeSymbolManager() {
+            document.getElementById('sym-manager-modal').classList.remove('visible');
+            document.getElementById('sym-manager-overlay').classList.remove('visible');
+        }
 
-            <div style="margin-bottom:15px;">
-                <label style="font-size:11px; color:#888; display:block; margin-bottom:5px;">Agregar
-                    Símbolo Manual</label>
-                <div style="display:flex; gap:10px;">
-                    <input id="custom-symbol-input" placeholder="Ej: TSLA"
-                        style="flex:1; background:#111; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:12px;">
-                    <button onclick="addCustomSymbol()"
-                        style="background:var(--accent); color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-size:11px;">AGREGAR</button>
-                </div>
-            </div>
+        async function toggleMasterSymbol(symbol, isEnabled) {
+            try {
+                const res = await fetch('/api/toggle_symbol', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
+                });
+                if (res.ok) {
+                    // Refrescar visual local
+                    openSymbolManager();
+                } else {
+                    alert("Error guardando el símbolo.");
+                }
+            } catch (e) {
+                console.error("Error toggleMasterSymbol:", e);
+            }
+        }
+    </script>
 
-            <label style="font-size:11px; color:#888; display:block; margin-bottom:5px;">Símbolos
-                Seleccionados</label>
-            <div id="selected-tags" class="tag-container">
-                <!-- Pills here -->
-            </div>
+    <!-- Symbol Selection Modal (Para Live Paper) -->
+    <div id="symbol-modal-overlay" class="modal-overlay" onclick="toggleSymbolModal()"></div>
+    <div id="symbol-selection-modal" class="symbol-modal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0; font-size: 14px; color: var(--accent);">Seleccionar Símbolos (Live Paper)</h3>
+            <span onclick="toggleSymbolModal()" style="cursor:pointer; color:#888;">✕</span>
+        </div>
 
-            <label
-                style="font-size:11px; color:#888; display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                <span>Sugeridos (Habilitados en Assets)</span>
-                <button onclick="selectAllSymbols()"
-                    style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:10px; text-decoration:underline;">Seleccionar
-                    Todos</button>
-            </label>
-            <div id="suggested-symbols" class="suggestion-grid">
-                <!-- Suggestions here -->
-            </div>
-
-            <div id="update-symbols-container"
-                style="display:none; margin-top:15px; background:rgba(255,171,64,0.1); padding:10px; border-radius:4px; border:1px solid rgba(255,171,64,0.3);">
-                <div style="font-size:10px; color:#ffab40; margin-bottom:8px;">⚠️ El bot está corriendo
-                    en LIVE PAPER.
-                    ¿Deseas actualizar la lista de símbolos sin detener el proceso?</div>
-                <button onclick="startPaperTrade()"
-                    style="width:100%; background:#ffab40; color:#111; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">ACTUALIZAR
-                    SÍMBOLOS AHORA</button>
-            </div>
-
-            <div style="margin-top:20px; text-align:right;">
-                <button onclick="toggleSymbolModal()"
-                    style="background:#2b2f3a; color:white; border:1px solid #3c404b; padding:8px 15px; border-radius:4px; cursor:pointer; font-size:12px;">CERRAR</button>
+        <div style="margin-bottom:15px;">
+            <label style="font-size:11px; color:#888; display:block; margin-bottom:5px;">Agregar
+                Símbolo Manual</label>
+            <div style="display:flex; gap:10px;">
+                <input id="custom-symbol-input" placeholder="Ej: TSLA"
+                    style="flex:1; background:#111; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:12px;">
+                <button onclick="addCustomSymbol()"
+                    style="background:var(--accent); color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-size:11px;">AGREGAR</button>
             </div>
         </div>
+
+        <label style="font-size:11px; color:#888; display:block; margin-bottom:5px;">Símbolos
+            Seleccionados</label>
+        <div id="selected-tags" class="tag-container">
+            <!-- Pills here -->
+        </div>
+
+        <label
+            style="font-size:11px; color:#888; display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <span>Sugeridos (Habilitados en Assets)</span>
+            <button onclick="selectAllSymbols()"
+                style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:10px; text-decoration:underline;">Seleccionar
+                Todos</button>
+        </label>
+        <div id="suggested-symbols" class="suggestion-grid">
+            <!-- Suggestions here -->
+        </div>
+
+        <div id="update-symbols-container"
+            style="display:none; margin-top:15px; background:rgba(255,171,64,0.1); padding:10px; border-radius:4px; border:1px solid rgba(255,171,64,0.3);">
+            <div style="font-size:10px; color:#ffab40; margin-bottom:8px;">⚠️ El bot está corriendo
+                en LIVE PAPER.
+                ¿Deseas actualizar la lista de símbolos sin detener el proceso?</div>
+            <button onclick="startPaperTrade()"
+                style="width:100%; background:#ffab40; color:#111; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:11px;">ACTUALIZAR
+                SÍMBOLOS AHORA</button>
+        </div>
+
+        <div style="margin-top:20px; text-align:right;">
+            <button onclick="toggleSymbolModal()"
+                style="background:#2b2f3a; color:white; border:1px solid #3c404b; padding:8px 15px; border-radius:4px; cursor:pointer; font-size:12px;">CERRAR</button>
+        </div>
+    </div>
 
 </body>
 
