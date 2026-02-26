@@ -1982,6 +1982,31 @@
         <td colspan="2" style="padding:10px;"></td>
         `;
                         tbody.appendChild(sumRow);
+
+                        // Añadir fila de retiro a banco (simulación final)
+                        const withdrawalFee = 1.99; // Tarifa estándar aproximada de retiro de Hapi
+                        const netToBank = (10000 + totalNetValue) - withdrawalFee;
+                        const finalProfit = netToBank - 10000;
+                        const finalColor = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+                        const finalPre = finalProfit >= 0 ? '+' : '';
+
+                        const cashoutRow = document.createElement('tr');
+                        cashoutRow.innerHTML = `
+        <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--text); font-size:1.1em; background:rgba(0,0,0,0.2);">
+            💰 ESTIMADO REAL RETIRADO AL BANCO (Fee -$${withdrawalFee}):
+        </td>
+        <td colspan="3" style="padding:10px; text-align:center; color:var(--muted); background:rgba(0,0,0,0.2);">---</td>
+        <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${finalColor}; font-size:1.15em; background:rgba(0,0,0,0.2); border-top: 1px dashed var(--border);">
+            ${finalPre}$${finalProfit.toFixed(2)}
+        </td>
+        <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.15em; background:rgba(0,0,0,0.2); border-top: 1px dashed var(--border);">
+            $${netToBank.toFixed(2)}
+        </td>
+        <td colspan="2" style="padding:10px; background:rgba(0,0,0,0.2);">
+            <span style="font-size:0.85em; color:var(--muted);">¿Ganaste algo? -> ${finalProfit > 0 ? 'Sí ✅' : 'No ❌'}</span>
+        </td>
+        `;
+                        tbody.appendChild(cashoutRow);
                     }
                 } catch (e) {
                     console.error("Error en loadResults:", e);
