@@ -16,8 +16,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-STATE_FILE = Path("/app/data/state.json")
-LOG_FILE   = Path("/app/logs/trading_bot.log")
+STATE_FILE   = Path("/app/data/state.json")
+LOG_FILE     = Path("/app/logs/trading_bot.log")
+# assets.json lives at the project root (one level above dashboard/)
+# Works both inside Docker (/app/assets.json) and locally
+_here = Path(__file__).resolve().parent.parent  # trading_bot/
+ASSETS_FILE  = _here / "assets.json"
 HTML_FILE  = Path(__file__).parent / "static" / "index.html"
 
 app = FastAPI(title="Hapi Bot Dashboard")
@@ -205,7 +209,7 @@ async def train_ai():
 @app.get("/api/config")
 async def get_config():
     import json
-    assets_file = Path("/app/assets.json")
+    assets_file = ASSETS_FILE
     try:
         if assets_file.exists():
             with open(assets_file) as f:
@@ -219,7 +223,7 @@ async def get_config():
 @app.get("/api/active_symbols")
 async def get_active_symbols():
     import json
-    assets_file = Path("/app/assets.json")
+    assets_file = ASSETS_FILE
     try:
         if assets_file.exists():
             with open(assets_file) as f:
@@ -233,7 +237,7 @@ async def get_active_symbols():
 @app.get("/api/all_symbols")
 async def get_all_symbols():
     import json
-    assets_file = Path("/app/assets.json")
+    assets_file = ASSETS_FILE
     try:
         if assets_file.exists():
             with open(assets_file) as f:
@@ -250,7 +254,7 @@ class ToggleRequest(BaseModel):
 @app.post("/api/toggle_symbol")
 async def toggle_symbol(req: ToggleRequest):
     import json
-    assets_file = Path("/app/assets.json")
+    assets_file = ASSETS_FILE
     try:
         if assets_file.exists():
             with open(assets_file, "r") as f:
