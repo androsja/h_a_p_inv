@@ -303,6 +303,68 @@ def detect_engulfing(df: pd.DataFrame) -> pd.Series:
     return bullish_engulfing
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  DETECTOR DE RÉGIMEN DE MERCADO (Market Regime Detection)
+# ════════════════════════════════════════════════════════════════════════════
+
+# 5 regímenes universales que cubren cualquier estado del mercado financiero
+REGIMEN_LABELS = {
+    "TREND_UP":    "🚀 Tendencia Alcista",
+    "TREND_DOWN":  "📉 Tendencia Bajista",
+    "RANGE":       "🎯 Mercado Lateral (Rango)",
+    "MOMENTUM":    "⚡ Momentum Explosivo",
+    "CHAOS":       "🌩️ Volatilidad Alta (Caos)",
+    "NEUTRAL":     "☁️ Mercado Neutro",
+}
+
+def detect_regime(
+    adx_val: float,
+    atr_pct: float,
+    close: float,
+    ema_200: float,
+    rsi_val: float,
+    vol_ratio: float,
+) -> str:
+    """
+    Clasifica el mercado en uno de 5 regímenes usando indicadores ya calculados.
+
+    Parámetros:
+        adx_val   -- Fuerza de la tendencia (ADX 14)
+        atr_pct   -- ATR como % del precio (volatilidad normalizada)
+        close     -- Precio de cierre actual
+        ema_200   -- EMA 200 (tendencia macro)
+        rsi_val   -- RSI actual (momentum)
+        vol_ratio -- Volumen actual / promedio 20 barras
+
+    Retórnos posibles:
+        TREND_UP   -- Tendencia alcista clara. Estrategia: seguir la tendencia.
+        TREND_DOWN -- Tendencia bajista clara. Estrategia: no comprar.
+        RANGE      -- Mercado lateral estrecho. Estrategia: rebotes VWAP.
+        MOMENTUM   -- Breakout explosivo. Estrategia: ride the wave con stop ajustado.
+        CHAOS      -- Volatilidad extrema. Estrategia: no operar hasta que se calme.
+        NEUTRAL    -- Condición mixta. Estrategia: criterios base.
+    """
+    # ── Caos: volatilidad extrema que destroza cualquier stop ────────────────
+    if atr_pct > 1.5:
+        return "CHAOS"
+
+    # ── Momentum explosivo: volumen 3x + RSI alto pero no burbuja ────────────
+    if vol_ratio >= 3.0 and 60 < rsi_val < 80 and close > ema_200:
+        return "MOMENTUM"
+
+    # ── Tendencias claras (ADX > 28 es umbral institucional real) ────────────
+    if adx_val > 28:
+        if close > ema_200:
+            return "TREND_UP"
+        else:
+            return "TREND_DOWN"
+
+    # ── Lateral: ADX bajo y volatilidad contenida ────────────────────────────
+    if adx_val < 20 and atr_pct < 0.6:
+        return "RANGE"
+
+    # ── Resto: condición mixta, usar criterios base conservadores ───────────
+    return "NEUTRAL"
 
 class SignalResult:
     """
@@ -325,6 +387,7 @@ class SignalResult:
         confirmations: list[str],   # Lista de condiciones que se cumplieron
         blocks:        list[str],   # Lista de condiciones que bloquearon la entrada
         ml_features:   dict = None, # Características numéricas del mercado
+        regime:        str  = "NEUTRAL",  # Régimen de mercado detectado
     ):
         self.signal        = signal
         self.ema_fast      = ema_fast
@@ -339,6 +402,7 @@ class SignalResult:
         self.confirmations = confirmations
         self.blocks        = blocks
         self.ml_features   = ml_features or {}
+        self.regime        = regime
 
     def __repr__(self) -> str:
         return (
@@ -419,6 +483,27 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     adx_now     = float(adx_vals.iloc[-1]) if not pd.isna(adx_vals.iloc[-1]) else 0.0
     ts          = df.index[-1]
 
+    # ── Calcular vol_ratio para el detector de régimen ───────────────────────
+    vol_series  = df["Volume"].astype(float)
+    vol_avg     = float(vol_series.rolling(20).mean().iloc[-1]) if len(vol_series) >= 20 else float(vol_series.mean())
+    vol_ratio   = float(vol_series.iloc[-1]) / vol_avg if vol_avg > 0 else 1.0
+    atr_pct     = (atr_now / close_now) * 100 if close_now else 0.0
+
+    # ╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬
+    #  DETECTOR DE RÉGIMEN ─ Se ejecuta PRIMERO
+    # ╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬
+    current_regime = detect_regime(
+        adx_val   = adx_now,
+        atr_pct   = atr_pct,
+        close     = close_now,
+        ema_200   = ema_200_now,
+        rsi_val   = rsi_now,
+        vol_ratio = vol_ratio,
+    )
+    regime_label = REGIMEN_LABELS.get(current_regime, current_regime)
+    from utils.logger import log as _log
+    _log.info(f"🌍 RÉGIMEN DETECTADO: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
+
     # KAMA: cruce adaptativo
     kama_prev   = kama_vals.iloc[-2] if not pd.isna(kama_vals.iloc[-2]) else close_now
     kama_now    = kama_vals.iloc[-1] if not pd.isna(kama_vals.iloc[-1]) else close_now
@@ -467,14 +552,21 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     macro_bullish = close_now > ema_200_now
     
     is_vwap_bounce = vwap_oversold and vwap_reversal and macro_bullish
-    
-    # ── EVALUACIÓN INDEPENDIENTE (Lógica OR) ──────────────────────────────
-    if is_velez_setup:
-        signal = SIGNAL_BUY
-        confirmations_buy.append("🎯 Estrategia A: Rebote Oliver Vélez en la EMA 20 (Pullback alcista).")
-    elif is_vwap_bounce:
-        signal = SIGNAL_BUY
-        confirmations_buy.append(f"🎯 Estrategia B: Anomalía VWAP Extrema (Z={zscore_now:.2f}) con rechazo alcista.")
+
+    # ══ EVALUACIÓN POR RÉGIMEN ═ El sistema elige la estrategia óptima ══
+    if current_regime in ("TREND_UP", "MOMENTUM", "NEUTRAL"):
+        if is_velez_setup:
+            signal = SIGNAL_BUY
+            confirmations_buy.append(f"🎯 [{regime_label}] Estrategia A: Rebote Oliver Vélez en la EMA 20.")
+
+    if current_regime in ("RANGE", "NEUTRAL"):
+        if signal != SIGNAL_BUY and is_vwap_bounce:
+            signal = SIGNAL_BUY
+            confirmations_buy.append(f"🎯 [{regime_label}] Estrategia B: Anomalía VWAP (Z={zscore_now:.2f}) con rechazo alcista.")
+
+    if current_regime in ("TREND_DOWN", "CHAOS"):
+        signal = SIGNAL_HOLD
+        confirmations_buy.clear()
         
     # ── FILTRO INTELIGENTE BASADO EN MACHINE LEARNING HISTÓRICO ───────────
     # Filtrar operaciones en la "ZONA DE LA MUERTE" (Whipsaws).
@@ -500,15 +592,14 @@ def analyze(df: pd.DataFrame) -> SignalResult:
         confirmations_sell.append("🛡️ Venta forzada: Deterioro de estructura (precio perdió la EMA 20).")
         
     # ── GENERACIÓN DE FEATURES PARA MACHINE LEARNING ──────────────────────────
-    # Para capturar la foto matemática que llevó a esta decisión:
-    atr_pct = (atr_now / close_now) * 100 if close_now else 0
     ml_features = {
         'rsi': float(rsi_now),
         'macd_hist': float(macd_now),
         'ema_diff_pct': float((ema_f_now - ema_s_now) / close_now * 100) if close_now else 0,
         'vwap_dist_pct': float((close_now - vwap_now) / vwap_now * 100) if vwap_now > 0 else 0,
         'atr_pct': float(atr_pct),
-        'adx': float(adx_now)
+        'adx': float(adx_now),
+        'regime': current_regime,
     }
 
     # 🤖 EJECUCIÓN DEL MODELO DE INTELIGENCIA ARTIFICIAL EN VIVO
@@ -534,13 +625,13 @@ def analyze(df: pd.DataFrame) -> SignalResult:
                 log.error(f"Error AI prediction: {e}")
 
 
-    # Logeamos la ejecución del escuadrón (SILENCIOSO CON ADX PARA FORENSE)
+    # Logeamos la ejecución del escuadrón (con RÉGIMEN)
     if signal == SIGNAL_BUY:
         from utils.logger import log
-        log.info(f"🔫 COMPRA PERMITIDA POR IA | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_buy))
+        log.info(f"🔫 COMPRA PERMITIDA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_buy))
     elif signal == SIGNAL_SELL:
         from utils.logger import log
-        log.info(f"🔴 VENTA ALERTA TÁCTICA | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
+        log.info(f"🔴 VENTA ALERTA TÁCTICA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
 
     return SignalResult(
         signal=signal,
@@ -555,5 +646,6 @@ def analyze(df: pd.DataFrame) -> SignalResult:
         timestamp=ts,
         confirmations=confirmations_buy,
         blocks=blocks_buy,
-        ml_features=ml_features
+        ml_features=ml_features,
+        regime=current_regime,
     )
