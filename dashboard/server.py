@@ -199,35 +199,91 @@ async def get_results():
 
 @app.get("/api/neural_stats")
 async def get_neural_stats():
-    """Estadísticas de la Red Neuronal MLP adaptativa."""
+    """Estadísticas de la Red Neuronal MLP adaptativa.
+    Lee directamente el joblib del volumen compartido, sin importar utils.
+    """
     try:
-        import sys
-        sys.path.insert(0, "/app")
-        from utils.neural_filter import get_neural_filter
-        nf = get_neural_filter()
-        return {"status": "ok", **nf.get_stats()}
+        import joblib
+        model_path = Path("/app/data/neural_model.joblib")
+        if not model_path.exists():
+            return {"status": "ok", "total_samples": 0, "wins": 0, "losses": 0,
+                    "win_rate_hist": 0.0, "model_accuracy": 0.0, "mode": "cold-start",
+                    "threshold": 0.55}
+
+        bundle = joblib.load(model_path)
+        X_list = bundle.get("X", [])
+        y_list = bundle.get("y", [])
+        model  = bundle.get("model")
+        n      = len(y_list)
+        wins   = sum(y_list)
+        acc    = 0.0
+        import numpy as np
+        if model is not None and n > 0:
+            try:
+                acc = float(model.score(np.array(X_list), np.array(y_list)))
+            except Exception:
+                pass
+        return {
+            "status":         "ok",
+            "total_samples":  n,
+            "wins":           wins,
+            "losses":         n - wins,
+            "win_rate_hist":  round(wins / n * 100, 1) if n > 0 else 0.0,
+            "model_accuracy": round(acc * 100, 1),
+            "mode":           "MLP" if model is not None else "cold-start",
+            "threshold":      0.55,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e), "total_samples": 0, "mode": "unavailable"}
 
 @app.get("/api/checkpoint_info")
 async def get_checkpoint_info():
-    """Estado del checkpoint de simulación — para el dashboard."""
+    """Estado del checkpoint de simulación — lee checkpoint.db del volumen compartido."""
     try:
-        import sys
-        sys.path.insert(0, "/app")
-        from utils.checkpoint import get_checkpoint_info
-        return {"status": "ok", **get_checkpoint_info()}
+        import sqlite3
+        db = Path("/app/data/checkpoint.db")
+        if not db.exists():
+            return {"status": "ok", "last_mode": None, "last_symbol": None,
+                    "last_session": 0, "saved_at": None, "live_paper_symbols_count": 0}
+        conn = sqlite3.connect(str(db))
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT mode, symbol, session_num, created_at FROM checkpoints ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        live_count = conn.execute(
+            "SELECT COUNT(*) as n FROM live_paper_symbols WHERE enabled = 1"
+        ).fetchone()
+        conn.close()
+        return {
+            "status":       "ok",
+            "last_mode":    row["mode"]       if row else None,
+            "last_symbol":  row["symbol"]     if row else None,
+            "last_session": row["session_num"] if row else 0,
+            "saved_at":     row["created_at"] if row else None,
+            "live_paper_symbols_count": live_count["n"] if live_count else 0,
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/live_paper_symbol")
 async def set_live_paper_symbol(symbol: str, enabled: bool):
-    """Habilita o deshabilita un símbolo para Live Paper desde el dashboard."""
+    """Habilita o deshabilita un símbolo para Live Paper (escribe en checkpoint.db)."""
     try:
-        import sys
-        sys.path.insert(0, "/app")
-        from utils.checkpoint import set_live_paper_symbol as _set
-        _set(symbol.upper(), enabled)
+        import sqlite3
+        db = Path("/app/data/checkpoint.db")
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS live_paper_symbols (
+                symbol TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0)
+        """)
+        conn.execute(
+            "INSERT INTO live_paper_symbols (symbol, enabled) VALUES (?, ?) "
+            "ON CONFLICT(symbol) DO UPDATE SET enabled = excluded.enabled",
+            (symbol.upper(), 1 if enabled else 0)
+        )
+        conn.commit()
+        conn.close()
         return {"status": "ok", "symbol": symbol.upper(), "enabled": enabled}
     except Exception as e:
         return {"status": "error", "message": str(e)}
