@@ -1272,7 +1272,10 @@
 
                 <!-- Tab Bar -->
                 <div class="tab-bar">
-                    <button class="tab-btn active" data-tab="candles" id="tbtn-candles">
+                    <button class="tab-btn active" data-tab="results" id="tbtn-results">
+                        <span class="tab-icon">🧠</span> Resultados y ML
+                    </button>
+                    <button class="tab-btn" data-tab="candles" id="tbtn-candles">
                         <span class="tab-icon">🕯️</span> Velas Japonesas
                     </button>
                     <button class="tab-btn" data-tab="pnl" id="tbtn-pnl">
@@ -1284,16 +1287,13 @@
                     <button class="tab-btn" data-tab="trades" id="tbtn-trades">
                         <span class="tab-icon">⚡</span> Operaciones
                     </button>
-                    <button class="tab-btn" data-tab="results" id="tbtn-results">
-                        <span class="tab-icon">🧠</span> Resultados y ML
-                    </button>
                     <button class="tab-btn" data-tab="log" id="tbtn-log">
                         <span class="tab-icon">🖥️</span> Log
                     </button>
                 </div>
 
                 <!-- ═══ TAB: VELAS ═══ -->
-                <div class="tab-content visible" id="tab-candles">
+                <div class="tab-content" id="tab-candles">
                     <div id="candle-chart"></div>
                     <div class="candle-overlay">
                         <div class="candle-legend">
@@ -1446,7 +1446,7 @@
                 </div>
 
                 <!-- ═══ TAB: RESULTADOS HISTORIAL ═══ -->
-                <div class="tab-content" id="tab-results">
+                <div class="tab-content visible" id="tab-results">
                     <div class="card">
                         <div style="flex-shrink: 0;">
                             <div class="card-title" style="display:flex; justify-content:space-between;">
