@@ -600,6 +600,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     # Slippage estimado: 0.05% por lado (compra + venta) × trades
                     slippage_est = round(trades_val * 0.0005 * 200, 4)  # ~$0.10 por trade
                     
+                    from utils.state_writer import _symbol_states
+                    regime_val = _symbol_states.get(symbol).regime if symbol in _symbol_states else getattr(broker, 'final_regime', 'NEUTRAL')
+                    
                     session_result = {
                         "timestamp":      datetime.now(timezone.utc).isoformat(),
                         "symbol":         symbol,
@@ -616,7 +619,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         "gross_loss":     round(getattr(broker.stats, 'gross_loss', 0.0), 2),
                         "profit_factor":  round(getattr(broker.stats, 'profit_factor', 0.0), 2),
                         "drawdown":       round(getattr(broker.stats, 'max_drawdown', 0.0), 2),
-                        "insight":        insight
+                        "insight":        insight,
+                        "regime":         regime_val
                     }
                     
                     # Deduplicar: Filtramos y removemos TODOS los registros anteriores de este símbolo

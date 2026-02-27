@@ -151,9 +151,9 @@ def _flush() -> None:
         # Inyectar una vista "global" (el primer símbolo o una mezcla relevante)
         # para compatibilidad parcial o para que el UI sepa qué símbolos hay
         if _symbol_states:
-            # Seleccionamos uno para ser el 'main'
-            first_sym = list(_symbol_states.keys())[0]
-            output["_main"] = asdict(_symbol_states[first_sym])
+            # Seleccionamos el ÚLTIMO símbolo actualizado para ser el 'main'
+            last_sym = list(_symbol_states.keys())[-1]
+            output["_main"] = asdict(_symbol_states[last_sym])
         
         tmp = STATE_PATH.with_suffix(".tmp")
         tmp.write_text(json.dumps(output, indent=2, default=str))
