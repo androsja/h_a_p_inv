@@ -2529,64 +2529,69 @@
                 currentSymbol = sym;
             }
 
-            // Actualizar la fila "En progreso..." en la tabla de resultados
-            if (sym !== '─') {
-                let currentRow = document.getElementById('current-session-row');
-                const tbody = document.getElementById('results-table-body');
+            // Actualizar las filas "En progreso..." en la tabla de resultados para TODOS los símbolos activos
+            // Ignoramos claves genéricas y extraemos solo los estados de símbolos individuales
+            const activeStates = Object.entries(fullState)
+                .filter(([k, v]) => k !== 'force_symbols' && k !== '_main' && v && v.symbol && v.symbol !== '─')
+                .map(([k, v]) => v);
 
-                if (!currentRow && tbody) {
-                    currentRow = document.createElement('tr');
-                    currentRow.id = 'current-session-row';
-                    tbody.insertBefore(currentRow, tbody.firstChild);
-                }
+            if (activeStates.length > 0) {
+                activeStates.forEach(sState => {
+                    const sSym = sState.symbol;
+                    let currentRow = document.getElementById(`current-session-row-${sSym}`);
+                    const tbody = document.getElementById('results-table-body');
 
-                if (currentRow) {
-                    // Si previamente estaba en "Esperando resultados..."
-                    const noData = document.querySelector('.no-trades');
-                    if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
-
-                    const pnl = (state.available_cash || 10000) - (state.initial_cash || 10000);
-                    const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-                    const pnlSign = pnl > 0 ? '+' : '';
-
-                    currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
-
-                    // Buscamos si ya existe una fila TR para este symbol en el log final histórico.
-                    // window.completedSessions tiene el último num de session TERMINADA.
-                    // Si la sesion actual del state es <= a esa sesión terminada, NO debe renderizarse progreso todavía.
-                    const highestCompletedSession = (window.completedSessions || {})[sym] || 0;
-                    const currentSession = state.session || 0;
-
-                    if (currentSession > 0 && currentSession <= highestCompletedSession) {
-                        currentRow.style.display = 'none'; // ocultarlo 
-                    } else {
-                        // Validar también que la tabla de abajo no tenga textContent matcheando ya
-                        const tbody = document.getElementById('results-table-body');
-                        const alreadyRendered = Array.from(tbody.querySelectorAll('tr')).some(r => r.id !== 'current-session-row' && r.cells[0] && r.cells[0].textContent.trim() === sym);
-
-                        if (alreadyRendered && currentSession <= 1 && highestCompletedSession >= 1) {
-                            currentRow.style.display = 'none';
-                        } else {
-                            currentRow.style.display = 'table-row';
-                        }
+                    if (!currentRow && tbody) {
+                        currentRow = document.createElement('tr');
+                        currentRow.id = `current-session-row-${sSym}`;
+                        tbody.insertBefore(currentRow, tbody.firstChild);
                     }
 
-                    currentRow.innerHTML = `
-            <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sym} 🔄</td>
-            <td style="padding:10px; color:var(--muted);">#${state.session || 0}</td>
-            <td style="padding:10px;">${state.total_trades || 0}</td>
-            <td style="padding:10px;">${(state.win_rate || 0).toFixed(1)}%</td>
-            <td style="padding:10px; color:var(--muted);">─</td>
-            <td style="padding:10px; color:var(--muted);">─</td>
-            <td style="padding:10px; color:var(--muted);">─</td>
-            <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${pnlSign}$${pnl.toFixed(2)}</td>
-            <td style="padding:10px;">$${(state.available_cash || 10000).toFixed(2)}</td>
-            <td style="padding:10px; color:var(--muted);">─</td>
-            <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
-                ${state.is_waiting ? `⏳ Esperando próximo escaneo (${state.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...'}
-            </td >
-                            `;
-                }
+                    if (currentRow) {
+                        // Si previamente estaba en "Esperando resultados..."
+                        const noData = document.querySelector('.no-trades');
+                        if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
+
+                        const pnl = (sState.available_cash || 10000) - (sState.initial_cash || 10000);
+                        const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+                        const pnlSign = pnl > 0 ? '+' : '';
+
+                        currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
+
+                        // Buscamos si ya existe una fila TR para este symbol en el log final histórico.
+                        const highestCompletedSession = (window.completedSessions || {})[sSym] || 0;
+                        const currentSession = sState.session || 0;
+
+                        if (currentSession > 0 && currentSession <= highestCompletedSession) {
+                            currentRow.style.display = 'none'; // ocultarlo 
+                        } else {
+                            // Validar también que la tabla de abajo no tenga textContent matcheando ya
+                            const alreadyRendered = Array.from(tbody.querySelectorAll('tr')).some(r => !r.id.startsWith('current-session-row') && r.cells[0] && r.cells[0].textContent.trim() === sSym);
+
+                            if (alreadyRendered && currentSession <= 1 && highestCompletedSession >= 1) {
+                                currentRow.style.display = 'none';
+                            } else {
+                                currentRow.style.display = 'table-row';
+                            }
+                        }
+
+                        currentRow.innerHTML = `
+                <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
+                <td style="padding:10px; color:var(--muted);">#${sState.session || 0}</td>
+                <td style="padding:10px;">${sState.total_trades || 0}</td>
+                <td style="padding:10px;">${(sState.win_rate || 0).toFixed(1)}%</td>
+                <td style="padding:10px; color:var(--muted);">─</td>
+                <td style="padding:10px; color:var(--muted);">─</td>
+                <td style="padding:10px; color:var(--muted);">─</td>
+                <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${pnlSign}$${pnl.toFixed(2)}</td>
+                <td style="padding:10px;">$${(sState.available_cash || 10000).toFixed(2)}</td>
+                <td style="padding:10px; color:var(--muted);">─</td>
+                <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
+                    ${sState.is_waiting ? `⏳ Esperando próximo escaneo (${sState.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...'}
+                </td>
+                        `;
+                    }
+                });
             }
 
             // Actualizar indicadores solo si es el símbolo enfocado

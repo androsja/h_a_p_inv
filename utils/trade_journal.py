@@ -19,10 +19,12 @@ Archivo: /app/data/trade_journal.csv
 
 import csv
 import json
+import threading
 from pathlib import Path
 from datetime import datetime, timezone
 
 JOURNAL_PATH = Path("/app/data/trade_journal.csv")
+_journal_lock = threading.Lock()
 
 # Columnas completas — en este orden
 COLUMNS = [
@@ -69,11 +71,12 @@ COLUMNS = [
 
 def _ensure_header():
     """Crea el archivo con cabecera si no existe aún."""
-    if not JOURNAL_PATH.exists():
-        JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=COLUMNS)
-            writer.writeheader()
+    with _journal_lock:
+        if not JOURNAL_PATH.exists():
+            JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=COLUMNS)
+                writer.writeheader()
 
 
 def record_trade(
@@ -166,9 +169,10 @@ def record_trade(
             "zscore_vwap":     round(ml_features.get("zscore_vwap", 0), 3),
         }
 
-        with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=COLUMNS)
-            writer.writerow(row)
+        with _journal_lock:
+            with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=COLUMNS)
+                writer.writerow(row)
 
     except Exception as e:
         from utils.logger import log

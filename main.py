@@ -203,6 +203,9 @@ def get_candles_json(df: pd.DataFrame, window: int = 60) -> list:
 # ═══════════════════════════════════════════════════════════════════════════════
 #  FUNCIÓN DE ESTADO DEL BOT (DISPLAY EN CONSOLA)
 # ═══════════════════════════════════════════════════════════════════════════════
+print_lock = threading.Lock()
+results_lock = threading.Lock()
+
 def print_status(
     broker: BrokerInterface,
     symbol: str,
@@ -218,15 +221,16 @@ def print_status(
         f"[SL=${position.stop_loss:.2f} | TP=${position.take_profit:.2f}]"
         if position else "─ Sin posición abierta"
     )
-    print(
-        f"\r{mode_label} | {symbol} | "
-        f"bid=${quote.bid:.2f} ask=${quote.ask:.2f} | "
-        f"Señal={signal_str:4s} | "
-        f"{pos_str} | "
-        f"Cash disponible=${account.available_cash:.2f}",
-        end="",
-        flush=True,
-    )
+    
+    with print_lock:
+        print(
+            f"{mode_label} | {symbol} | "
+            f"bid=${quote.bid:.2f} ask=${quote.ask:.2f} | "
+            f"Señal={signal_str:4s} | "
+            f"{pos_str} | "
+            f"Cash disponible=${account.available_cash:.2f}",
+            flush=True,
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -604,28 +608,6 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     from pathlib import Path
                     res_file = Path("/app/data/backtest_results.json")
                     if not getattr(broker, 'total_trades', 0): pass
-                    res_data = []
-                    if res_file.exists():
-                        with open(res_file, "r") as f:
-                            res_data = json.load(f)
-                    
-                    # ── Generar un Diagnóstico Rápido de la Estrategia (Insight) ──
-                    pnl_val = getattr(broker.stats, 'total_pnl', 0.0)
-                    trades_val = getattr(broker.stats, 'total_trades', 0)
-                    winrate_val = getattr(broker.stats, 'win_rate', 0.0)
-                    
-                    insight = "Sin actividad."
-                    if trades_val == 0:
-                        insight = "No hubo entradas. La estrategia filtró el ruido (bueno) o las condiciones de indicadores fueron demasiado estrictas para el volumen de hoy."
-                    elif pnl_val > 0 and winrate_val >= 50:
-                        insight = "ESTRATEGIA EXITOSA. Altamente efectiva, detectó bien la tendencia y el ratio de StopLoss/TakeProfit es óptimo."
-                    elif pnl_val > 0 and winrate_val < 50:
-                        insight = "RENTABLE POR GESTIÓN. Hubo bastantes señales falsas, pero la gestión de riesgo (ganar mucho, perder poco) salvó el balance."
-                    elif pnl_val < 0 and winrate_val >= 50:
-                        insight = "ERROR DE GESTIÓN DE RIESGO. Se gana frecuentemente pero las comisiones/spreads o los Stop Loss muy anchos destrozaron las pequeñas ganancias."
-                    else:
-                        insight = "ESTRATEGIA FALLIDA. Constantes señales engañosas (whipsaws). Sugiere añadir filtro de tendencia mayor (ej. ADX) o descartar este símbolo por volatilidad impredecible."
-
                     from datetime import timezone
                     # Datos estructurados para futuro Data Science / ML
                     total_fees = round(getattr(broker.stats, 'total_fees', 0.0), 4)
@@ -656,12 +638,18 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         "regime":         regime_val
                     }
                     
-                    # Deduplicar: Filtramos y removemos TODOS los registros anteriores de este símbolo
-                    res_data = [r for r in res_data if r.get("symbol") != symbol]
-                    res_data.append(session_result)
-                        
-                    with open(res_file, "w") as f:
-                        json.dump(res_data, f, indent=2)
+                    with results_lock:
+                        res_data = []
+                        if res_file.exists():
+                            with open(res_file, "r") as f:
+                                res_data = json.load(f)
+                                
+                        # Deduplicar: Filtramos y removemos TODOS los registros anteriores de este símbolo
+                        res_data = [r for r in res_data if r.get("symbol") != symbol]
+                        res_data.append(session_result)
+                            
+                        with open(res_file, "w") as f:
+                            json.dump(res_data, f, indent=2)
                         
                     log.info(f"📝 ESTRATEGIA RESULTADO | {symbol}: {insight}")
                 except Exception as e:
@@ -793,61 +781,20 @@ def main() -> None:
         except: pass
 
         if is_lp and len(force_symbols) >= 1:
-            # ── Guardar el progreso de la simulación ANTES de cambiar a Live Paper ──
-            if is_simulated and _checkpoint_fn:
-                try:
-                    _checkpoint_fn(symbol_idx, args.symbol or "", session_num)
-                    log.info(
-                        f"💾 CHECKPOINT guardado: simulación pausada en '{args.symbol}' "
-                        f"(idx={symbol_idx}, sesión #{session_num})"
-                    )
-                except Exception as _e:
-                    log.warning(f"Error guardando checkpoint: {_e}")
-
-            log.info(f"🚀 Iniciando monitoreo PARALELO para {len(force_symbols)} símbolo(s)...")
-            threads = []
-            stop_event = threading.Event()
-            
-            for sym in force_symbols:
-                # Crear una copia de args para cada hilo con su símbolo
-                thread_args = argparse.Namespace(**vars(args))
-                thread_args.symbol = sym
-                # Cada hilo necesita su propia instancia de broker (HapiMock es ligero)
-                thread_broker = init_broker(thread_args)
-                
-                t = threading.Thread(
-                    target=run_bot, 
-                    args=(thread_broker, thread_args, session_num, stop_event),
-                    name=f"Worker-{sym}"
-                )
-                t.daemon = True
-                t.start()
-                threads.append(t)
-            
-            # El hilo principal espera y vigila command.json
-            try:
-                while True:
-                    time.sleep(2)
-                    if os.path.exists("/app/data/command.json"):
-                        with open("/app/data/command.json") as f:
-                            c = json.load(f)
-                        if c.get("reset_all") or c.get("force_paper_trading") is False:
-                            log.info("🛑 Deteniendo todos los hilos paralelos...")
-                            stop_event.set()
-                            break
-            except KeyboardInterrupt:
-                stop_event.set()
-            
-            for t in threads:
-                t.join(timeout=5)
+            from utils.live_paper_launcher import launch_parallel_bots
+            # El import dentro del if previene llamadas circulares
+            launch_parallel_bots(args, force_symbols, session_num, run_bot, init_broker, _checkpoint_fn)
         else:
+            # FLUJO SINGLE-THREAD NORMAL (Simulación o un solo símbolo)
             run_bot(broker, args, session_num)
 
         # En modo LIVE el bot solo llega aquí por KeyboardInterrupt o señal externa → salir
         if not is_simulated:
             break
 
-        # En modo SIMULATED: descansar y reiniciar
+        # ════════════════════════════════════════════════════════════════════
+        # En modo SIMULATED: descansar y reiniciar o procesar comandos
+        # ════════════════════════════════════════════════════════════════════
         fixed = os.getenv("FIXED_SYMBOL", "").strip()
         
         cmd_file = "/app/data/command.json"
@@ -856,7 +803,7 @@ def main() -> None:
                 with open(cmd_file, "r") as f:
                     cmds = json.load(f)
                 
-                # REINICIO GLOBAL (RESET ALL MEMORY)
+                # REINICIO GLOBAL (WIPE MEMORY)
                 if cmds.get("reset_all"):
                     log.info("💥 PURGANDO MEMORIA COMPLETA del bot por orden del usuario...")
                     cmds["reset_all"] = False # Consume flag
@@ -900,42 +847,11 @@ def main() -> None:
                 f"Reiniciando en {SESSION_PAUSE}s con {fixed} (símbolo fijo manual/env)…"
             )
         else:
-            # Check for force_symbols for multi-symbol live paper
-            try:
-                cmd_file = "/app/data/command.json"
-                if os.path.exists(cmd_file):
-                    with open(cmd_file, "r") as f:
-                        cmds = json.load(f)
-                    force_symbols = cmds.get("force_symbols", [])
-                    if force_symbols:
-                        is_lp = cmds.get("force_paper_trading", False)
-                        # Find current symbol index in force_symbols and pick next
-                        try:
-                            curr_idx = force_symbols.index(args.symbol)
-                            next_idx = (curr_idx + 1) % len(force_symbols)
-                            args.symbol = force_symbols[next_idx]
-                            
-                            # Si es Live Paper, rotación rápida entre símbolos, pero pausa al final de la vuelta
-                            if is_lp:
-                                if next_idx == 0:
-                                    log.info(f"🏁 Vuelta completa de escaneo finalizada ({len(force_symbols)} símbolos).")
-                                    smart_sleep(60)
-                                else:
-                                    smart_sleep(1) # Rotación rápida
-                                continue
-                        except ValueError:
-                            args.symbol = force_symbols[0]
-                        
-                        log.info(f"⏸  Sesión #{session_num} finalizada. Rotando a {args.symbol} del set Live Paper…")
-                        smart_sleep(SESSION_PAUSE)
-                        continue
-            except Exception as e: 
-                log.debug(f"Error rotation: {e}")
-                pass
-
+            # Solo rotamos en modo secuencia si NO estamos forzando símbolos por Live Paper.
+            # (El if de Live Paper ya bloqueó el flujo si estamos en Multi-hilo)
             if all_symbols:
                 symbol_idx += 1
-                # 💾 Guardar checkpoint en cada rotación de símbolo
+                # 💾 Guardar checkpoint en cada rotación secuencial de símbolo
                 if _checkpoint_fn:
                     try:
                         _checkpoint_fn(
