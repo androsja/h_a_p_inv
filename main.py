@@ -864,7 +864,7 @@ def main() -> None:
                     
                     try:
                         import os
-                        for wipe_target in ["/app/data/backtest_results.json", "/app/data/state.json", "/app/data/ml_dataset.csv"]:
+                        for wipe_target in ["/app/data/backtest_results.json", "/app/data/state.json"]:
                             if os.path.exists(wipe_target):
                                 os.remove(wipe_target)
                     except: pass
