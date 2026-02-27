@@ -2950,9 +2950,19 @@
                 <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
             </div>
             <div
-                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
-                Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
-                deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+                <div style="flex:1;">
+                    Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
+                    deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+                </div>
+                <div style="display:flex; gap:10px; margin-left:15px;">
+                    <button onclick="toggleAllSymbols(true)"
+                        style="background:var(--green); color:#111; border:none; padding:6px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Seleccionar
+                        Todos</button>
+                    <button onclick="toggleAllSymbols(false)"
+                        style="background:#555; color:white; border:none; padding:6px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Deseleccionar
+                        Todos</button>
+                </div>
             </div>
             <div id="sym-manager-list"
                 style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
@@ -3114,27 +3124,82 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.status === 'success') {
+                    // Actualizar memoria local para que Live Paper lo detecte
+                    if (window.configAssets && window.configAssets.assets) {
+                        const asset = window.configAssets.assets.find(a => a.symbol === symbol);
+                        if (asset) asset.enabled = isEnabled;
+                    }
+
+                    document.getElementById('sm-restart-warning').style.display = 'block';
+
                     // Actualizar tarjeta local sin redibujar toda la lista (preserva animación CSS del switch)
-                    const card = document.getElementById('smi-' + symbol);
-                    const symLbl = document.getElementById('sms-' + symbol);
-                    if (card && symLbl) {
+                    const itemDiv = document.getElementById(`smi-${symbol}`);
+                    const symDiv = document.getElementById(`sms-${symbol}`);
+                    if (itemDiv && symDiv) {
                         if (isEnabled) {
-                            card.classList.replace('disabled', 'enabled');
-                            symLbl.classList.replace('disabled', 'enabled');
-                        } else {
-                            card.classList.replace('enabled', 'disabled');
-                            symLbl.classList.replace('enabled', 'disabled');
+                            itemDiv.classList.remove('disabled');
+                            itemDiv.classList.add('enabled');
+                            symDiv.classList.remove('disabled');
+                            symDiv.classList.add('enabled');
                         }
                     }
-                    // Mostrar aviso de reinicio
-                    document.getElementById('sm-restart-warning').style.display = 'block';
                 } else {
                     alert("Error guardando el símbolo en el servidor: " + (data.message || "Desconocido"));
                     // Revert the toggle visually
-                    setTimeout(() => openSymbolManager(), 500);
+                    const cb = document.querySelector(`#smi-${symbol} input[type="checkbox"]`);
+                    if (cb) cb.checked = !isEnabled;
                 }
             } catch (e) {
-                console.error("Error toggleMasterSymbol:", e);
+                console.error("Error guardando toggle:", e);
+                alert("Error de red conectando con el servidor");
+            }
+        }
+
+        async function toggleAllSymbols(enable) {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            // Para la mejor UX, enviamos la petición, pero mostramos los cambios visuales inmediatamente
+            const symbolsToChange = window.configAssets.assets.filter(a => !!a.enabled !== enable).map(a => a.symbol);
+            if (symbolsToChange.length === 0) return;
+
+            // Update UI instantly
+            symbolsToChange.forEach(sym => {
+                const asset = window.configAssets.assets.find(a => a.symbol === sym);
+                if (asset) asset.enabled = enable;
+
+                const input = document.querySelector(`#smi-${sym} input[type="checkbox"]`);
+                if (input) input.checked = enable;
+
+                const itemDiv = document.getElementById(`smi-${sym}`);
+                const symDiv = document.getElementById(`sms-${sym}`);
+                if (itemDiv && symDiv) {
+                    if (enable) {
+                        itemDiv.classList.remove('disabled'); itemDiv.classList.add('enabled');
+                        symDiv.classList.remove('disabled'); symDiv.classList.add('enabled');
+                    } else {
+                        itemDiv.classList.remove('enabled'); itemDiv.classList.add('disabled');
+                        symDiv.classList.remove('enabled'); symDiv.classList.add('disabled');
+                    }
+                }
+            });
+            document.getElementById('sm-restart-warning').style.display = 'block';
+
+            // Process async sequence to backend
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;justify-content:center;align-items:center;color:white;font-weight:bold;';
+            overlay.textContent = "Aplicando a " + symbolsToChange.length + " símbolos...";
+            document.body.appendChild(overlay);
+
+            try {
+                // Hacer peticiones secuenciales rapidas
+                for (let sym of symbolsToChange) {
+                    await fetch('/api/toggle_symbol', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: sym, enabled: enable })
+                    });
+                }
+            } finally {
+                document.body.removeChild(overlay);
             }
         }
 
