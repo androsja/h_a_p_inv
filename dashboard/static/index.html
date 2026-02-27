@@ -1153,9 +1153,7 @@
                     style="background:#673ab7; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
                     🎛️ GESTOR SÍMBOLOS
                 </button>
-                <button id="symbol-selection-trigger" class="symbol-selection-btn" onclick="toggleSymbolModal()">
-                    🔍 Símbolos <span id="selected-count-badge" class="symbol-badge">0</span>
-                </button>
+                <!-- Se eliminó el botón redundante de "Símbolos", todo se maneja desde el GESTOR SÍMBOLOS -->
                 <button id="btn-start-paper" onclick="startPaperTrade()"
                     style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
                     ▶️ LIVE PAPER
@@ -2203,58 +2201,93 @@
             overlay.style.display = 'flex';
         }
 
+        // Modal bonito tipo Wipe Memory
+        function _showConfirmModal(title, text, confirmBtnText, onConfirm) {
+            const modalHtml = `
+            <div id="custom-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center;">
+                <div style="background:var(--surface); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:30px; width:400px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+                    <div style="font-size:40px; margin-bottom:15px;">🚀</div>
+                    <h2 style="margin:0 0 10px 0; font-size:20px;">${title}</h2>
+                    <p style="color:var(--muted); font-size:14px; margin-bottom:25px; line-height:1.5;">${text}</p>
+                    <div style="display:flex; justify-content:center; gap:10px;">
+                        <button onclick="document.getElementById('custom-confirm-modal').remove()" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:white; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
+                        <button id="btn-confirm-action" style="background:var(--accent); border:none; color:white; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">${confirmBtnText}</button>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            document.getElementById('btn-confirm-action').onclick = () => {
+                document.getElementById('custom-confirm-modal').remove();
+                onConfirm();
+            };
+        }
+
         async function startPaperTrade() {
-            if (selectedSymbols.length === 0) return alert("Selecciona al menos un símbolo para analizar.");
-            const symbolsList = selectedSymbols.join(',');
+            // Obtener los símbolos activos directamente del Gestor Principal
+            if (!window.configAssets) return alert("Cargando activos... intenta de nuevo.");
 
-            // Cerrar el popup de selección primero para que no estorbe
-            const modal = document.getElementById('symbol-modal');
-            if (modal) modal.style.display = 'none';
+            const activeAssets = window.configAssets.assets.filter(a => a.enabled).map(a => a.symbol);
 
-            if (!confirm(`🚀 ¿Deseas iniciar Live Paper Trading para [${symbolsList}]?\n\nEl bot pausará la simulación global y se enfocará solo en estos símbolos.`)) {
-                if (modal) modal.style.display = 'flex'; // restaurar si cancela
-                return;
+            if (activeAssets.length === 0) {
+                return _showConfirmModal(
+                    "Agrega Símbolos",
+                    "Debes habilitar al menos un símbolo en el GESTOR DE SÍMBOLOS antes de iniciar Live Paper.",
+                    "Entendido",
+                    () => { }
+                );
             }
 
-            _showLoadingOverlay('INICIANDO CONEXIÓN CON HAPI...');
+            const symbolsList = activeAssets.join(',');
 
-            try {
-                const res = await fetch('/api/paper_trade_start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbols: symbolsList })
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    setTimeout(() => location.reload(), 800);
-                } else {
-                    document.getElementById('global-loader').style.display = 'none';
-                    alert("Error: " + data.message);
+            _showConfirmModal(
+                "Iniciar Live Paper Trading",
+                `El bot detendrá la simulación global y operará en vivo (virtualmente) con estos símbolos:<br><br><strong style="color:var(--accent)">${symbolsList}</strong><br><br>¿Continuar?`,
+                "Iniciar Live Paper",
+                async () => {
+                    _showLoadingOverlay('INICIANDO CONEXIÓN CON HAPI...');
+                    try {
+                        const res = await fetch('/api/paper_trade_start', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbols: symbolsList })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            setTimeout(() => location.reload(), 800);
+                        } else {
+                            document.getElementById('global-loader').style.display = 'none';
+                            alert("Error: " + data.message);
+                        }
+                    } catch (e) {
+                        document.getElementById('global-loader').style.display = 'none';
+                        alert("Error connecting to start paper trade");
+                    }
                 }
-            } catch (e) {
-                document.getElementById('global-loader').style.display = 'none';
-                alert("Error connecting to start paper trade");
-            }
+            );
         }
 
         async function stopPaperTrade() {
-            if (!confirm("⚠️ ¿Deseas detener el modo LIVE y volver a la simulación global de todos los símbolos?")) return;
-
-            _showLoadingOverlay('RESTAURANDO SIMULACIÓN GLOBAL...');
-
-            try {
-                const res = await fetch('/api/paper_trade_stop', { method: 'POST' });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    setTimeout(() => location.reload(), 800);
-                } else {
-                    document.getElementById('global-loader').style.display = 'none';
-                    alert("Error: " + data.message);
+            _showConfirmModal(
+                "Detener Live Paper",
+                "El bot regresará a la simulación global rotando por todos los símbolos de la lista. Las operaciones manuales se detendrán.",
+                "Volver a Simulación",
+                async () => {
+                    _showLoadingOverlay('RESTAURANDO SIMULACIÓN GLOBAL...');
+                    try {
+                        const res = await fetch('/api/paper_trade_stop', { method: 'POST' });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            setTimeout(() => location.reload(), 800);
+                        } else {
+                            document.getElementById('global-loader').style.display = 'none';
+                            alert("Error: " + data.message);
+                        }
+                    } catch (e) {
+                        document.getElementById('global-loader').style.display = 'none';
+                        alert("Error deteniendo live paper trading");
+                    }
                 }
-            } catch (e) {
-                document.getElementById('global-loader').style.display = 'none';
-                alert("Error deteniendo live paper trading");
-            }
+            );
         }
 
 
@@ -2651,17 +2684,29 @@
             // Header modo y distinción visual
             const isLive = state.mode === 'LIVE';
             const isLivePaperMode = state.mode === 'LIVE_PAPER';
+            const isLiveRealMode = state.mode === 'LIVE_REAL'; // Assuming LIVE_REAL for real money
+            const modeInd = document.getElementById('mode-indicator');
+            let modeTitle = 'SIMULATED (GLOBAL FAST FORWARD) ⚡';
+            let bgConfig = '#0f111a'; // Default dark blue bg
 
-            let modeText = 'SIM 🔵';
-            if (isLive) modeText = 'LIVE 🔴';
-            if (isLivePaperMode) modeText = 'LIVE PAPER (REPLAY) 🟠';
+            if (isLivePaperMode) {
+                modeTitle = 'LIVE PAPER T+1 🟠';
+                bgConfig = '#1a0f0f'; // Dark reddish/orange tint
+            }
+            if (isLiveRealMode) {
+                modeTitle = 'LIVE REAL MONEY 🔴';
+                bgConfig = '#1a0000'; // Darker red tint
+            }
 
-            document.getElementById('mode-chip').textContent = modeText;
+            if (modeInd) modeInd.innerHTML = modeTitle;
+
+            // Cambiar fondo global para distinguir modos
+            document.documentElement.style.setProperty('--bg', bgConfig);
+            document.getElementById('mode-chip').textContent = modeTitle; // Use modeTitle for consistency
 
             // Botones visibilidad
-            const inAnyLive = isLive || isLivePaperMode;
+            const inAnyLive = isLive || isLivePaperMode || isLiveRealMode;
             document.getElementById('btn-start-paper').style.display = inAnyLive ? 'none' : 'flex';
-            document.getElementById('symbol-selection-trigger').style.display = isLive ? 'none' : 'flex';
             document.getElementById('btn-stop-paper').style.display = inAnyLive ? 'flex' : 'none';
 
             // Body class para CSS
