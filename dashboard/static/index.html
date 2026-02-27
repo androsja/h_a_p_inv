@@ -1134,10 +1134,11 @@
 
             <!-- Ticker central -->
             <div class="hdr-ticker">
-                <div class="hdr-sym" id="hdr-sym"
-                    style="background:transparent;border:none;outline:none;padding-right:15px;text-align:center;color:var(--accent2);font-weight:bold;">
-                    AUTO 🔄
-                </div>
+                <select class="hdr-sym" id="hdr-sym"
+                    onchange="focusSymbol = this.value; manualFocus = true; loadResults();"
+                    style="background:var(--panel);border:1px solid rgba(255,255,255,0.2);outline:none;padding:5px;border-radius:4px;text-align:center;color:var(--accent2);font-weight:bold;cursor:pointer;appearance:auto;margin-right:15px;">
+                    <option value="" disabled selected>Cargando...</option>
+                </select>
                 <span class="hdr-price" id="hdr-price">$─.──</span>
                 <span class="hdr-change" id="hdr-change" style="color:var(--muted);">─</span>
                 <div class="hdr-signal">
@@ -2666,10 +2667,24 @@
                     candleSeries.setData(state.candles);
                 }
 
-                // Símbolo en header
+                // Símbolo en header (Combobox)
                 const symDisplay = document.getElementById('hdr-sym');
-                if (symDisplay) {
-                    symDisplay.textContent = `AUTO 🔄 (${sym})`;
+                if (symDisplay && symDisplay.tagName === 'SELECT') {
+                    const activeSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
+
+                    const currentOptions = Array.from(symDisplay.options).map(o => o.value);
+                    if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
+                        symDisplay.innerHTML = '';
+                        activeSyms.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = `👁 ${s}`;
+                            symDisplay.appendChild(opt);
+                        });
+                    }
+                    if (symDisplay.value !== sym) {
+                        symDisplay.value = sym;
+                    }
                 }
 
                 // Indicadores pestaña
