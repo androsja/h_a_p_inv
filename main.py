@@ -680,9 +680,24 @@ def main() -> None:
         all_symbols = []
     symbol_idx = 0
 
+    # ── Restaurar checkpoint de simulación (si existe) ────────────────────────
+    try:
+        from utils.checkpoint import load_simulation_checkpoint, save_simulation_checkpoint
+        _ckpt = load_simulation_checkpoint()
+        if _ckpt["symbol_idx"] > 0 and is_simulated:
+            symbol_idx  = _ckpt["symbol_idx"]
+            session_num = _ckpt["session_num"]
+            log.info(
+                f"💾 CHECKPOINT restaurado: reanudando desde '{_ckpt['symbol']}' (idx={symbol_idx}, sesión #{session_num})"
+            )
+        _checkpoint_fn = save_simulation_checkpoint
+    except Exception as _ce:
+        log.warning(f"No se pudo cargar checkpoint: {_ce}")
+        _checkpoint_fn = None
+
     # Inicializar el primer símbolo secuencial si no se especificó uno fijo ni en args
     if is_simulated and not args.symbol and not os.getenv("FIXED_SYMBOL", "").strip():
-        if all_symbols:
+        if all_symbols and symbol_idx < len(all_symbols):
             args.symbol = all_symbols[symbol_idx]
 
     while True:
@@ -764,8 +779,19 @@ def main() -> None:
                     is_lp = cmds.get("force_paper_trading", False)
         except: pass
 
-        if is_lp and len(force_symbols) > 1:
-            log.info(f"🚀 Iniciando monitoreo PARALELO para {len(force_symbols)} símbolos...")
+        if is_lp and len(force_symbols) >= 1:
+            # ── Guardar el progreso de la simulación ANTES de cambiar a Live Paper ──
+            if is_simulated and _checkpoint_fn:
+                try:
+                    _checkpoint_fn(symbol_idx, args.symbol or "", session_num)
+                    log.info(
+                        f"💾 CHECKPOINT guardado: simulación pausada en '{args.symbol}' "
+                        f"(idx={symbol_idx}, sesión #{session_num})"
+                    )
+                except Exception as _e:
+                    log.warning(f"Error guardando checkpoint: {_e}")
+
+            log.info(f"🚀 Iniciando monitoreo PARALELO para {len(force_symbols)} símbolo(s)...")
             threads = []
             stop_event = threading.Event()
             
@@ -896,6 +922,16 @@ def main() -> None:
 
             if all_symbols:
                 symbol_idx += 1
+                # 💾 Guardar checkpoint en cada rotación de símbolo
+                if _checkpoint_fn:
+                    try:
+                        _checkpoint_fn(
+                            symbol_idx,
+                            all_symbols[symbol_idx] if symbol_idx < len(all_symbols) else args.symbol or "",
+                            session_num
+                        )
+                    except Exception: pass
+
                 if symbol_idx >= len(all_symbols):
                     log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
                     while True:

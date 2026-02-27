@@ -209,6 +209,29 @@ async def get_neural_stats():
     except Exception as e:
         return {"status": "error", "message": str(e), "total_samples": 0, "mode": "unavailable"}
 
+@app.get("/api/checkpoint_info")
+async def get_checkpoint_info():
+    """Estado del checkpoint de simulación — para el dashboard."""
+    try:
+        import sys
+        sys.path.insert(0, "/app")
+        from utils.checkpoint import get_checkpoint_info
+        return {"status": "ok", **get_checkpoint_info()}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/live_paper_symbol")
+async def set_live_paper_symbol(symbol: str, enabled: bool):
+    """Habilita o deshabilita un símbolo para Live Paper desde el dashboard."""
+    try:
+        import sys
+        sys.path.insert(0, "/app")
+        from utils.checkpoint import set_live_paper_symbol as _set
+        _set(symbol.upper(), enabled)
+        return {"status": "ok", "symbol": symbol.upper(), "enabled": enabled}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 
 @app.post("/api/train_ai")
 async def train_ai():
