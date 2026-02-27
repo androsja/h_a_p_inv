@@ -2670,7 +2670,7 @@
                 // Símbolo en header (Combobox)
                 const symDisplay = document.getElementById('hdr-sym');
                 if (symDisplay && symDisplay.tagName === 'SELECT') {
-                    const activeSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
+                    const activeSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main' && k !== 'logs');
 
                     const currentOptions = Array.from(symDisplay.options).map(o => o.value);
                     if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
