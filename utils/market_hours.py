@@ -24,9 +24,47 @@ MARKET_CLOSE = time(16, 0)    # 4:00 PM ET
 MARKET_WEEKDAYS = set(range(5))
 
 
+def _is_mock_time_active() -> bool:
+    """Revisa si el usuario activó la simulación de las 9:30 AM para pruebas nocturnas."""
+    try:
+        import os, json
+        from pathlib import Path
+        cmd_file = Path("/app/data/command.json")
+        if cmd_file.exists():
+            with open(cmd_file, "r") as f:
+                c = json.load(f)
+                return c.get("mock_time_930", False)
+    except Exception:
+        pass
+    return False
+
 def now_nyc() -> datetime:
-    """Devuelve la hora actual en Nueva York."""
-    return datetime.now(TZ_NYC)
+    """Devuelve la hora actual en Nueva York. Si el Mock Time está activado y el mercado cerrado, simula las 9:30 AM."""
+    real_nyc_now = datetime.now(TZ_NYC)
+    
+    # 1. Determinar si el mercado MUNDIAL REAL está abierto en este momento
+    is_real_market_open = (
+        real_nyc_now.weekday() in MARKET_WEEKDAYS and 
+        MARKET_OPEN <= real_nyc_now.time().replace(second=0, microsecond=0) < MARKET_CLOSE
+    )
+    
+    # 2. Si NO está abierto pero el usuario activó Test Nocturno, engañamos al bot
+    if not is_real_market_open and _is_mock_time_active():
+        # Retorna el mismo día (o el viernes/lunes previo si hoy no es laborable) a las 9:30 AM
+        spoof_day = real_nyc_now
+        if spoof_day.weekday() not in MARKET_WEEKDAYS:
+            # Retroceder hasta encontrar un día laborable
+            while spoof_day.weekday() not in MARKET_WEEKDAYS:
+                spoof_day -= timedelta(days=1)
+                
+        return spoof_day.replace(
+            hour=MARKET_OPEN.hour,
+            minute=MARKET_OPEN.minute,
+            second=1,
+            microsecond=0,
+        )
+        
+    return real_nyc_now
 
 
 def now_colombia() -> datetime:
@@ -36,12 +74,22 @@ def now_colombia() -> datetime:
 
 def is_market_open() -> bool:
     """
-    Retorna True si el mercado NYSE está abierto AHORA.
+    Retorna True si el mercado NYSE está abierto AHORA (o si Test Nocturno está activo).
     Considera:
       • Día de la semana (lunes-viernes).
       • Horario 9:30-16:00 ET.
     No contempla festivos de EE.UU. (simplificación aceptable para un bot minorista).
     """
+    if _is_mock_time_active():
+        # Confirmar que real time está cerrado para no solapar si lo dejan activado por error de día
+        real_nyc_now = datetime.now(TZ_NYC)
+        is_real_market_open = (
+            real_nyc_now.weekday() in MARKET_WEEKDAYS and 
+            MARKET_OPEN <= real_nyc_now.time().replace(second=0, microsecond=0) < MARKET_CLOSE
+        )
+        if not is_real_market_open:
+            return True
+            
     nyc_now = now_nyc()
     if nyc_now.weekday() not in MARKET_WEEKDAYS:
         return False

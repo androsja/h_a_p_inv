@@ -2202,13 +2202,14 @@
         }
 
         // Modal bonito tipo Wipe Memory
-        function _showConfirmModal(title, text, confirmBtnText, onConfirm) {
+        function _showConfirmModal(title, text, confirmBtnText, onConfirm, extraHtml = '') {
             const modalHtml = `
             <div id="custom-confirm-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center;">
                 <div style="background:var(--surface); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:30px; width:400px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
                     <div style="font-size:40px; margin-bottom:15px;">🚀</div>
                     <h2 style="margin:0 0 10px 0; font-size:20px;">${title}</h2>
                     <p style="color:var(--muted); font-size:14px; margin-bottom:25px; line-height:1.5;">${text}</p>
+                    <div style="margin-bottom:25px;">${extraHtml}</div>
                     <div style="display:flex; justify-content:center; gap:10px;">
                         <button onclick="document.getElementById('custom-confirm-modal').remove()" style="background:transparent; border:1px solid rgba(255,255,255,0.2); color:white; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
                         <button id="btn-confirm-action" style="background:var(--accent); border:none; color:white; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">${confirmBtnText}</button>
@@ -2217,8 +2218,8 @@
             </div>`;
             document.body.insertAdjacentHTML('beforeend', modalHtml);
             document.getElementById('btn-confirm-action').onclick = () => {
-                document.getElementById('custom-confirm-modal').remove();
                 onConfirm();
+                document.getElementById('custom-confirm-modal').remove();
             };
         }
 
@@ -2244,12 +2245,15 @@
                 `El bot detendrá la simulación global y operará en vivo (virtualmente) con estos símbolos:<br><br><strong style="color:var(--accent)">${symbolsList}</strong><br><br>¿Continuar?`,
                 "Iniciar Live Paper",
                 async () => {
+                    const toggle = document.getElementById('mock-time-toggle');
+                    const isMockTime = toggle ? toggle.checked : false;
+
                     _showLoadingOverlay('INICIANDO CONEXIÓN CON HAPI...');
                     try {
                         const res = await fetch('/api/paper_trade_start', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ symbols: symbolsList })
+                            body: JSON.stringify({ symbols: symbolsList, mockTime: isMockTime })
                         });
                         const data = await res.json();
                         if (data.status === 'success') {
@@ -2262,7 +2266,14 @@
                         document.getElementById('global-loader').style.display = 'none';
                         alert("Error connecting to start paper trade");
                     }
-                }
+                },
+                `
+                <label style="display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text); background:rgba(255,171,64,0.1); padding:10px; border-radius:6px; border:1px solid rgba(255,171,64,0.3);">
+                    <input type="checkbox" id="mock-time-toggle" style="accent-color:var(--accent); width:16px; height:16px; cursor:pointer;">
+                    <strong>Forzar Test Nocturno (9:30 AM)</strong>
+                </label>
+                <div style="font-size:11px; color:var(--muted); margin-top:6px; text-align:center;">Para pruebas locales con el mercado cerrado.</div>
+                `
             );
         }
 

@@ -414,6 +414,7 @@ async def bank_withdraw(req: DepositRequest):
 
 class PaperTradeRequest(BaseModel):
     symbols: str  # Comma separated list like "TSLA,AAPL,NVDA"
+    mockTime: bool = False  # Para testing nocturno a las 9:30 AM
 
 @app.post("/api/paper_trade_start")
 async def paper_trade_start(req: PaperTradeRequest):
@@ -434,6 +435,7 @@ async def paper_trade_start(req: PaperTradeRequest):
         data["force_symbols"] = symbol_list
         data["force_symbol"] = symbol_list[0] # Start with the first one
         data["reset_all"] = True
+        data["mock_time_930"] = req.mockTime
         
         with open(command_file, "w") as f:
             json.dump(data, f)

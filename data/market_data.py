@@ -113,6 +113,11 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
         df = df[["Open", "High", "Low", "Close", "Volume"]].copy()
         df.dropna(inplace=True)
         df = _filter_trading_hours(df)   # Solo 9:30–11:30 AM ET
+        
+        # Test Nocturno (Mock Time): Recortar el DataFrame para no "ver el futuro"
+        from utils.market_hours import now_nyc
+        current_mock_time = now_nyc().astimezone(pytz.UTC)
+        df = df[df.index <= current_mock_time].copy()
 
         # Guardar caché
         df.to_parquet(cache)

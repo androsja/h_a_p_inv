@@ -608,6 +608,24 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     from pathlib import Path
                     res_file = Path("/app/data/backtest_results.json")
                     if not getattr(broker, 'total_trades', 0): pass
+                    
+                    # ── Generar un Diagnóstico Rápido de la Estrategia (Insight) ──
+                    pnl_val = getattr(broker.stats, 'total_pnl', 0.0)
+                    trades_val = getattr(broker.stats, 'total_trades', 0)
+                    winrate_val = getattr(broker.stats, 'win_rate', 0.0)
+                    
+                    insight = "Sin actividad."
+                    if trades_val == 0:
+                        insight = "No hubo entradas. La estrategia filtró el ruido (bueno) o las condiciones de indicadores fueron demasiado estrictas para el volumen de hoy."
+                    elif pnl_val > 0 and winrate_val >= 50:
+                        insight = "ESTRATEGIA EXITOSA. Altamente efectiva, detectó bien la tendencia y el ratio de StopLoss/TakeProfit es óptimo."
+                    elif pnl_val > 0 and winrate_val < 50:
+                        insight = "RENTABLE POR GESTIÓN. Hubo bastantes señales falsas, pero la gestión de riesgo (ganar mucho, perder poco) salvó el balance."
+                    elif pnl_val < 0 and winrate_val >= 50:
+                        insight = "ERROR DE GESTIÓN DE RIESGO. Se gana frecuentemente pero las comisiones/spreads o los Stop Loss muy anchos destrozaron las pequeñas ganancias."
+                    else:
+                        insight = "ESTRATEGIA FALLIDA. Constantes señales engañosas (whipsaws). Sugiere añadir filtro de tendencia mayor (ej. ADX) o descartar este símbolo por volatilidad impredecible."
+
                     from datetime import timezone
                     # Datos estructurados para futuro Data Science / ML
                     total_fees = round(getattr(broker.stats, 'total_fees', 0.0), 4)
