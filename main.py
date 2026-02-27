@@ -351,6 +351,26 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                                 exit_reason=reason.split(' ')[0].replace('🔒','TRAILING_STOP').replace('��','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
                                 ml_features=position.ml_features,
                             )
+                            # 🧠 Alimentar la Red Neuronal MLP con el resultado real del trade
+                            try:
+                                from utils.neural_filter import get_neural_filter
+                                from utils.neural_filter import NeuralTradeFilter
+                                nf = get_neural_filter()
+                                ml_f = position.ml_features
+                                features_vec = nf.build_features(
+                                    rsi=ml_f.get('rsi', 50.0),
+                                    macd_hist=ml_f.get('macd_hist', 0.0),
+                                    atr_pct=ml_f.get('atr_pct', 0.0),
+                                    vol_ratio=ml_f.get('vol_ratio', 1.0),
+                                    ema_fast=ml_f.get('ema_diff_pct', 0.0) + 100,  # Reconstruct approx
+                                    ema_slow=100.0,
+                                    zscore_vwap=ml_f.get('vwap_dist_pct', 0.0),
+                                    regime=ml_f.get('regime', 'NEUTRAL'),
+                                    num_confirmations=int(ml_f.get('num_confirmations', 2)),
+                                )
+                                nf.fit(features_vec, won=(pnl > 0))
+                            except Exception as _e:
+                                log.warning(f"No se pudo entrenar red neuronal: {_e}")
                             
                         # En LIVE registrar el capital como T+1 pendiente
                         if not is_mock:

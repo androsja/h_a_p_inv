@@ -579,8 +579,21 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
         signal = SIGNAL_HOLD
-        # Evitar registrar en log general como disparo, se queda callado.
         confirmations_buy.clear()
+
+    # ── NUEVA REGLA: TREND_UP tardío (RSI > 68) → compra ya al final del movimiento ──
+    if signal == SIGNAL_BUY and current_regime == "TREND_UP" and rsi_now > 68:
+        signal = SIGNAL_HOLD
+        confirmations_buy.clear()
+        from utils.logger import log as _log
+        _log.info(f"🚧 BLOQUEADO por RSI tardío en TREND_UP: RSI={rsi_now:.1f} > 68")
+
+    # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
+    if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -1.5:
+        signal = SIGNAL_HOLD
+        confirmations_buy.clear()
+        from utils.logger import log as _log
+        _log.info(f"🚧 BLOQUEADO en RANGE: Z-Score={zscore_now:.2f} no está en sobreventa (-1.5). Falsa señal.")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
     # Tu Take Profit (3%) o Trailing Stop harán el 90% del trabajo de salida. 
@@ -604,25 +617,51 @@ def analyze(df: pd.DataFrame) -> SignalResult:
 
     # 🤖 EJECUCIÓN DEL MODELO DE INTELIGENCIA ARTIFICIAL EN VIVO
     # Consulta al oráculo del Machine Learning antes de abrir fuego.
-    # Tiempo de ejecución: ~ 0.0001 segundos
     if signal == SIGNAL_BUY:
+        # 1. Modelo RandomForest heredado (si existe)
         ai_model = get_ai_model()
         if ai_model:
             try:
-                # Orden exacto de columnas para predecir
                 expected_cols = ai_model.feature_names_in_
                 X_live = pd.DataFrame([ml_features])[expected_cols]
-                
-                prediction_ai = ai_model.predict(X_live)[0]
-                
-                if prediction_ai == 0:
-                    # La Red Neuronal vaticina una pérdida inminente.
+                if ai_model.predict(X_live)[0] == 0:
                     signal = SIGNAL_HOLD
                     confirmations_buy.clear()
-                    # Bloqueado por la IA. Salvará el capital.
             except Exception as e:
                 from utils.logger import log
                 log.error(f"Error AI prediction: {e}")
+
+    # 2. Red Neuronal MLP (filtro de pre-aprobación adaptativo)
+    if signal == SIGNAL_BUY:
+        try:
+            from utils.neural_filter import get_neural_filter
+            nf = get_neural_filter()
+            features_vec = nf.build_features(
+                rsi          = rsi_now,
+                macd_hist    = macd_now,
+                atr_pct      = atr_pct,
+                vol_ratio    = vol_ratio,
+                ema_fast     = ema_f_now,
+                ema_slow     = ema_s_now,
+                zscore_vwap  = zscore_now,
+                regime       = current_regime,
+                num_confirmations = len(confirmations_buy),
+            )
+            proba, reason = nf.predict(features_vec)
+
+            from utils.logger import log as _log
+            _log.info(f"🧠 Red Neuronal: {reason}")
+
+            if proba < 0.55:   # CONFIDENCE_THRESHOLD
+                signal = SIGNAL_HOLD
+                confirmations_buy.clear()
+                blocks_buy.append(f"🧠 Red Neuronal bloqueó la entrada: {reason}")
+            else:
+                confirmations_buy.append(f"🧠 Red Neuronal: aprobado (P={proba:.0%})")
+
+        except Exception as e:
+            from utils.logger import log as _log
+            _log.warning(f"Error en filtro neuronal, omitiendo: {e}")
 
 
     # Logeamos la ejecución del escuadrón (con RÉGIMEN)

@@ -197,6 +197,19 @@ async def get_results():
     except Exception:
         return []
 
+@app.get("/api/neural_stats")
+async def get_neural_stats():
+    """Estadísticas de la Red Neuronal MLP adaptativa."""
+    try:
+        import sys
+        sys.path.insert(0, "/app")
+        from utils.neural_filter import get_neural_filter
+        nf = get_neural_filter()
+        return {"status": "ok", **nf.get_stats()}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "total_samples": 0, "mode": "unavailable"}
+
+
 @app.post("/api/train_ai")
 async def train_ai():
     import subprocess

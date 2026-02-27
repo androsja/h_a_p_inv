@@ -1461,7 +1461,42 @@
                                 que
                                 optimicen los parámetros de entrada y mejoren las estrategias de predicción.
                             </div>
-                            <div id="ml-progress-container"></div>
+                            <div id="ml-progress-container">
+                                <div id="neural-stats-card" style="
+                                    background: linear-gradient(135deg, rgba(103,58,183,0.15), rgba(25,118,210,0.10));
+                                    border: 1px solid rgba(103,58,183,0.35);
+                                    border-radius: 10px;
+                                    padding: 14px 20px;
+                                    margin-bottom: 14px;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 20px;
+                                    flex-wrap: wrap;
+                                ">
+                                    <span style="font-size:1.5em;">&#129504;</span>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:bold; font-size:13px; color:var(--accent);">Red Neuronal
+                                            Adaptativa (MLP)</div>
+                                        <div style="font-size:12px; color:var(--muted); margin-top:2px;"
+                                            id="neural-mode-label">Cargando...</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:22px; font-weight:bold; color:#9c27b0;"
+                                            id="neural-samples">─</div>
+                                        <div style="font-size:10px; color:var(--muted);">TRADES APRENDIDOS</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:22px; font-weight:bold; color:#03a9f4;"
+                                            id="neural-accuracy">─</div>
+                                        <div style="font-size:10px; color:var(--muted);">ACCURACY TRAIN</div>
+                                    </div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:22px; font-weight:bold;" id="neural-winrate"
+                                            style="color:#4caf50;">─</div>
+                                        <div style="font-size:10px; color:var(--muted);">WIN RATE HIST.</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="trades-container" style="flex:1; overflow-y:auto; padding-right: 5px;">
@@ -1853,7 +1888,36 @@
         // Fetch config once on load
         fetchConfig();
 
+        async function loadNeuralStats() {
+            try {
+                const res = await fetch('/api/neural_stats');
+                const d = await res.json();
+                const modeColors = { 'MLP': '#03a9f4', 'cold-start': '#ff9800', 'unavailable': '#888' };
+                const modeIcons = { 'MLP': '🟢 MLP Activo', 'cold-start': '🟡 Cold-Start (heurístico)', 'unavailable': '⚠️ No disponible' };
+                const mode = d.mode || 'unavailable';
+                const el = (id) => document.getElementById(id);
+                if (el('neural-mode-label')) el('neural-mode-label').textContent = modeIcons[mode] || mode;
+                if (el('neural-samples')) el('neural-samples').textContent = d.total_samples ?? '─';
+                if (el('neural-accuracy')) {
+                    el('neural-accuracy').textContent = d.model_accuracy > 0 ? `${d.model_accuracy}%` : '─';
+                }
+                if (el('neural-winrate')) {
+                    el('neural-winrate').textContent = d.win_rate_hist > 0 ? `${d.win_rate_hist}%` : '─';
+                    el('neural-winrate').style.color = (d.win_rate_hist >= 50) ? '#4caf50' : '#f44336';
+                }
+                if (el('neural-stats-card')) {
+                    el('neural-stats-card').style.borderColor = modeColors[mode] + '55';
+                }
+            } catch (e) {
+                const el = document.getElementById('neural-mode-label');
+                if (el) el.textContent = '⚠️ Sin conexión al servidor';
+            }
+        }
+        loadNeuralStats();
+        setInterval(loadNeuralStats, 15000);
+
         async function loadResults() {
+
             try {
                 const res = await fetch('/api/results');
                 const data = await res.json();
