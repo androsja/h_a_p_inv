@@ -2185,11 +2185,38 @@
         // ═══════════════════════════════════════════════════════
         // loadActiveSymbols has been removed - using loadSuggestions now.
 
+        function _showLoadingOverlay(msg) {
+            let overlay = document.getElementById('global-loader');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'global-loader';
+                overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; font-family:var(--font); backdrop-filter:blur(5px);';
+                // Add CSS spinner
+                overlay.innerHTML = `
+                    <style>@keyframes spin { 100% { transform:rotate(360deg); } }</style>
+                    <div style="width:40px; height:40px; border:4px solid rgba(255,255,255,0.2); border-top-color:#ffab40; border-radius:50%; animation:spin 1s linear infinite; margin-bottom:20px;"></div>
+                    <div id="loader-msg" style="font-size:18px; font-weight:bold; letter-spacing:1px;"></div>
+                `;
+                document.body.appendChild(overlay);
+            }
+            document.getElementById('loader-msg').textContent = msg;
+            overlay.style.display = 'flex';
+        }
+
         async function startPaperTrade() {
             if (selectedSymbols.length === 0) return alert("Selecciona al menos un símbolo para analizar.");
             const symbolsList = selectedSymbols.join(',');
-            if (!confirm(`🚀 ¿Deseas iniciar Live Paper Trading para [${symbolsList}]? Esto reseteará la sesión actual.`))
+
+            // Cerrar el popup de selección primero para que no estorbe
+            const modal = document.getElementById('symbol-modal');
+            if (modal) modal.style.display = 'none';
+
+            if (!confirm(`🚀 ¿Deseas iniciar Live Paper Trading para [${symbolsList}]?\n\nEl bot pausará la simulación global y se enfocará solo en estos símbolos.`)) {
+                if (modal) modal.style.display = 'flex'; // restaurar si cancela
                 return;
+            }
+
+            _showLoadingOverlay('INICIANDO CONEXIÓN CON HAPI...');
 
             try {
                 const res = await fetch('/api/paper_trade_start', {
@@ -2199,23 +2226,37 @@
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    alert(data.message);
-                    location.reload();
-                } else alert("Error: " + data.message);
-            } catch (e) { alert("Error connecting to start paper trade"); }
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    document.getElementById('global-loader').style.display = 'none';
+                    alert("Error: " + data.message);
+                }
+            } catch (e) {
+                document.getElementById('global-loader').style.display = 'none';
+                alert("Error connecting to start paper trade");
+            }
         }
 
         async function stopPaperTrade() {
             if (!confirm("⚠️ ¿Deseas detener el modo LIVE y volver a la simulación global de todos los símbolos?")) return;
+
+            _showLoadingOverlay('RESTAURANDO SIMULACIÓN GLOBAL...');
+
             try {
                 const res = await fetch('/api/paper_trade_stop', { method: 'POST' });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    alert(data.message);
-                    location.reload();
-                } else alert("Error: " + data.message);
-            } catch (e) { alert("Error deteniendo live paper trading"); }
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    document.getElementById('global-loader').style.display = 'none';
+                    alert("Error: " + data.message);
+                }
+            } catch (e) {
+                document.getElementById('global-loader').style.display = 'none';
+                alert("Error deteniendo live paper trading");
+            }
         }
+
 
         function openBankModal() {
             const modalHtml = `
