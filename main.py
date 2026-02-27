@@ -317,20 +317,34 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     reason = exit_reason
                     sell_plan = risk_mgr.calculate_sell_order(position, quote.bid)
 
-                    log_order_attempt(
-                        symbol, "SELL",
-                        sell_plan.limit_price, sell_plan.qty, reason
-                    )
-                    resp = broker.place_limit_order(
-                        symbol=symbol,
-                        side="SELL",
-                        limit_price=sell_plan.limit_price,
-                        qty=sell_plan.qty,
-                    )
-                    if resp.status not in ("REJECTED",):
-                        pnl = (sell_plan.limit_price - position.entry_price) * position.qty
+                    log_order_attempt(symbol, "SELL", sell_plan.limit_price, sell_plan.qty, reason)
+
+                    # ⚡ Stop Loss / Trailing Stop / Time Exit → MARKET SELL inmediato al bid actual.
+                    # Un limit SELL solo se llena cuando bar_high >= precio objetivo.
+                    # Si el precio cae a gap (muy común en acciones), la orden nunca se llenaría
+                    # hasta que el precio subiera de vuelta — causando pérdidas masivas más allá del SL.
+                    is_protective_exit = any(k in reason for k in ("STOP_LOSS", "TRAILING_STOP", "TIEMPO", "TIME"))
+                    is_take_profit     = "TAKE_PROFIT" in reason or "🎯" in reason
+
+                    if is_protective_exit and is_mock and hasattr(broker, "immediate_market_sell"):
+                        # Usar market sell al bid actual — garantiza salida al precio real
+                        actual_fill = broker.immediate_market_sell(symbol, position.qty, quote.bid)
+                        resp_status = "FILLED"
+                        sell_price  = actual_fill
+                    else:
+                        # Take Profit → limit order (busca el precio objetivo hacia arriba)
+                        resp = broker.place_limit_order(
+                            symbol=symbol, side="SELL",
+                            limit_price=sell_plan.limit_price, qty=sell_plan.qty,
+                        )
+                        resp_status = resp.status
+                        sell_price  = sell_plan.limit_price
+
+                    if resp_status not in ("REJECTED",):
+                        pnl = (sell_price - position.entry_price) * position.qty
+
                         log.info(
-                            f"🔴 SELL | {symbol} → ${sell_plan.limit_price:.2f} | "
+                            f"🔴 SELL | {symbol} → ${sell_price:.2f} | "
                             f"PnL estimado: ${pnl:+.2f} | Motivo: {reason}"
                         )
                         
@@ -343,15 +357,15 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                                 symbol=symbol,
                                 session=session_num,
                                 entry_price=position.entry_price,
-                                exit_price=sell_plan.limit_price,
+                            exit_price=sell_price,
                                 qty=position.qty,
                                 stop_loss=position.initial_stop,
                                 take_profit=position.take_profit,
                                 hold_bars=getattr(position, 'hold_bars', 0),
-                                exit_reason=reason.split(' ')[0].replace('🔒','TRAILING_STOP').replace('��','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
+                                exit_reason=reason.split(' ')[0].replace('🔒','TRAILING_STOP').replace('','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
                                 ml_features=position.ml_features,
                             )
-                            # 🧠 Alimentar la Red Neuronal MLP con el resultado real del trade
+                            # 🧠 Alimentar la Red Neural MLP con el resultado real del trade
                             try:
                                 from utils.neural_filter import get_neural_filter
                                 from utils.neural_filter import NeuralTradeFilter
@@ -371,10 +385,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                                 nf.fit(features_vec, won=(pnl > 0))
                             except Exception as _e:
                                 log.warning(f"No se pudo entrenar red neuronal: {_e}")
-                            
                         # En LIVE registrar el capital como T+1 pendiente
                         if not is_mock:
-                            account.record_sale(sell_plan.limit_price * sell_plan.qty)
+                            account.record_sale(sell_price * position.qty)
                         position = None
 
             # ── 5. Gestionar ENTRADA (si no hay posición y hay señal BUY) ────

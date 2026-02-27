@@ -302,6 +302,27 @@ class HapiMock(BrokerInterface):
             log.info(f"HapiMock | {cancelled} orden(es) de {symbol} canceladas.")
         return True
 
+    def immediate_market_sell(self, symbol: str, qty: float, bid_price: float) -> float:
+        """
+        Venta de mercado INMEDIATA — se ejecuta al bid_price actual.
+        SOLO para Stop Loss, Trailing Stop y Time Exit.
+        Garantiza salida inmediata sin esperar que el precio regrese.
+        Devuelve el precio de fill real.
+        """
+        slippage   = 0.0005
+        fill_price = round(bid_price * (1 - slippage), 2)
+        fake_order = PendingOrder(
+            order_id=str(uuid.uuid4())[:8],
+            symbol=symbol, side="SELL",
+            limit_price=fill_price, qty=qty,
+        )
+        self._execute_sell(fake_order, fill_price=fill_price)
+        log.info(
+            f"HapiMock | ⚡ MARKET SELL ejecutado para {symbol}: "
+            f"{qty:.4f} acciones @ ${fill_price:.2f} (bid={bid_price:.2f})"
+        )
+        return fill_price
+
     def get_history_slice(self, window: int = 220) -> pd.DataFrame:
         """Retorna las últimas `window` velas para el cálculo de indicadores.
         220 = EMA 200 + 20 de margen para estabilizar los cálculos."""
