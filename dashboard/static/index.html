@@ -1449,11 +1449,17 @@
                 <div class="tab-content visible" id="tab-results">
                     <div class="card">
                         <div style="flex-shrink: 0;">
-                            <div class="card-title" style="display:flex; justify-content:space-between;">
+                            <div class="card-title"
+                                style="display:flex; justify-content:space-between; align-items:center;">
                                 <span>🧠 Bitácora General (Pipeline para Machine Learning)</span>
-                                <button onclick="loadResults()"
-                                    style="background:var(--accent); color:var(--bg); border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;">Actualizar
-                                    Dataset</button>
+                                <span id="results-live-badge" style="
+                                    font-size:11px; color:#4caf50; font-weight:bold;
+                                    display:flex; align-items:center; gap:5px;
+                                ">
+                                    <span
+                                        style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite;"></span>
+                                    EN VIVO
+                                </span>
                             </div>
                             <div style="font-size:12px; color:var(--muted); margin-bottom: 15px;">
                                 Esta bitácora registra las sesiones simuladas de cada activo por separado.
@@ -1913,6 +1919,28 @@
                 if (el) el.textContent = '⚠️ Sin conexión al servidor';
             }
         }
+        // ── Auto-refresh: corre loadResults cada 8s solo si el tab está visible ──
+        let _resultsRefreshInterval = null;
+        function _startResultsAutoRefresh() {
+            if (_resultsRefreshInterval) return; // ya corriendo
+            loadResults();  // carga inmediata
+            _resultsRefreshInterval = setInterval(async () => {
+                // Solo actualizar si el tab de resultados está visible (no congela el resto)
+                const tab = document.getElementById('tab-results');
+                if (tab && tab.classList.contains('visible')) {
+                    await loadResults();
+                    // Parpadeo sutil del indicador EN VIVO
+                    const badge = document.getElementById('results-live-badge');
+                    if (badge) {
+                        badge.style.opacity = '0.4';
+                        setTimeout(() => { badge.style.opacity = '1'; }, 300);
+                    }
+                }
+            }, 8000);
+        }
+        // Iniciar auto-refresh al cargar la página
+        _startResultsAutoRefresh();
+
         loadNeuralStats();
         setInterval(loadNeuralStats, 15000);
 
