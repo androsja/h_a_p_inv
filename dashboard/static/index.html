@@ -2918,6 +2918,20 @@
             };
         }
 
+        // ── Pre-cargar config de activos en background para evitar fallos del botón Live Paper ──
+        async function _preloadConfigAssets() {
+            try {
+                const res = await fetch('/api/all_symbols');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    window.configAssets = data;
+                }
+            } catch (e) {
+                console.error("Error cargando configuración de activos en background:", e);
+            }
+        }
+
+        _preloadConfigAssets();
         connectWS();
     </script>
     <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
