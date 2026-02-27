@@ -202,6 +202,26 @@ async def reset_all():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/api/restart_sim")
+async def restart_sim():
+    import json
+    command_file = Path("/app/data/command.json")
+    try:
+        data = {}
+        if command_file.exists():
+            with open(command_file) as f:
+                data = json.load(f)
+        
+        # Este comando le dirá al bot que reinicie la fecha 
+        # y la sesión sin purgar los datasets.
+        data["restart_sim"] = True
+        
+        with open(command_file, "w") as f:
+            json.dump(data, f)
+        return {"status": "success", "message": "Reinicio de simulación en cola"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @app.get("/api/results")
 async def get_results():
     import json

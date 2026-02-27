@@ -878,6 +878,22 @@ def main() -> None:
                     from utils.market_hours import _is_mock_time_active
                     update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
 
+                # REINICIO SUAVE DE SIMULACIÓN (Día 1, conserva ML)
+                if cmds.get("restart_sim"):
+                    log.info("🔄 REINICIANDO SIMULACIÓN al Día 1 a petición del usuario (conservando ML)...")
+                    cmds["restart_sim"] = False # Consume flag
+                    with open(cmd_file, "w") as f:
+                        json.dump(cmds, f)
+                    
+                    symbol_idx = 0
+                    session_num = 0
+                    fixed = ""
+                    
+                    # Update state immediately to reflect the restart
+                    from utils.state_writer import update_state
+                    from utils.market_hours import _is_mock_time_active
+                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
+
                 new_sym = cmds.get("force_symbol")
                 if new_sym and new_sym != "AUTO":
                     fixed = new_sym
