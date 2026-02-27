@@ -3,87 +3,104 @@
         {
             "symbol": "AAPL",
             "name": "Apple Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": true
         },
         {
             "symbol": "MSFT",
             "name": "Microsoft Corporation",
-            "type": "stock"
+            "type": "stock",
+            "enabled": true
         },
         {
             "symbol": "NVDA",
             "name": "NVIDIA Corporation",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "TSLA",
             "name": "Tesla Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "META",
             "name": "Meta Platforms Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "AMZN",
             "name": "Amazon.com Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "GOOGL",
             "name": "Alphabet Inc. Class A",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "AMD",
             "name": "Advanced Micro Devices",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "UBER",
             "name": "Uber Technologies Inc",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "NFLX",
             "name": "Netflix Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "JPM",
             "name": "JPMorgan Chase & Co.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "BA",
             "name": "Boeing Company",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "DIS",
             "name": "Walt Disney Company",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "INTC",
             "name": "Intel Corporation",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "SPY",
             "name": "SPDR S&P 500 ETF Trust",
-            "type": "etf"
+            "type": "etf",
+            "enabled": false
         },
         {
             "symbol": "QQQ",
             "name": "Invesco QQQ Trust",
-            "type": "etf"
+            "type": "etf",
+            "enabled": false
         },
         {
             "symbol": "PLTR",
             "name": "Palantir Technologies",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "SOFI",
@@ -124,37 +141,44 @@
         {
             "symbol": "PYPL",
             "name": "PayPal Holdings",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "TSM",
             "name": "Taiwan Semiconductor",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "ARM",
             "name": "Arm Holdings",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "SMCI",
             "name": "Super Micro Computer",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "MU",
             "name": "Micron Technology",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "CRWD",
             "name": "CrowdStrike Holdings",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "SNOW",
             "name": "Snowflake Inc",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "V",
@@ -183,32 +207,38 @@
         {
             "symbol": "WMT",
             "name": "Walmart Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "PG",
             "name": "Procter & Gamble",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "PEP",
             "name": "PepsiCo Inc.",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "KO",
             "name": "Coca-Cola Company",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "XOM",
             "name": "Exxon Mobil",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "CVX",
             "name": "Chevron",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "HD",
@@ -219,27 +249,32 @@
         {
             "symbol": "MCD",
             "name": "McDonald's",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "NKE",
             "name": "Nike",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "SBUX",
             "name": "Starbucks",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "JNJ",
             "name": "Johnson & Johnson",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "UNH",
             "name": "UnitedHealth Group",
-            "type": "stock"
+            "type": "stock",
+            "enabled": false
         },
         {
             "symbol": "BABA",
