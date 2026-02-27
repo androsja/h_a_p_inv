@@ -82,14 +82,31 @@ def read_state() -> dict:
 
 
 def read_last_logs(n: int = 50) -> list[str]:
-    """Lee las últimas n líneas del log."""
+    """Lee las últimas n líneas del log principal y logs de símbolos específicos."""
+    all_lines = []
     try:
+        # 1. Leer log principal con robustez ante errores de encoding
         if LOG_FILE.exists():
-            lines = LOG_FILE.read_text(encoding="utf-8").splitlines()
-            return lines[-n:]
-    except Exception:
-        pass
-    return []
+            with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+                all_lines.extend(f.readlines())
+        
+        # 2. Descubrir logs de hilos específicos (historial_SYMBOL.log)
+        log_dir = LOG_FILE.parent
+        for symbol_log in log_dir.glob("historial_*.log"):
+            try:
+                with open(symbol_log, "r", encoding="utf-8", errors="replace") as f:
+                    all_lines.extend(f.readlines())
+            except: pass
+            
+        if not all_lines:
+            return ["(Sin logs recientes en /app/logs/)"]
+
+        # Ordenar por tiempo (asumiendo formato ISO al inicio) y tomar las últimas n
+        all_lines.sort()
+        return [l.strip() for l in all_lines[-n:] if l.strip()]
+        
+    except Exception as e:
+        return [f"Error leyendo logs: {str(e)}"]
 
 
 # ─── Broadcaster en background ────────────────────────────────────────────────

@@ -1456,7 +1456,7 @@
                                 ">
                                     <span
                                         style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite;"></span>
-                                    EN VIVO
+                                    <span id="results-mode-text">EN VIVO</span>
                                 </span>
                             </div>
                             <div style="font-size:12px; color:var(--muted); margin-bottom: 15px;">
@@ -1510,6 +1510,7 @@
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted);">
                                         <th style="padding:10px;">Símbolo</th>
+                                        <th style="padding:10px;">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
                                         <th style="padding:10px;">Trades</th>
                                         <th style="padding:10px;">Win Rate</th>
@@ -1524,7 +1525,8 @@
                                 </thead>
                                 <tbody id="results-table-body">
                                     <tr>
-                                        <td colspan="8" style="padding:20px; text-align:center; color:var(--muted);">Sin
+                                        <td colspan="12" style="padding:20px; text-align:center; color:var(--muted);">
+                                            Sin
                                             sesiones finalizadas todavía.</td>
                                     </tr>
                                 </tbody>
@@ -1802,9 +1804,18 @@
         function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
         function appendLog(lines) {
             if (!lines || !lines.length) return;
-            logLines.push(...lines.filter(l => l.trim()));
+            // Deduplicar: Solo agregar líneas que no estén ya en el final del buffer
+            const lastLines = logLines.slice(-30);
+            const newFiltered = lines.filter(l => !lastLines.includes(l) && l.trim());
+
+            if (newFiltered.length === 0) return;
+
+            logLines.push(...newFiltered);
             if (logLines.length > MAX_LOG) logLines = logLines.slice(-MAX_LOG);
+
             const term = document.getElementById('log-terminal');
+            if (!term) return;
+
             const wasBottom = term.scrollTop + term.clientHeight >= term.scrollHeight - 20;
             term.innerHTML = logLines.map(l =>
                 `<span class="log-line ${classifyLog(l)}">${esc(l)}</span>`
@@ -2057,6 +2068,7 @@
 
                         tr.innerHTML = `
         <td style="padding:10px; font-weight:bold;">${row.symbol}</td>
+        <td style="padding:10px; color:var(--muted)">─</td>
         <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
         <td style="padding:10px;">${row.total_trades}</td>
         <td style="padding:10px;">${row.win_rate}%</td>
@@ -2089,7 +2101,7 @@
                     const totPre = totalNetValue >= 0 ? '+' : '';
 
                     sumRow.innerHTML = `
-        <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--muted);">NETO ESTRATEGIA
+        <td colspan="5" style="padding:10px; text-align:right; font-weight:bold; color:var(--muted);">NETO ESTRATEGIA
             ACUMULADA:</td>
         <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totGrossColor};">
             ${totGrossPre}$${totalGross.toFixed(2)}</td>
@@ -2525,6 +2537,24 @@
 
             // Actualizar la fecha simulada
             const simDateDisplay = document.getElementById('sim-date');
+
+            // Inyectar indicador de MOCK TIME si está activo
+            const liveBadge = document.getElementById('results-live-badge');
+            const modeText = document.getElementById('results-mode-text');
+            if (liveBadge && modeText) {
+                // Buscamos el flag en cualquier estado de símbolo (el actual 'state')
+                const isMock = state && state.mock_time_930;
+                if (isMock) {
+                    liveBadge.style.color = '#ff9800'; // Naranja
+                    liveBadge.querySelector('span').style.background = '#ff9800';
+                    modeText.textContent = 'MOCK TIME (ACELERADO 60x)';
+                } else {
+                    liveBadge.style.color = '#4caf50'; // Verde
+                    liveBadge.querySelector('span').style.background = '#4caf50';
+                    modeText.textContent = 'EN VIVO (REAL TIME)';
+                }
+            }
+
             if (simDateDisplay && state.timestamp) {
                 try {
                     const d = new Date(state.timestamp);
@@ -2588,6 +2618,7 @@
 
                         currentRow.innerHTML = `
                 <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
+                <td style="padding:10px; font-weight:bold; color:var(--green);">$${(sState.bid || 0).toFixed(2)}</td>
                 <td style="padding:10px; color:var(--muted);">#${sState.session || 0}</td>
                 <td style="padding:10px;">${sState.total_trades || 0}</td>
                 <td style="padding:10px;">${(sState.win_rate || 0).toFixed(1)}%</td>
@@ -2598,7 +2629,14 @@
                 <td style="padding:10px;">$${(sState.available_cash || 10000).toFixed(2)}</td>
                 <td style="padding:10px; color:var(--muted);">─</td>
                 <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
-                    ${sState.is_waiting ? `⏳ Esperando próximo escaneo (${sState.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...'}
+                    ${(() => {
+                                const blockMsg = (sState.blocks && sState.blocks.length > 0) ? sState.blocks[0] : null;
+                                if (blockMsg) {
+                                    return `<span style="color:var(--yellow);">${blockMsg}</span>` +
+                                        (sState.is_waiting ? ` <span style="color:var(--muted); opacity:0.6;">(Escaneo en ${sState.next_scan_in}s)</span>` : '');
+                                }
+                                return sState.is_waiting ? `⏳ Esperando próximo escaneo (${sState.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...';
+                            })()}
                 </td>
                         `;
                     }
@@ -2758,8 +2796,8 @@
             // Trades
             renderTrades(state.trades);
 
-            // Log
-            if (state.logs) appendLog(state.logs);
+            // Log - Leer de la raíz del mensaje (fullState), no del sub-estado
+            if (fullState && fullState.logs) appendLog(fullState.logs);
 
             // ─── Tab Indicadores ───
             const price = state.bid ?? 0;

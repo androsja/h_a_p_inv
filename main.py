@@ -119,7 +119,7 @@ def parse_args() -> argparse.Namespace:
 # ═══════════════════════════════════════════════════════════════════════════════
 #  INICIALIZACIÓN DEL BRÓKER
 # ═══════════════════════════════════════════════════════════════════════════════
-def init_broker(args: argparse.Namespace) -> BrokerInterface:
+def init_broker(args: argparse.Namespace, is_live_paper_override: bool = False) -> BrokerInterface:
     """
     Crea e inicializa el bróker correcto según el modo de operación.
     Si las credenciales de Hapi están vacías, cambia automáticamente
@@ -151,7 +151,7 @@ def init_broker(args: argparse.Namespace) -> BrokerInterface:
         return HapiLive(api_key=api_key, client_id=client_id, user_token=user_token)
 
     # ── Modo SIMULATED / LIVE PAPER ──────────────────────────────────────────
-    is_live_paper = False
+    is_live_paper = is_live_paper_override
     force_symbols = []
     try:
         import json, os
@@ -159,7 +159,11 @@ def init_broker(args: argparse.Namespace) -> BrokerInterface:
         if os.path.exists(cmd_file):
             with open(cmd_file) as f:
                 cmds = json.load(f)
-            is_live_paper = cmds.get("force_paper_trading", False)
+            
+            # Si is_live_paper_override ya es True, no lo sobreescribimos a False 
+            if cmds.get("force_paper_trading", False):
+                is_live_paper = True
+                
             force_symbols = cmds.get("force_symbols", [])
             force_symbol_val = cmds.get("force_symbol", "")
             
@@ -309,7 +313,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 from data.market_data import download_bars
                 df = download_bars(symbol)
 
-            signal = analyze(df)
+            signal = analyze(df, symbol=symbol)
 
             # ── 4. Gestionar SALIDA (si hay posición abierta) ────────────────
             if position is not None:
@@ -354,7 +358,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         
                         # 🧠 Alimentar al modelo de ML con el resultado real
                         if hasattr(position, 'ml_features') and position.ml_features:
-                            log.info(f"SAVING TRADE: {symbol} Pnl={pnl} Features={position.ml_features}")
+                            log.info(f"[{symbol}] SAVING TRADE: Pnl={pnl} Features={position.ml_features}")
                             ml_predictor.save_trade(symbol, position.ml_features, pnl)
                             # 📓 Bitácora completa de trading (para análisis y mejora de algoritmos)
                             journal_record_trade(
@@ -412,7 +416,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     if not is_win:
                         buy_plan.is_viable = False
                         buy_plan.block_reason = f"ML_REJECTION: El robot recuerda haber perdido con estos parámetros (Probabilidad de Ganar: {prob_win*100:.1f}%)"
-                        log.info(f"🧠 ML EVITÓ PERDER DINERO | Bloqueó entrada en {symbol} | Prob={prob_win*100:.1f}%")
+                        log.info(f"[{symbol}] 🧠 ML EVITÓ PERDER DINERO | Bloqueó entrada | Prob={prob_win*100:.1f}%")
 
                 if buy_plan.is_viable:
                     log_order_attempt(
@@ -486,6 +490,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             if is_mock and getattr(broker, '_live_paper', False):
                 ui_mode = "LIVE_PAPER"
 
+            from utils.market_hours import _is_mock_time_active
+            is_mock_active = _is_mock_time_active()
+
             state_writer.update_state(
                 mode=ui_mode,
                 symbol=symbol,
@@ -514,6 +521,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 candles=candles_data,
                 timestamp=signal.timestamp.isoformat() if hasattr(signal, 'timestamp') and signal.timestamp else None,
                 regime=getattr(signal, 'regime', 'NEUTRAL'),
+                mock_time_930=is_mock_active,
+                blocks=signal.blocks
             )
 
             # ── 7. Display de estado (cada 10 iteraciones en simulación) ─────
@@ -523,12 +532,20 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # ── 8. Pausa entre escaneos (Live y Live Paper) ──────────────────
             is_live_paper_b = getattr(broker, '_live_paper', False)
             if not is_mock or is_live_paper_b:
-                pause_time = 60 if is_live_paper_b else config.SCAN_INTERVAL_SEC
-                log.info(f"⏳ Esperando pausa de {pause_time}s (interrumpible)...")
+                from utils.market_hours import _is_mock_time_active
+                if is_live_paper_b and _is_mock_time_active():
+                    pause_time = 1 # Aceleración x60 en Test Nocturno
+                else:
+                    pause_time = 60 if is_live_paper_b else config.SCAN_INTERVAL_SEC
+                    
+                log.info(f"[{symbol}] ⏳ Esperando pausa de {pause_time}s (interrumpible)...")
                 
                 for i in range(pause_time, 0, -1):
                     # Actualizar estado con la cuenta regresiva
                     from utils.state_writer import update_state
+                    from utils.market_hours import _is_mock_time_active
+                    is_mock_active = _is_mock_time_active()
+
                     update_state(
                         mode=args.mode if not is_live_paper_b else "LIVE_PAPER",
                         symbol=symbol,
@@ -556,20 +573,26 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         position=asdict(position) if position else None,
                         candles=get_candles_json(df, 60),
                         next_scan_in=i,
-                        is_waiting=True
+                        is_waiting=True,
+                        mock_time_930=is_mock_active,
+                        blocks=signal.blocks
                     )
-                    
+                    smart_sleep(1)
+                
         if not (stop_event and stop_event.is_set()):
             smart_sleep(1)
-            # Verificar si llegó una orden de parar o resetear durante la pausa
-            try:
-                if os.path.exists("/app/data/command.json"):
-                    with open("/app/data/command.json", "r") as f:
-                        c = json.load(f)
-                    if c.get("reset_all") or c.get("force_paper_trading") is False:
-                        log.info(f"🛑 Interrupción detectada para {symbol}.")
-                        return
-            except: pass
+            # Verificar si llegó una orden de parar o resetear durante la pausa.
+            # En Live Paper, los hilos solo responden a stop_event (del launcher),
+            # no al flag reset_all (que puede ser un artefacto del arranque).
+            if not is_live_paper_b:
+                try:
+                    if os.path.exists("/app/data/command.json"):
+                        with open("/app/data/command.json", "r") as f:
+                            c = json.load(f)
+                        if c.get("reset_all") or c.get("force_paper_trading") is False:
+                            log.info(f"🛑 Interrupción detectada para {symbol}.")
+                            return
+                except: pass
 
     except KeyboardInterrupt:
         print("\n")
@@ -669,7 +692,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         with open(res_file, "w") as f:
                             json.dump(res_data, f, indent=2)
                         
-                    log.info(f"📝 ESTRATEGIA RESULTADO | {symbol}: {insight}")
+                    log.info(f"[{symbol}] 📝 ESTRATEGIA RESULTADO | {insight}")
                 except Exception as e:
                     log.error(f"Error guardando bitácora: {e}")
         else:
@@ -721,89 +744,93 @@ def main() -> None:
 
     while True:
         session_num += 1
-        if is_simulated:
-            log.info(f"{'═'*60}")
-            log.info(f"  🔁 SESIÓN DE SIMULACIÓN #{session_num}")
-            log.info(f"{'═'*60}")
 
-        try:
-            broker = init_broker(args)
-            log.info(
-                f"Bróker inicializado: {broker.name} | "
-                f"Paper trading: {broker.is_paper_trading}"
-            )
-        except Exception as e:
-            log.error(f"❌ Error al inicializar bróker para {args.symbol}: {e}. Saltando de activo.")
-            
-            # Registrar en dashboard que este activo se evaluó pero falló/no tiene datos
-            try:
-                from utils.state_writer import update_state
-                from datetime import datetime, timezone
-                update_state(
-                    mode=args.mode,
-                    status="error_skipping",
-                    symbol=args.symbol or "UNKNOWN",
-                    session=session_num,
-                    iteration=0,
-                    available_cash=getattr(broker, 'initial_cash', 10000.0) if 'broker' in locals() else 10000.0,
-                    pnl=0.0,
-                    win_rate=0.0,
-                    total_trades=0,
-                    insight="Sin datos suficientes de mercado."
-                )
-
-                res_file = Path("/app/data/backtest_results.json")
-                res_data = []
-                if res_file.exists():
-                    with open(res_file, "r") as f:
-                        res_data = json.load(f)
-                
-                # Filtrar deduplicado
-                res_data = [r for r in res_data if r.get("symbol") != args.symbol]
-                res_data.append({
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "symbol": args.symbol,
-                    "session_num": session_num,
-                    "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
-                    "win_rate": 0.0, "pnl": 0.0, "gross_pnl": 0.0, "total_fees": 0.0,
-                    "slippage_est": 0.0, "gross_profit": 0.0, "gross_loss": 0.0,
-                    "profit_factor": 0.0, "drawdown": 0.0,
-                    "insight": "Sin datos suficientes (Omitido)."
-                })
-                with open(res_file, "w") as f:
-                    json.dump(res_data, f, indent=2)
-            except Exception as e_dash:
-                log.error(f"Error actualizando dashboard para símbolo omitido: {e_dash}")
-
-            if is_simulated and all_symbols:
-                symbol_idx += 1
-                if symbol_idx >= len(all_symbols):
-                    log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
-                    symbol_idx = len(all_symbols) - 1 # Mantenerse al final
-                    smart_sleep(SESSION_PAUSE)
-                    continue
-                args.symbol = all_symbols[symbol_idx]
-            else:
-                 smart_sleep(SESSION_PAUSE)
-            continue
-
-        # Detectamos si hay múltiples símbolos para Live Paper
+        # ── Detectar si hay Live Paper ANTES de inicializar broker ──────────
+        # Esto evita crear un broker de MarketReplay innecesario cuando
+        # los hilos paralelos crearán sus propios brokers con LivePaperReplay.
         force_symbols = []
         is_lp = False
         try:
             if os.path.exists("/app/data/command.json"):
                 with open("/app/data/command.json") as f:
-                    cmds = json.load(f)
-                    force_symbols = cmds.get("force_symbols", [])
-                    is_lp = cmds.get("force_paper_trading", False)
+                    cmds_pre = json.load(f)
+                    force_symbols = cmds_pre.get("force_symbols", [])
+                    is_lp = cmds_pre.get("force_paper_trading", False)
         except: pass
 
         if is_lp and len(force_symbols) >= 1:
+            log.info(f"🚀 Modo Live Paper detectado para {len(force_symbols)} símbolo(s). Lanzando hilos paralelos…")
             from utils.live_paper_launcher import launch_parallel_bots
-            # El import dentro del if previene llamadas circulares
             launch_parallel_bots(args, force_symbols, session_num, run_bot, init_broker, _checkpoint_fn)
         else:
-            # FLUJO SINGLE-THREAD NORMAL (Simulación o un solo símbolo)
+            # ── FLUJO SINGLE-THREAD NORMAL (Simulación) ──────────────────────
+            if is_simulated:
+                log.info(f"{'═'*60}")
+                log.info(f"  🔁 SESIÓN DE SIMULACIÓN #{session_num}")
+                log.info(f"{'═'*60}")
+
+            try:
+                broker = init_broker(args)
+                log.info(
+                    f"Bróker inicializado: {broker.name} | "
+                    f"Paper trading: {broker.is_paper_trading}"
+                )
+            except Exception as e:
+                log.error(f"❌ Error al inicializar bróker para {args.symbol}: {e}. Saltando de activo.")
+                
+                try:
+                    from utils.state_writer import update_state
+                    from datetime import datetime, timezone
+                    from utils.market_hours import _is_mock_time_active
+                    update_state(
+                        mode=args.mode,
+                        status="error_skipping",
+                        symbol=args.symbol or "UNKNOWN",
+                        session=session_num,
+                        iteration=0,
+                        available_cash=10000.0,
+                        pnl=0.0,
+                        win_rate=0.0,
+                        total_trades=0,
+                        insight="Sin datos suficientes de mercado.",
+                        mock_time_930=_is_mock_time_active(),
+                        blocks=["Error: Datos insuficientes"]
+                    )
+
+                    res_file = Path("/app/data/backtest_results.json")
+                    res_data = []
+                    if res_file.exists():
+                        with open(res_file, "r") as f:
+                            res_data = json.load(f)
+                    
+                    res_data = [r for r in res_data if r.get("symbol") != args.symbol]
+                    res_data.append({
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "symbol": args.symbol,
+                        "session_num": session_num,
+                        "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
+                        "win_rate": 0.0, "pnl": 0.0, "gross_pnl": 0.0, "total_fees": 0.0,
+                        "slippage_est": 0.0, "gross_profit": 0.0, "gross_loss": 0.0,
+                        "profit_factor": 0.0, "drawdown": 0.0,
+                        "insight": "Sin datos suficientes (Omitido)."
+                    })
+                    with open(res_file, "w") as f:
+                        json.dump(res_data, f, indent=2)
+                except Exception as e_dash:
+                    log.error(f"Error actualizando dashboard para símbolo omitido: {e_dash}")
+
+                if is_simulated and all_symbols:
+                    symbol_idx += 1
+                    if symbol_idx >= len(all_symbols):
+                        log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
+                        symbol_idx = len(all_symbols) - 1
+                        smart_sleep(SESSION_PAUSE)
+                        continue
+                    args.symbol = all_symbols[symbol_idx]
+                else:
+                    smart_sleep(SESSION_PAUSE)
+                continue
+
             run_bot(broker, args, session_num)
 
         # En modo LIVE el bot solo llega aquí por KeyboardInterrupt o señal externa → salir
@@ -848,7 +875,8 @@ def main() -> None:
                     log.info("✅ Memoria limpiada y archivos borrados de disco. Arrancando nuevo set desde 0%.")
                     # Update state immediately to reflect the reset
                     from utils.state_writer import update_state
-                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0)
+                    from utils.market_hours import _is_mock_time_active
+                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
 
                 new_sym = cmds.get("force_symbol")
                 if new_sym and new_sym != "AUTO":

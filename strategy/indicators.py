@@ -422,7 +422,7 @@ class SignalResult:
 MIN_BARS = max(200, config.EMA_SLOW, config.RSI_PERIOD) + 10
 
 
-def analyze(df: pd.DataFrame) -> SignalResult:
+def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
     """
     Evalúa la señal de trading usando un sistema de confluencia multi-indicador.
 
@@ -431,6 +431,7 @@ def analyze(df: pd.DataFrame) -> SignalResult:
 
     Args:
         df: DataFrame OHLCV con suficientes barras históricas.
+        symbol: Símbolo del activo (para identificación en logs).
 
     Returns:
         SignalResult con señal final y todos los valores de indicadores.
@@ -502,7 +503,8 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     )
     regime_label = REGIMEN_LABELS.get(current_regime, current_regime)
     from utils.logger import log as _log
-    _log.info(f"🌍 RÉGIMEN DETECTADO: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
+    sym_prefix = f"[{symbol}] " if symbol else ""
+    _log.info(f"{sym_prefix}🌍 RÉGIMEN DETECTADO: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
 
     # KAMA: cruce adaptativo
     kama_prev   = kama_vals.iloc[-2] if not pd.isna(kama_vals.iloc[-2]) else close_now
@@ -579,21 +581,29 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
         signal = SIGNAL_HOLD
+        if is_whipsaw_zone:
+            blocks_buy.append(f"Filtro ML: RSI en zona de riesgo ({rsi_now:.1f})")
+        if is_low_trend:
+            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 20)")
         confirmations_buy.clear()
 
     # ── NUEVA REGLA: TREND_UP tardío (RSI > 68) → compra ya al final del movimiento ──
     if signal == SIGNAL_BUY and current_regime == "TREND_UP" and rsi_now > 68:
         signal = SIGNAL_HOLD
+        msg = f"RSI tardío en TREND_UP ({rsi_now:.1f} > 68)"
+        blocks_buy.append(msg)
         confirmations_buy.clear()
         from utils.logger import log as _log
-        _log.info(f"🚧 BLOQUEADO por RSI tardío en TREND_UP: RSI={rsi_now:.1f} > 68")
+        _log.info(f"🚧 BLOQUEADO: {msg}")
 
     # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
     if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -1.5:
         signal = SIGNAL_HOLD
+        msg = f"RANGE: Z-Score débil ({zscore_now:.2f} > -1.5)"
+        blocks_buy.append(msg)
         confirmations_buy.clear()
         from utils.logger import log as _log
-        _log.info(f"🚧 BLOQUEADO en RANGE: Z-Score={zscore_now:.2f} no está en sobreventa (-1.5). Falsa señal.")
+        _log.info(f"🚧 BLOQUEADO: {msg}")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
     # Tu Take Profit (3%) o Trailing Stop harán el 90% del trabajo de salida. 
@@ -602,8 +612,18 @@ def analyze(df: pd.DataFrame) -> SignalResult:
     
     if force_sell and signal == SIGNAL_HOLD:
         signal = SIGNAL_SELL
-        confirmations_sell.append("🛡️ Venta forzada: Deterioro de estructura (precio perdió la EMA 20).")
+        reason = "Estructura deteriorada (perdió EMA 20 + MACD bajista)"
+        confirmations_sell.append(f"🛡️ Venta forzada: {reason}")
+        blocks_buy.append(f"CRÍTICO: {reason}")
         
+    if signal == SIGNAL_HOLD and not blocks_buy:
+        if current_regime == "TREND_DOWN":
+            blocks_buy.append("Bloqueo: Tendencia bajista macro")
+        elif current_regime == "CHAOS":
+            blocks_buy.append("Riesgo: Volatilidad extrema (Caos)")
+        else:
+            blocks_buy.append("Sin señal clara (Wait)")
+
     # ── GENERACIÓN DE FEATURES PARA MACHINE LEARNING ──────────────────────────
     ml_features = {
         'rsi': float(rsi_now),
@@ -670,7 +690,7 @@ def analyze(df: pd.DataFrame) -> SignalResult:
         log.info(f"🔫 COMPRA PERMITIDA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_buy))
     elif signal == SIGNAL_SELL:
         from utils.logger import log
-        log.info(f"🔴 VENTA ALERTA TÁCTICA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
+        _log.info(f"{sym_prefix}🔴 VENTA ALERTA TÁCTICA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
 
     return SignalResult(
         signal=signal,
