@@ -38,18 +38,18 @@ from pathlib import Path
 
 import importlib
 import data.market_data
-import config
-from utils.logger import log, log_order_attempt, log_market_closed, set_symbol_log
-from utils.market_hours import is_market_open, market_status_str, next_open_str
-from utils import state_writer
-from broker.interface import BrokerInterface, Quote, OrderResponse
-from broker.hapi_live import HapiLive
-from broker.hapi_mock import HapiMock
-from strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
-from strategy.risk_manager import RiskManager, AccountState, OpenPosition
-from strategy.ml_predictor import ml_predictor
-from utils.trade_journal import record_trade as journal_record_trade
-from utils.trade_journal import record_trade as journal_record_trade
+from shared import config
+from shared.utils.logger import log, log_order_attempt, log_market_closed, set_symbol_log
+from shared.utils.market_hours import is_market_open, market_status_str, next_open_str
+from shared.utils import state_writer
+from shared.broker.interface import BrokerInterface, Quote, OrderResponse
+from shared.broker.hapi_live import HapiLive
+from shared.broker.hapi_mock import HapiMock
+from shared.strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
+from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
+from shared.strategy.ml_predictor import ml_predictor
+from shared.utils.trade_journal import record_trade as journal_record_trade
+from shared.utils.trade_journal import record_trade as journal_record_trade
 from dataclasses import asdict
 import threading
 
@@ -267,7 +267,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             break # Salir de este loop para reiniciar sesión con el nuevo
                 except: pass
             else:
-                from data.market_data import download_bars
+                from shared.data.market_data import download_bars
                 df = download_bars(symbol)
 
             signal = analyze(df, symbol=symbol)
@@ -339,8 +339,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             )
                             # 🧠 Alimentar la Red Neural MLP con el resultado real del trade
                             try:
-                                from utils.neural_filter import get_neural_filter
-                                from utils.neural_filter import NeuralTradeFilter
+                                from shared.utils.neural_filter import get_neural_filter
+                                from shared.utils.neural_filter import NeuralTradeFilter
                                 nf = get_neural_filter()
                                 ml_f = position.ml_features
                                 features_vec = nf.build_features(
@@ -454,7 +454,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             if is_mock and getattr(broker, '_live_paper', False):
                 ui_mode = "LIVE_PAPER"
 
-            from utils.market_hours import _is_mock_time_active
+            from shared.utils.market_hours import _is_mock_time_active
             is_mock_active = _is_mock_time_active()
 
             state_writer.update_state(
@@ -496,7 +496,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # ── 8. Pausa entre escaneos (Live y Live Paper) ──────────────────
             is_live_paper_b = getattr(broker, '_live_paper', False)
             if not is_mock or is_live_paper_b:
-                from utils.market_hours import _is_mock_time_active
+                from shared.utils.market_hours import _is_mock_time_active
                 if is_live_paper_b and _is_mock_time_active():
                     pause_time = 1 # Aceleración x60 en Test Nocturno
                 else:
@@ -506,8 +506,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 
                 for i in range(pause_time, 0, -1):
                     # Actualizar estado con la cuenta regresiva
-                    from utils.state_writer import update_state
-                    from utils.market_hours import _is_mock_time_active
+                    from shared.utils.state_writer import update_state
+                    from shared.utils.market_hours import _is_mock_time_active
                     is_mock_active = _is_mock_time_active()
 
                     update_state(
@@ -620,7 +620,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     # Slippage estimado: 0.05% por lado (compra + venta) × trades
                     slippage_est = round(trades_val * 0.0005 * 200, 4)  # ~$0.10 por trade
                     
-                    from utils.state_writer import _symbol_states
+                    from shared.utils.state_writer import _symbol_states
                     regime_val = _symbol_states.get(symbol).regime if symbol in _symbol_states else getattr(broker, 'final_regime', 'NEUTRAL')
                     
                     session_result = {
@@ -661,7 +661,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         
                     log.info(f"[{symbol}] 📝 ESTRATEGIA RESULTADO | {insight}")
                     # Limpiar estado activo para este símbolo
-                    from utils.state_writer import update_state
+                    from shared.utils.state_writer import update_state
                     update_state(
                         mode=args.mode,
                         symbol=symbol,
@@ -694,7 +694,7 @@ def main() -> None:
     log.info(f"Modo seleccionado: {args.mode} {'(PAPER)' if args.paper else '(REAL)'}")
     log.info(market_status_str())
 
-    from utils.state_writer import update_state
+    from shared.utils.state_writer import update_state
     update_state(mode=args.mode, status="initializing", symbol="─", session=0, iteration=0)
 
     is_simulated = args.mode == "SIMULATED"
@@ -707,7 +707,7 @@ def main() -> None:
 
     # ── Restaurar checkpoint de simulación (si existe) ────────────────────────
     try:
-        from utils.checkpoint import load_simulation_checkpoint, save_simulation_checkpoint
+        from shared.utils.checkpoint import load_simulation_checkpoint, save_simulation_checkpoint
         _ckpt = load_simulation_checkpoint()
         if _ckpt["symbol_idx"] > 0 and is_simulated:
             symbol_idx  = _ckpt["symbol_idx"]
@@ -750,7 +750,7 @@ def main() -> None:
                     with open(cmd_file, "w") as f:
                         json.dump(cmds, f)
                     
-                    from utils.state_writer import clear_state
+                    from shared.utils.state_writer import clear_state
                     clear_state()
                     if is_purgue:
                         if config.RESULTS_FILE.exists(): config.RESULTS_FILE.unlink()
@@ -760,8 +760,8 @@ def main() -> None:
                     symbol_idx = 0
                     session_num = 0
                     
-                    from utils.state_writer import update_state
-                    from utils.market_hours import _is_mock_time_active
+                    from shared.utils.state_writer import update_state
+                    from shared.utils.market_hours import _is_mock_time_active
                     update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
                     continue # Saltar al inicio con el nuevo estado
             except Exception as e_cmd:
@@ -776,7 +776,7 @@ def main() -> None:
                 log.info(f"✨ ¡Nuevos símbolos detectados ({len(current_list)})! Reanudando...")
                 all_symbols = current_list
             else:
-                from utils.state_writer import update_state
+                from shared.utils.state_writer import update_state
                 update_state(mode="SIMULATED", status="completed", symbol="─", session=session_num, iteration=0)
                 smart_sleep(5)
                 continue # Volver a chequear comandos/símbolos
@@ -802,7 +802,7 @@ def main() -> None:
 
         if is_lp and len(force_symbols) >= 1:
             log.info(f"🚀 Modo Live Paper detectado para {len(force_symbols)} símbolo(s). Lanzando hilos paralelos…")
-            from utils.live_paper_launcher import launch_parallel_bots
+            from shared.utils.live_paper_launcher import launch_parallel_bots
             launch_parallel_bots(args, force_symbols, session_num, run_bot, init_broker, _checkpoint_fn)
         else:
             # ── FLUJO SINGLE-THREAD NORMAL (Simulación) ──────────────────────
@@ -817,7 +817,7 @@ def main() -> None:
             except Exception as e:
                 log.error(f"❌ Error en sesión para {args.symbol}: {e}")
                 try:
-                    from utils.state_writer import update_state
+                    from shared.utils.state_writer import update_state
                     update_state(mode=args.mode, status="error", symbol=args.symbol, session=session_num, insight=f"Error: {e}")
                 except: pass
 

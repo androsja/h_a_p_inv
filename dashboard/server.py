@@ -293,6 +293,43 @@ async def get_results():
     except Exception:
         return []
 
+@app.get("/api/daily_stats")
+async def get_daily_stats(symbol: str = None):
+    """Retorna estadísticas agrupadas por día para un símbolo (o todos)."""
+    import csv
+    from shared.config import TRADE_JOURNAL_FILE
+    stats = {} # {symbol: {date: {pnl, trades, wins, losses}}}
+    try:
+        if TRADE_JOURNAL_FILE.exists():
+            with open(TRADE_JOURNAL_FILE, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for r in reader:
+                    s = r.get("symbol")
+                    if symbol and s != symbol:
+                        continue
+                    
+                    # Parsear fecha "2026-02-28T18:11:51..." -> "2026-02-28"
+                    ts = r.get("timestamp_close", "")
+                    if not ts: continue
+                    date_key = ts.split("T")[0]
+                    
+                    if s not in stats: stats[s] = {}
+                    if date_key not in stats[s]:
+                        stats[s][date_key] = {"pnl": 0.0, "trades": 0, "wins": 0, "losses": 0}
+                    
+                    pnl = float(r.get("gross_pnl", 0))
+                    stats[s][date_key]["pnl"] += pnl
+                    stats[s][date_key]["trades"] += 1
+                    if r.get("is_win") == "1":
+                        stats[s][date_key]["wins"] += 1
+                    else:
+                        stats[s][date_key]["losses"] += 1
+        
+        return stats[symbol] if symbol and symbol in stats else stats
+    except Exception as e:
+        print(f"Error calculando estadísticas diarias: {e}")
+        return {}
+
 @app.get("/api/trades_history")
 async def get_trades_history(limit: int = 100):
     """Retorna los últimos trades cerrados desde trade_journal.csv."""

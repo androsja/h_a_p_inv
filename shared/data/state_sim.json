@@ -1,1044 +1,2525 @@
 {
-  "MA": {
+  "PSQ": {
     "mode": "SIMULATED",
-    "symbol": "MA",
-    "session": 32,
-    "iteration": 2009,
-    "timestamp": "2026-02-05T20:10:00+00:00",
-    "bid": 551.985,
-    "ask": 551.995,
+    "symbol": "PSQ",
+    "session": 23,
+    "iteration": 0,
+    "timestamp": "2026-02-28T18:33:46.976117+00:00",
+    "bid": 0,
+    "ask": 0,
     "signal": "HOLD",
     "regime": "NEUTRAL",
-    "rsi": 52.128840215943384,
-    "ema_fast": 551.5386849288552,
-    "ema_slow": 551.6942914719178,
-    "ema_200": 553.1154806721298,
-    "macd_hist": 0.08567593709451479,
-    "vwap": 553.5860749335728,
-    "atr": 0.7307396862851033,
+    "rsi": 50,
+    "ema_fast": 0,
+    "ema_slow": 0,
+    "ema_200": 0,
+    "macd_hist": 0,
+    "vwap": 0,
+    "atr": 0,
     "confirmations": [],
+    "initial_cash": 10023.332492,
+    "available_cash": 10023.332492,
+    "settlement": 0,
+    "win_rate": 66.66666666666666,
+    "total_trades": 6,
+    "winning_trades": 4,
+    "gross_profit": 35.866761000000025,
+    "gross_loss": -12.534269000000005,
+    "total_sim_trades": 171,
+    "total_sim_wins": 65,
+    "total_sim_pnl": 462.26653350000026,
+    "position": null,
+    "trades": [
+      {
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 257.3,
+        "qty": 1.912,
+        "pnl": -8.468079999999953,
+        "time": "18:19:03"
+      },
+      {
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 257.43,
+        "qty": 1.912,
+        "pnl": -7.791399999999978,
+        "time": "18:19:03"
+      },
+      {
+        "symbol": "AMD",
+        "side": "BUY",
+        "price": 210.55,
+        "qty": 2.3759,
+        "pnl": 0.0,
+        "time": "18:19:27"
+      },
+      {
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 213.07,
+        "qty": 2.3759,
+        "pnl": 5.817267999999957,
+        "time": "18:19:28"
+      },
+      {
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 213.18,
+        "qty": 2.3759,
+        "pnl": 6.498086500000033,
+        "time": "18:19:28"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 335.41,
+        "qty": 1.4914,
+        "pnl": 0.0,
+        "time": "18:21:40"
+      },
+      {
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 329.21,
+        "qty": 1.4914,
+        "pnl": -9.416680000000069,
+        "time": "18:21:40"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 329.37,
+        "qty": 1.4914,
+        "pnl": -8.761975,
+        "time": "18:21:40"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 316.96,
+        "qty": 1.5783,
+        "pnl": 0.0,
+        "time": "18:21:45"
+      },
+      {
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 311.68,
+        "qty": 1.5783,
+        "pnl": -8.503423999999956,
+        "time": "18:21:45"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 311.84,
+        "qty": 1.5783,
+        "pnl": -7.83625950000005,
+        "time": "18:21:45"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 300.31,
+        "qty": 1.6658,
+        "pnl": 0.0,
+        "time": "18:21:55"
+      },
+      {
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 302.62,
+        "qty": 1.6658,
+        "pnl": 3.6779980000000037,
+        "time": "18:22:00"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 302.77,
+        "qty": 1.6658,
+        "pnl": 4.3560670000000155,
+        "time": "18:22:00"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 321.85,
+        "qty": 1.5543,
+        "pnl": 0.0,
+        "time": "18:22:05"
+      },
+      {
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 320.62,
+        "qty": 1.5543,
+        "pnl": -2.0817890000000285,
+        "time": "18:22:07"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 320.78,
+        "qty": 1.5543,
+        "pnl": -1.406641500000046,
+        "time": "18:22:07"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 303.65,
+        "qty": 1.6475,
+        "pnl": 0.0,
+        "time": "18:22:19"
+      },
+      {
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 300.92,
+        "qty": 1.6475,
+        "pnl": -4.667674999999936,
+        "time": "18:22:21"
+      },
+      {
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 301.07,
+        "qty": 1.6475,
+        "pnl": -3.9951875000000188,
+        "time": "18:22:21"
+      },
+      {
+        "symbol": "WMT",
+        "side": "BUY",
+        "price": 125.06,
+        "qty": 4.0002,
+        "pnl": 0.0,
+        "time": "18:23:55"
+      },
+      {
+        "symbol": "WMT",
+        "side": "BUY/SELL",
+        "price": 128.945,
+        "qty": 4.0002,
+        "pnl": 15.800789999999957,
+        "time": "18:23:56"
+      },
+      {
+        "symbol": "WMT",
+        "side": "SELL",
+        "price": 128.88,
+        "qty": 4.0002,
+        "pnl": 15.110763999999975,
+        "time": "18:23:56"
+      },
+      {
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 67.96,
+        "qty": 7.3605,
+        "pnl": 0.0,
+        "time": "18:24:33"
+      },
+      {
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 70.05,
+        "qty": 7.3605,
+        "pnl": 15.604259999999929,
+        "time": "18:24:36"
+      },
+      {
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 70.01,
+        "qty": 7.3605,
+        "pnl": 14.919025000000083,
+        "time": "18:24:36"
+      },
+      {
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 72.53,
+        "qty": 6.8975,
+        "pnl": 0.0,
+        "time": "18:24:48"
+      },
+      {
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 74.715,
+        "qty": 6.8975,
+        "pnl": 15.346937500000058,
+        "time": "18:24:54"
+      },
+      {
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 74.68,
+        "qty": 6.8975,
+        "pnl": 14.65962500000004,
+        "time": "18:24:54"
+      },
+      {
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 146.78,
+        "qty": 3.4082,
+        "pnl": 0.0,
+        "time": "18:25:40"
+      },
+      {
+        "symbol": "PEP",
+        "side": "SELL",
+        "price": 144.33,
+        "qty": 3.4082,
+        "pnl": -8.52008999999996,
+        "time": "18:25:45"
+      },
+      {
+        "symbol": "PEP",
+        "side": "BUY/SELL",
+        "price": 144.4,
+        "qty": 3.4082,
+        "pnl": -7.855901000000023,
+        "time": "18:25:45"
+      },
+      {
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 169.56,
+        "qty": 2.9503,
+        "pnl": 0.0,
+        "time": "18:26:16"
+      },
+      {
+        "symbol": "NKE",
+        "side": "BUY",
+        "price": 66.07,
+        "qty": 7.5717,
+        "pnl": 0.0,
+        "time": "18:27:13"
+      },
+      {
+        "symbol": "NKE",
+        "side": "SELL",
+        "price": 64.65,
+        "qty": 7.5717,
+        "pnl": -10.921813999999905,
+        "time": "18:27:14"
+      },
+      {
+        "symbol": "NKE",
+        "side": "BUY/SELL",
+        "price": 64.68,
+        "qty": 7.5717,
+        "pnl": -10.259653499999922,
+        "time": "18:27:14"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 876.46,
+        "qty": 0.5708,
+        "pnl": 0.0,
+        "time": "18:28:52"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 879.22,
+        "qty": 0.5708,
+        "pnl": 1.4054079999999949,
+        "time": "18:28:55"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 879.66,
+        "qty": 0.5708,
+        "pnl": 2.077711999999992,
+        "time": "18:28:55"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 926.77,
+        "qty": 0.5398,
+        "pnl": 0.0,
+        "time": "18:28:59"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 929.59,
+        "qty": 0.5398,
+        "pnl": 1.3522360000000269,
+        "time": "18:29:01"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 930.06,
+        "qty": 0.5398,
+        "pnl": 2.0269489999999974,
+        "time": "18:29:01"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 956.84,
+        "qty": 0.5228,
+        "pnl": 0.0,
+        "time": "18:29:07"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 987.655,
+        "qty": 0.5228,
+        "pnl": 16.358411999999984,
+        "time": "18:29:11"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 987.16,
+        "qty": 0.5228,
+        "pnl": 15.681295999999968,
+        "time": "18:29:11"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 984.2,
+        "qty": 0.5083,
+        "pnl": 0.0,
+        "time": "18:29:15"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 967.47,
+        "qty": 0.5083,
+        "pnl": -8.673859000000009,
+        "time": "18:29:17"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 967.95,
+        "qty": 0.5083,
+        "pnl": -8.008266499999998,
+        "time": "18:29:17"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 965.0,
+        "qty": 0.5184,
+        "pnl": 0.0,
+        "time": "18:29:19"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 947.76,
+        "qty": 0.5184,
+        "pnl": -9.107216000000005,
+        "time": "18:29:21"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 948.23,
+        "qty": 0.5184,
+        "pnl": -8.442143999999983,
+        "time": "18:29:21"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 968.09,
+        "qty": 0.5167,
+        "pnl": 0.0,
+        "time": "18:29:26"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 976.11,
+        "qty": 0.5167,
+        "pnl": 3.973933999999991,
+        "time": "18:29:30"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 976.6,
+        "qty": 0.5167,
+        "pnl": 4.647716500000003,
+        "time": "18:29:30"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 999.73,
+        "qty": 0.5004,
+        "pnl": 0.0,
+        "time": "18:29:33"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 980.35,
+        "qty": 0.5004,
+        "pnl": -9.867751999999998,
+        "time": "18:29:35"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 980.84,
+        "qty": 0.5004,
+        "pnl": -9.202355999999993,
+        "time": "18:29:35"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 976.29,
+        "qty": 0.5124,
+        "pnl": 0.0,
+        "time": "18:29:36"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1005.885,
+        "qty": 0.5124,
+        "pnl": 15.415554000000018,
+        "time": "18:29:38"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1005.38,
+        "qty": 0.5124,
+        "pnl": 14.735716000000016,
+        "time": "18:29:38"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 1018.08,
+        "qty": 0.4914,
+        "pnl": 0.0,
+        "time": "18:29:39"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1000.79,
+        "qty": 0.4914,
+        "pnl": -8.666306000000038,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1001.29,
+        "qty": 0.4914,
+        "pnl": -8.00244900000004,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 981.52,
+        "qty": 0.5097,
+        "pnl": 0.0,
+        "time": "18:29:47"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 986.38,
+        "qty": 0.5097,
+        "pnl": 2.3071420000000074,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 986.87,
+        "qty": 0.5097,
+        "pnl": 2.9791965000000142,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY",
+        "price": 185.51,
+        "qty": 2.6967,
+        "pnl": 0.0,
+        "time": "18:30:55"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY/SELL",
+        "price": 191.035,
+        "qty": 2.6967,
+        "pnl": 15.155454000000011,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "CRM",
+        "side": "SELL",
+        "price": 190.94,
+        "qty": 2.6967,
+        "pnl": 14.473081000000018,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": 0.0,
+        "time": "18:32:12"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": -0.17,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.83,
+        "qty": 13.9684,
+        "pnl": 0.48889399999995237,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.72,
+        "qty": 14.0036,
+        "pnl": 0.0,
+        "time": "18:32:23"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.95,
+        "qty": 14.0036,
+        "pnl": 3.050828000000056,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.97,
+        "qty": 14.0036,
+        "pnl": 3.710954000000008,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.87,
+        "qty": 13.9451,
+        "pnl": 0.0,
+        "time": "18:32:35"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.94,
+        "qty": 13.9451,
+        "pnl": 0.8061570000000039,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.96,
+        "qty": 13.9451,
+        "pnl": 1.4642355000000555,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 36.02,
+        "qty": 13.887,
+        "pnl": 0.0,
+        "time": "18:32:42"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.78,
+        "qty": 13.887,
+        "pnl": -3.5028800000000277,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.8,
+        "qty": 13.887,
+        "pnl": -2.846835000000075,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.88,
+        "qty": 16.742,
+        "pnl": 0.0,
+        "time": "18:33:03"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.64,
+        "qty": 16.742,
+        "pnl": -4.188079999999974,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.65,
+        "qty": 16.742,
+        "pnl": -3.599529999999998,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.76,
+        "qty": 16.8095,
+        "pnl": 0.0,
+        "time": "18:33:11"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.1,
+        "qty": 16.8095,
+        "pnl": 5.545229999999997,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.12,
+        "qty": 16.8095,
+        "pnl": 6.3035625,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.98,
+        "qty": 16.6861,
+        "pnl": 0.0,
+        "time": "18:33:16"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.49,
+        "qty": 16.6861,
+        "pnl": -8.346189000000033,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.5,
+        "qty": 16.6861,
+        "pnl": -7.759036499999998,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.56,
+        "qty": 16.9233,
+        "pnl": 0.0,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.58,
+        "qty": 16.9233,
+        "pnl": 0.16846599999999282,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.59,
+        "qty": 16.9233,
+        "pnl": 0.7615484999999688,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.71,
+        "qty": 16.8379,
+        "pnl": 0.0,
+        "time": "18:33:24"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.625,
+        "qty": 16.8379,
+        "pnl": 15.659246999999997,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.61,
+        "qty": 16.8379,
+        "pnl": 14.984109999999978,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.33,
+        "qty": 16.4935,
+        "pnl": 0.0,
+        "time": "18:33:30"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 31.275,
+        "qty": 16.4935,
+        "pnl": 15.833759999999957,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 31.26,
+        "qty": 16.4935,
+        "pnl": 15.168955000000055,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.73,
+        "qty": 16.2787,
+        "pnl": 0.0,
+        "time": "18:33:41"
+      }
+    ],
+    "candles": [],
+    "status": "completed",
+    "next_scan_in": 0,
+    "is_waiting": false,
+    "mock_time_930": false,
+    "blocks": [],
+    "sim_start": "",
+    "sim_end": ""
+  },
+  "\u2500": {
+    "mode": "SIMULATED",
+    "symbol": "\u2500",
+    "session": 23,
+    "iteration": 0,
+    "timestamp": "2026-02-28T18:42:31.377890+00:00",
+    "bid": 0.0,
+    "ask": 0.0,
+    "signal": "HOLD",
+    "regime": "NEUTRAL",
+    "rsi": 50.0,
+    "ema_fast": 0.0,
+    "ema_slow": 0.0,
+    "ema_200": 0.0,
+    "macd_hist": 0.0,
+    "vwap": 0.0,
+    "atr": 0.0,
+    "confirmations": null,
     "initial_cash": 10000.0,
     "available_cash": 10000.0,
-    "settlement": 0,
+    "settlement": 0.0,
     "win_rate": 0.0,
     "total_trades": 0,
     "winning_trades": 0,
     "gross_profit": 0.0,
     "gross_loss": 0.0,
-    "total_sim_trades": 84,
-    "total_sim_wins": 41,
-    "total_sim_pnl": 314.6187999999998,
+    "total_sim_trades": 171,
+    "total_sim_wins": 65,
+    "total_sim_pnl": 462.26653350000026,
     "position": null,
-    "trades": [],
-    "candles": [
+    "trades": [
       {
-        "time": 1770304500,
-        "open": 555.88,
-        "high": 557.47,
-        "low": 555.69,
-        "close": 556.93,
-        "volume": 2375
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 257.3,
+        "qty": 1.912,
+        "pnl": -8.468079999999953,
+        "time": "18:19:03"
       },
       {
-        "time": 1770304800,
-        "open": 556.51,
-        "high": 557.28,
-        "low": 556.08,
-        "close": 556.83,
-        "volume": 1492
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 257.43,
+        "qty": 1.912,
+        "pnl": -7.791399999999978,
+        "time": "18:19:03"
       },
       {
-        "time": 1770305100,
-        "open": 556.93,
-        "high": 556.93,
-        "low": 555.57,
-        "close": 555.99,
-        "volume": 3725
+        "symbol": "AMD",
+        "side": "BUY",
+        "price": 210.55,
+        "qty": 2.3759,
+        "pnl": 0.0,
+        "time": "18:19:27"
       },
       {
-        "time": 1770305400,
-        "open": 556.58,
-        "high": 556.895,
-        "low": 555.61,
-        "close": 555.61,
-        "volume": 888
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 213.07,
+        "qty": 2.3759,
+        "pnl": 5.817267999999957,
+        "time": "18:19:28"
       },
       {
-        "time": 1770305700,
-        "open": 555.52,
-        "high": 555.52,
-        "low": 554.57,
-        "close": 554.57,
-        "volume": 1726
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 213.18,
+        "qty": 2.3759,
+        "pnl": 6.498086500000033,
+        "time": "18:19:28"
       },
       {
-        "time": 1770306000,
-        "open": 554.49,
-        "high": 554.49,
-        "low": 553.5,
-        "close": 553.86,
-        "volume": 1160
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 335.41,
+        "qty": 1.4914,
+        "pnl": 0.0,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306300,
-        "open": 554.05,
-        "high": 554.545,
-        "low": 554.05,
-        "close": 554.545,
-        "volume": 1174
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 329.21,
+        "qty": 1.4914,
+        "pnl": -9.416680000000069,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306600,
-        "open": 555.13,
-        "high": 555.575,
-        "low": 554.45,
-        "close": 554.45,
-        "volume": 3202
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 329.37,
+        "qty": 1.4914,
+        "pnl": -8.761975,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306900,
-        "open": 554.27,
-        "high": 554.94,
-        "low": 553.62,
-        "close": 553.62,
-        "volume": 2435
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 316.96,
+        "qty": 1.5783,
+        "pnl": 0.0,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307200,
-        "open": 553.74,
-        "high": 554.05,
-        "low": 553.25,
-        "close": 553.25,
-        "volume": 1659
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 311.68,
+        "qty": 1.5783,
+        "pnl": -8.503423999999956,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307500,
-        "open": 553.36,
-        "high": 554.32,
-        "low": 553.275,
-        "close": 554.075,
-        "volume": 961
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 311.84,
+        "qty": 1.5783,
+        "pnl": -7.83625950000005,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307800,
-        "open": 554.3,
-        "high": 554.98,
-        "low": 553.81,
-        "close": 553.99,
-        "volume": 1787
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 300.31,
+        "qty": 1.6658,
+        "pnl": 0.0,
+        "time": "18:21:55"
       },
       {
-        "time": 1770308100,
-        "open": 554.14,
-        "high": 554.69,
-        "low": 554.11,
-        "close": 554.455,
-        "volume": 2373
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 302.62,
+        "qty": 1.6658,
+        "pnl": 3.6779980000000037,
+        "time": "18:22:00"
       },
       {
-        "time": 1770308400,
-        "open": 554.41,
-        "high": 554.71,
-        "low": 553.68,
-        "close": 553.68,
-        "volume": 3104
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 302.77,
+        "qty": 1.6658,
+        "pnl": 4.3560670000000155,
+        "time": "18:22:00"
       },
       {
-        "time": 1770308700,
-        "open": 553.8,
-        "high": 554.31,
-        "low": 552.925,
-        "close": 553.2,
-        "volume": 1804
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 321.85,
+        "qty": 1.5543,
+        "pnl": 0.0,
+        "time": "18:22:05"
       },
       {
-        "time": 1770309000,
-        "open": 552.795,
-        "high": 552.99,
-        "low": 552.01,
-        "close": 552.28,
-        "volume": 1695
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 320.62,
+        "qty": 1.5543,
+        "pnl": -2.0817890000000285,
+        "time": "18:22:07"
       },
       {
-        "time": 1770309300,
-        "open": 552.715,
-        "high": 553.07,
-        "low": 552.35,
-        "close": 553.07,
-        "volume": 964
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 320.78,
+        "qty": 1.5543,
+        "pnl": -1.406641500000046,
+        "time": "18:22:07"
       },
       {
-        "time": 1770309600,
-        "open": 552.6,
-        "high": 553.61,
-        "low": 552.6,
-        "close": 553.59,
-        "volume": 886
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 303.65,
+        "qty": 1.6475,
+        "pnl": 0.0,
+        "time": "18:22:19"
       },
       {
-        "time": 1770309900,
-        "open": 553.6,
-        "high": 553.6,
-        "low": 551.565,
-        "close": 552.34,
-        "volume": 1340
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 300.92,
+        "qty": 1.6475,
+        "pnl": -4.667674999999936,
+        "time": "18:22:21"
       },
       {
-        "time": 1770310200,
-        "open": 552.085,
-        "high": 552.69,
-        "low": 551.575,
-        "close": 552.105,
-        "volume": 4010
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 301.07,
+        "qty": 1.6475,
+        "pnl": -3.9951875000000188,
+        "time": "18:22:21"
       },
       {
-        "time": 1770310500,
-        "open": 552.55,
-        "high": 552.81,
-        "low": 552.075,
-        "close": 552.81,
-        "volume": 1846
+        "symbol": "WMT",
+        "side": "BUY",
+        "price": 125.06,
+        "qty": 4.0002,
+        "pnl": 0.0,
+        "time": "18:23:55"
       },
       {
-        "time": 1770310800,
-        "open": 552.625,
-        "high": 552.625,
-        "low": 551.55,
-        "close": 551.785,
-        "volume": 1853
+        "symbol": "WMT",
+        "side": "BUY/SELL",
+        "price": 128.945,
+        "qty": 4.0002,
+        "pnl": 15.800789999999957,
+        "time": "18:23:56"
       },
       {
-        "time": 1770311100,
-        "open": 551.83,
-        "high": 552.77,
-        "low": 551.83,
-        "close": 552.77,
-        "volume": 723
+        "symbol": "WMT",
+        "side": "SELL",
+        "price": 128.88,
+        "qty": 4.0002,
+        "pnl": 15.110763999999975,
+        "time": "18:23:56"
       },
       {
-        "time": 1770311400,
-        "open": 552.5,
-        "high": 553.42,
-        "low": 552.5,
-        "close": 552.94,
-        "volume": 893
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 67.96,
+        "qty": 7.3605,
+        "pnl": 0.0,
+        "time": "18:24:33"
       },
       {
-        "time": 1770311700,
-        "open": 552.815,
-        "high": 552.815,
-        "low": 552.52,
-        "close": 552.74,
-        "volume": 483
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 70.05,
+        "qty": 7.3605,
+        "pnl": 15.604259999999929,
+        "time": "18:24:36"
       },
       {
-        "time": 1770312000,
-        "open": 552.46,
-        "high": 552.485,
-        "low": 551.38,
-        "close": 552.0,
-        "volume": 1137
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 70.01,
+        "qty": 7.3605,
+        "pnl": 14.919025000000083,
+        "time": "18:24:36"
       },
       {
-        "time": 1770312300,
-        "open": 552.32,
-        "high": 553.18,
-        "low": 552.32,
-        "close": 552.33,
-        "volume": 3488
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 72.53,
+        "qty": 6.8975,
+        "pnl": 0.0,
+        "time": "18:24:48"
       },
       {
-        "time": 1770312600,
-        "open": 552.275,
-        "high": 552.44,
-        "low": 552.0,
-        "close": 552.41,
-        "volume": 2093
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 74.715,
+        "qty": 6.8975,
+        "pnl": 15.346937500000058,
+        "time": "18:24:54"
       },
       {
-        "time": 1770312900,
-        "open": 551.68,
-        "high": 552.03,
-        "low": 550.46,
-        "close": 550.86,
-        "volume": 6084
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 74.68,
+        "qty": 6.8975,
+        "pnl": 14.65962500000004,
+        "time": "18:24:54"
       },
       {
-        "time": 1770313200,
-        "open": 550.79,
-        "high": 551.33,
-        "low": 550.03,
-        "close": 551.33,
-        "volume": 2037
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 146.78,
+        "qty": 3.4082,
+        "pnl": 0.0,
+        "time": "18:25:40"
       },
       {
-        "time": 1770313500,
-        "open": 551.2,
-        "high": 551.88,
-        "low": 551.16,
-        "close": 551.41,
-        "volume": 4025
+        "symbol": "PEP",
+        "side": "SELL",
+        "price": 144.33,
+        "qty": 3.4082,
+        "pnl": -8.52008999999996,
+        "time": "18:25:45"
       },
       {
-        "time": 1770313800,
-        "open": 551.49,
-        "high": 552.675,
-        "low": 551.27,
-        "close": 552.675,
-        "volume": 2787
+        "symbol": "PEP",
+        "side": "BUY/SELL",
+        "price": 144.4,
+        "qty": 3.4082,
+        "pnl": -7.855901000000023,
+        "time": "18:25:45"
       },
       {
-        "time": 1770314100,
-        "open": 553.04,
-        "high": 553.56,
-        "low": 551.82,
-        "close": 551.82,
-        "volume": 2931
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 169.56,
+        "qty": 2.9503,
+        "pnl": 0.0,
+        "time": "18:26:16"
       },
       {
-        "time": 1770314400,
-        "open": 551.0,
-        "high": 553.065,
-        "low": 551.0,
-        "close": 552.7,
-        "volume": 3874
+        "symbol": "NKE",
+        "side": "BUY",
+        "price": 66.07,
+        "qty": 7.5717,
+        "pnl": 0.0,
+        "time": "18:27:13"
       },
       {
-        "time": 1770314700,
-        "open": 553.09,
-        "high": 553.29,
-        "low": 552.39,
-        "close": 552.63,
-        "volume": 864
+        "symbol": "NKE",
+        "side": "SELL",
+        "price": 64.65,
+        "qty": 7.5717,
+        "pnl": -10.921813999999905,
+        "time": "18:27:14"
       },
       {
-        "time": 1770315000,
-        "open": 552.46,
-        "high": 552.87,
-        "low": 552.13,
-        "close": 552.81,
-        "volume": 1822
+        "symbol": "NKE",
+        "side": "BUY/SELL",
+        "price": 64.68,
+        "qty": 7.5717,
+        "pnl": -10.259653499999922,
+        "time": "18:27:14"
       },
       {
-        "time": 1770315300,
-        "open": 553.08,
-        "high": 553.25,
-        "low": 553.03,
-        "close": 553.19,
-        "volume": 840
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 876.46,
+        "qty": 0.5708,
+        "pnl": 0.0,
+        "time": "18:28:52"
       },
       {
-        "time": 1770315600,
-        "open": 552.98,
-        "high": 552.98,
-        "low": 552.53,
-        "close": 552.6,
-        "volume": 1925
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 879.22,
+        "qty": 0.5708,
+        "pnl": 1.4054079999999949,
+        "time": "18:28:55"
       },
       {
-        "time": 1770315900,
-        "open": 552.56,
-        "high": 552.56,
-        "low": 551.58,
-        "close": 551.58,
-        "volume": 1539
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 879.66,
+        "qty": 0.5708,
+        "pnl": 2.077711999999992,
+        "time": "18:28:55"
       },
       {
-        "time": 1770316200,
-        "open": 551.93,
-        "high": 552.0,
-        "low": 551.02,
-        "close": 551.02,
-        "volume": 3267
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 926.77,
+        "qty": 0.5398,
+        "pnl": 0.0,
+        "time": "18:28:59"
       },
       {
-        "time": 1770316500,
-        "open": 550.92,
-        "high": 551.005,
-        "low": 550.04,
-        "close": 550.04,
-        "volume": 1473
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 929.59,
+        "qty": 0.5398,
+        "pnl": 1.3522360000000269,
+        "time": "18:29:01"
       },
       {
-        "time": 1770316800,
-        "open": 550.07,
-        "high": 551.0,
-        "low": 550.035,
-        "close": 551.0,
-        "volume": 618
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 930.06,
+        "qty": 0.5398,
+        "pnl": 2.0269489999999974,
+        "time": "18:29:01"
       },
       {
-        "time": 1770317100,
-        "open": 551.025,
-        "high": 551.53,
-        "low": 551.02,
-        "close": 551.4,
-        "volume": 1060
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 956.84,
+        "qty": 0.5228,
+        "pnl": 0.0,
+        "time": "18:29:07"
       },
       {
-        "time": 1770317400,
-        "open": 551.405,
-        "high": 551.63,
-        "low": 551.37,
-        "close": 551.46,
-        "volume": 3649
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 987.655,
+        "qty": 0.5228,
+        "pnl": 16.358411999999984,
+        "time": "18:29:11"
       },
       {
-        "time": 1770317700,
-        "open": 551.365,
-        "high": 551.52,
-        "low": 550.88,
-        "close": 550.88,
-        "volume": 1725
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 987.16,
+        "qty": 0.5228,
+        "pnl": 15.681295999999968,
+        "time": "18:29:11"
       },
       {
-        "time": 1770318000,
-        "open": 550.51,
-        "high": 551.405,
-        "low": 550.44,
-        "close": 551.405,
-        "volume": 858
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 984.2,
+        "qty": 0.5083,
+        "pnl": 0.0,
+        "time": "18:29:15"
       },
       {
-        "time": 1770318300,
-        "open": 551.42,
-        "high": 551.765,
-        "low": 550.96,
-        "close": 550.96,
-        "volume": 734
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 967.47,
+        "qty": 0.5083,
+        "pnl": -8.673859000000009,
+        "time": "18:29:17"
       },
       {
-        "time": 1770318600,
-        "open": 551.05,
-        "high": 552.09,
-        "low": 551.045,
-        "close": 552.0,
-        "volume": 1314
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 967.95,
+        "qty": 0.5083,
+        "pnl": -8.008266499999998,
+        "time": "18:29:17"
       },
       {
-        "time": 1770318900,
-        "open": 551.66,
-        "high": 552.055,
-        "low": 551.55,
-        "close": 552.01,
-        "volume": 598
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 965.0,
+        "qty": 0.5184,
+        "pnl": 0.0,
+        "time": "18:29:19"
       },
       {
-        "time": 1770319200,
-        "open": 552.145,
-        "high": 552.145,
-        "low": 551.96,
-        "close": 552.06,
-        "volume": 804
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 947.76,
+        "qty": 0.5184,
+        "pnl": -9.107216000000005,
+        "time": "18:29:21"
       },
       {
-        "time": 1770319500,
-        "open": 551.86,
-        "high": 552.15,
-        "low": 551.6,
-        "close": 551.71,
-        "volume": 1386
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 948.23,
+        "qty": 0.5184,
+        "pnl": -8.442143999999983,
+        "time": "18:29:21"
       },
       {
-        "time": 1770319800,
-        "open": 551.51,
-        "high": 551.51,
-        "low": 550.745,
-        "close": 551.17,
-        "volume": 2043
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 968.09,
+        "qty": 0.5167,
+        "pnl": 0.0,
+        "time": "18:29:26"
       },
       {
-        "time": 1770320100,
-        "open": 550.99,
-        "high": 551.11,
-        "low": 550.86,
-        "close": 550.86,
-        "volume": 1270
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 976.11,
+        "qty": 0.5167,
+        "pnl": 3.973933999999991,
+        "time": "18:29:30"
       },
       {
-        "time": 1770320400,
-        "open": 550.74,
-        "high": 551.55,
-        "low": 550.74,
-        "close": 551.49,
-        "volume": 1404
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 976.6,
+        "qty": 0.5167,
+        "pnl": 4.647716500000003,
+        "time": "18:29:30"
       },
       {
-        "time": 1770320700,
-        "open": 551.815,
-        "high": 551.82,
-        "low": 551.655,
-        "close": 551.66,
-        "volume": 701
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 999.73,
+        "qty": 0.5004,
+        "pnl": 0.0,
+        "time": "18:29:33"
       },
       {
-        "time": 1770321000,
-        "open": 551.925,
-        "high": 551.925,
-        "low": 551.78,
-        "close": 551.88,
-        "volume": 579
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 980.35,
+        "qty": 0.5004,
+        "pnl": -9.867751999999998,
+        "time": "18:29:35"
       },
       {
-        "time": 1770321300,
-        "open": 551.79,
-        "high": 552.04,
-        "low": 551.43,
-        "close": 551.43,
-        "volume": 1767
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 980.84,
+        "qty": 0.5004,
+        "pnl": -9.202355999999993,
+        "time": "18:29:35"
       },
       {
-        "time": 1770321600,
-        "open": 551.185,
-        "high": 551.24,
-        "low": 550.795,
-        "close": 550.795,
-        "volume": 1058
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 976.29,
+        "qty": 0.5124,
+        "pnl": 0.0,
+        "time": "18:29:36"
       },
       {
-        "time": 1770321900,
-        "open": 550.73,
-        "high": 551.615,
-        "low": 550.73,
-        "close": 551.615,
-        "volume": 2090
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1005.885,
+        "qty": 0.5124,
+        "pnl": 15.415554000000018,
+        "time": "18:29:38"
       },
       {
-        "time": 1770322200,
-        "open": 551.78,
-        "high": 552.18,
-        "low": 551.77,
-        "close": 551.99,
-        "volume": 938
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1005.38,
+        "qty": 0.5124,
+        "pnl": 14.735716000000016,
+        "time": "18:29:38"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 1018.08,
+        "qty": 0.4914,
+        "pnl": 0.0,
+        "time": "18:29:39"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1000.79,
+        "qty": 0.4914,
+        "pnl": -8.666306000000038,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1001.29,
+        "qty": 0.4914,
+        "pnl": -8.00244900000004,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 981.52,
+        "qty": 0.5097,
+        "pnl": 0.0,
+        "time": "18:29:47"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 986.38,
+        "qty": 0.5097,
+        "pnl": 2.3071420000000074,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 986.87,
+        "qty": 0.5097,
+        "pnl": 2.9791965000000142,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY",
+        "price": 185.51,
+        "qty": 2.6967,
+        "pnl": 0.0,
+        "time": "18:30:55"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY/SELL",
+        "price": 191.035,
+        "qty": 2.6967,
+        "pnl": 15.155454000000011,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "CRM",
+        "side": "SELL",
+        "price": 190.94,
+        "qty": 2.6967,
+        "pnl": 14.473081000000018,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": 0.0,
+        "time": "18:32:12"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": -0.17,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.83,
+        "qty": 13.9684,
+        "pnl": 0.48889399999995237,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.72,
+        "qty": 14.0036,
+        "pnl": 0.0,
+        "time": "18:32:23"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.95,
+        "qty": 14.0036,
+        "pnl": 3.050828000000056,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.97,
+        "qty": 14.0036,
+        "pnl": 3.710954000000008,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.87,
+        "qty": 13.9451,
+        "pnl": 0.0,
+        "time": "18:32:35"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.94,
+        "qty": 13.9451,
+        "pnl": 0.8061570000000039,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.96,
+        "qty": 13.9451,
+        "pnl": 1.4642355000000555,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 36.02,
+        "qty": 13.887,
+        "pnl": 0.0,
+        "time": "18:32:42"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.78,
+        "qty": 13.887,
+        "pnl": -3.5028800000000277,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.8,
+        "qty": 13.887,
+        "pnl": -2.846835000000075,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.88,
+        "qty": 16.742,
+        "pnl": 0.0,
+        "time": "18:33:03"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.64,
+        "qty": 16.742,
+        "pnl": -4.188079999999974,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.65,
+        "qty": 16.742,
+        "pnl": -3.599529999999998,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.76,
+        "qty": 16.8095,
+        "pnl": 0.0,
+        "time": "18:33:11"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.1,
+        "qty": 16.8095,
+        "pnl": 5.545229999999997,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.12,
+        "qty": 16.8095,
+        "pnl": 6.3035625,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.98,
+        "qty": 16.6861,
+        "pnl": 0.0,
+        "time": "18:33:16"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.49,
+        "qty": 16.6861,
+        "pnl": -8.346189000000033,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.5,
+        "qty": 16.6861,
+        "pnl": -7.759036499999998,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.56,
+        "qty": 16.9233,
+        "pnl": 0.0,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.58,
+        "qty": 16.9233,
+        "pnl": 0.16846599999999282,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.59,
+        "qty": 16.9233,
+        "pnl": 0.7615484999999688,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.71,
+        "qty": 16.8379,
+        "pnl": 0.0,
+        "time": "18:33:24"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.625,
+        "qty": 16.8379,
+        "pnl": 15.659246999999997,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.61,
+        "qty": 16.8379,
+        "pnl": 14.984109999999978,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.33,
+        "qty": 16.4935,
+        "pnl": 0.0,
+        "time": "18:33:30"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 31.275,
+        "qty": 16.4935,
+        "pnl": 15.833759999999957,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 31.26,
+        "qty": 16.4935,
+        "pnl": 15.168955000000055,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.73,
+        "qty": 16.2787,
+        "pnl": 0.0,
+        "time": "18:33:41"
       }
     ],
-    "status": "running",
+    "candles": [],
+    "status": "completed",
     "next_scan_in": 0,
     "is_waiting": false,
     "mock_time_930": false,
-    "blocks": [
-      "Sin se\u00f1al clara (Wait)"
-    ]
+    "blocks": [],
+    "sim_start": "",
+    "sim_end": ""
   },
   "_main": {
     "mode": "SIMULATED",
-    "symbol": "MA",
-    "session": 32,
-    "iteration": 2009,
-    "timestamp": "2026-02-05T20:10:00+00:00",
-    "bid": 551.985,
-    "ask": 551.995,
+    "symbol": "\u2500",
+    "session": 23,
+    "iteration": 0,
+    "timestamp": "2026-02-28T18:42:31.377890+00:00",
+    "bid": 0.0,
+    "ask": 0.0,
     "signal": "HOLD",
     "regime": "NEUTRAL",
-    "rsi": 52.128840215943384,
-    "ema_fast": 551.5386849288552,
-    "ema_slow": 551.6942914719178,
-    "ema_200": 553.1154806721298,
-    "macd_hist": 0.08567593709451479,
-    "vwap": 553.5860749335728,
-    "atr": 0.7307396862851033,
-    "confirmations": [],
+    "rsi": 50.0,
+    "ema_fast": 0.0,
+    "ema_slow": 0.0,
+    "ema_200": 0.0,
+    "macd_hist": 0.0,
+    "vwap": 0.0,
+    "atr": 0.0,
+    "confirmations": null,
     "initial_cash": 10000.0,
     "available_cash": 10000.0,
-    "settlement": 0,
+    "settlement": 0.0,
     "win_rate": 0.0,
     "total_trades": 0,
     "winning_trades": 0,
     "gross_profit": 0.0,
     "gross_loss": 0.0,
-    "total_sim_trades": 84,
-    "total_sim_wins": 41,
-    "total_sim_pnl": 314.6187999999998,
+    "total_sim_trades": 171,
+    "total_sim_wins": 65,
+    "total_sim_pnl": 462.26653350000026,
     "position": null,
-    "trades": [],
-    "candles": [
+    "trades": [
       {
-        "time": 1770304500,
-        "open": 555.88,
-        "high": 557.47,
-        "low": 555.69,
-        "close": 556.93,
-        "volume": 2375
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 257.3,
+        "qty": 1.912,
+        "pnl": -8.468079999999953,
+        "time": "18:19:03"
       },
       {
-        "time": 1770304800,
-        "open": 556.51,
-        "high": 557.28,
-        "low": 556.08,
-        "close": 556.83,
-        "volume": 1492
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 257.43,
+        "qty": 1.912,
+        "pnl": -7.791399999999978,
+        "time": "18:19:03"
       },
       {
-        "time": 1770305100,
-        "open": 556.93,
-        "high": 556.93,
-        "low": 555.57,
-        "close": 555.99,
-        "volume": 3725
+        "symbol": "AMD",
+        "side": "BUY",
+        "price": 210.55,
+        "qty": 2.3759,
+        "pnl": 0.0,
+        "time": "18:19:27"
       },
       {
-        "time": 1770305400,
-        "open": 556.58,
-        "high": 556.895,
-        "low": 555.61,
-        "close": 555.61,
-        "volume": 888
+        "symbol": "AMD",
+        "side": "SELL",
+        "price": 213.07,
+        "qty": 2.3759,
+        "pnl": 5.817267999999957,
+        "time": "18:19:28"
       },
       {
-        "time": 1770305700,
-        "open": 555.52,
-        "high": 555.52,
-        "low": 554.57,
-        "close": 554.57,
-        "volume": 1726
+        "symbol": "AMD",
+        "side": "BUY/SELL",
+        "price": 213.18,
+        "qty": 2.3759,
+        "pnl": 6.498086500000033,
+        "time": "18:19:28"
       },
       {
-        "time": 1770306000,
-        "open": 554.49,
-        "high": 554.49,
-        "low": 553.5,
-        "close": 553.86,
-        "volume": 1160
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 335.41,
+        "qty": 1.4914,
+        "pnl": 0.0,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306300,
-        "open": 554.05,
-        "high": 554.545,
-        "low": 554.05,
-        "close": 554.545,
-        "volume": 1174
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 329.21,
+        "qty": 1.4914,
+        "pnl": -9.416680000000069,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306600,
-        "open": 555.13,
-        "high": 555.575,
-        "low": 554.45,
-        "close": 554.45,
-        "volume": 3202
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 329.37,
+        "qty": 1.4914,
+        "pnl": -8.761975,
+        "time": "18:21:40"
       },
       {
-        "time": 1770306900,
-        "open": 554.27,
-        "high": 554.94,
-        "low": 553.62,
-        "close": 553.62,
-        "volume": 2435
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 316.96,
+        "qty": 1.5783,
+        "pnl": 0.0,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307200,
-        "open": 553.74,
-        "high": 554.05,
-        "low": 553.25,
-        "close": 553.25,
-        "volume": 1659
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 311.68,
+        "qty": 1.5783,
+        "pnl": -8.503423999999956,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307500,
-        "open": 553.36,
-        "high": 554.32,
-        "low": 553.275,
-        "close": 554.075,
-        "volume": 961
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 311.84,
+        "qty": 1.5783,
+        "pnl": -7.83625950000005,
+        "time": "18:21:45"
       },
       {
-        "time": 1770307800,
-        "open": 554.3,
-        "high": 554.98,
-        "low": 553.81,
-        "close": 553.99,
-        "volume": 1787
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 300.31,
+        "qty": 1.6658,
+        "pnl": 0.0,
+        "time": "18:21:55"
       },
       {
-        "time": 1770308100,
-        "open": 554.14,
-        "high": 554.69,
-        "low": 554.11,
-        "close": 554.455,
-        "volume": 2373
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 302.62,
+        "qty": 1.6658,
+        "pnl": 3.6779980000000037,
+        "time": "18:22:00"
       },
       {
-        "time": 1770308400,
-        "open": 554.41,
-        "high": 554.71,
-        "low": 553.68,
-        "close": 553.68,
-        "volume": 3104
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 302.77,
+        "qty": 1.6658,
+        "pnl": 4.3560670000000155,
+        "time": "18:22:00"
       },
       {
-        "time": 1770308700,
-        "open": 553.8,
-        "high": 554.31,
-        "low": 552.925,
-        "close": 553.2,
-        "volume": 1804
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 321.85,
+        "qty": 1.5543,
+        "pnl": 0.0,
+        "time": "18:22:05"
       },
       {
-        "time": 1770309000,
-        "open": 552.795,
-        "high": 552.99,
-        "low": 552.01,
-        "close": 552.28,
-        "volume": 1695
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 320.62,
+        "qty": 1.5543,
+        "pnl": -2.0817890000000285,
+        "time": "18:22:07"
       },
       {
-        "time": 1770309300,
-        "open": 552.715,
-        "high": 553.07,
-        "low": 552.35,
-        "close": 553.07,
-        "volume": 964
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 320.78,
+        "qty": 1.5543,
+        "pnl": -1.406641500000046,
+        "time": "18:22:07"
       },
       {
-        "time": 1770309600,
-        "open": 552.6,
-        "high": 553.61,
-        "low": 552.6,
-        "close": 553.59,
-        "volume": 886
+        "symbol": "JPM",
+        "side": "BUY",
+        "price": 303.65,
+        "qty": 1.6475,
+        "pnl": 0.0,
+        "time": "18:22:19"
       },
       {
-        "time": 1770309900,
-        "open": 553.6,
-        "high": 553.6,
-        "low": 551.565,
-        "close": 552.34,
-        "volume": 1340
+        "symbol": "JPM",
+        "side": "SELL",
+        "price": 300.92,
+        "qty": 1.6475,
+        "pnl": -4.667674999999936,
+        "time": "18:22:21"
       },
       {
-        "time": 1770310200,
-        "open": 552.085,
-        "high": 552.69,
-        "low": 551.575,
-        "close": 552.105,
-        "volume": 4010
+        "symbol": "JPM",
+        "side": "BUY/SELL",
+        "price": 301.07,
+        "qty": 1.6475,
+        "pnl": -3.9951875000000188,
+        "time": "18:22:21"
       },
       {
-        "time": 1770310500,
-        "open": 552.55,
-        "high": 552.81,
-        "low": 552.075,
-        "close": 552.81,
-        "volume": 1846
+        "symbol": "WMT",
+        "side": "BUY",
+        "price": 125.06,
+        "qty": 4.0002,
+        "pnl": 0.0,
+        "time": "18:23:55"
       },
       {
-        "time": 1770310800,
-        "open": 552.625,
-        "high": 552.625,
-        "low": 551.55,
-        "close": 551.785,
-        "volume": 1853
+        "symbol": "WMT",
+        "side": "BUY/SELL",
+        "price": 128.945,
+        "qty": 4.0002,
+        "pnl": 15.800789999999957,
+        "time": "18:23:56"
       },
       {
-        "time": 1770311100,
-        "open": 551.83,
-        "high": 552.77,
-        "low": 551.83,
-        "close": 552.77,
-        "volume": 723
+        "symbol": "WMT",
+        "side": "SELL",
+        "price": 128.88,
+        "qty": 4.0002,
+        "pnl": 15.110763999999975,
+        "time": "18:23:56"
       },
       {
-        "time": 1770311400,
-        "open": 552.5,
-        "high": 553.42,
-        "low": 552.5,
-        "close": 552.94,
-        "volume": 893
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 67.96,
+        "qty": 7.3605,
+        "pnl": 0.0,
+        "time": "18:24:33"
       },
       {
-        "time": 1770311700,
-        "open": 552.815,
-        "high": 552.815,
-        "low": 552.52,
-        "close": 552.74,
-        "volume": 483
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 70.05,
+        "qty": 7.3605,
+        "pnl": 15.604259999999929,
+        "time": "18:24:36"
       },
       {
-        "time": 1770312000,
-        "open": 552.46,
-        "high": 552.485,
-        "low": 551.38,
-        "close": 552.0,
-        "volume": 1137
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 70.01,
+        "qty": 7.3605,
+        "pnl": 14.919025000000083,
+        "time": "18:24:36"
       },
       {
-        "time": 1770312300,
-        "open": 552.32,
-        "high": 553.18,
-        "low": 552.32,
-        "close": 552.33,
-        "volume": 3488
+        "symbol": "KO",
+        "side": "BUY",
+        "price": 72.53,
+        "qty": 6.8975,
+        "pnl": 0.0,
+        "time": "18:24:48"
       },
       {
-        "time": 1770312600,
-        "open": 552.275,
-        "high": 552.44,
-        "low": 552.0,
-        "close": 552.41,
-        "volume": 2093
+        "symbol": "KO",
+        "side": "BUY/SELL",
+        "price": 74.715,
+        "qty": 6.8975,
+        "pnl": 15.346937500000058,
+        "time": "18:24:54"
       },
       {
-        "time": 1770312900,
-        "open": 551.68,
-        "high": 552.03,
-        "low": 550.46,
-        "close": 550.86,
-        "volume": 6084
+        "symbol": "KO",
+        "side": "SELL",
+        "price": 74.68,
+        "qty": 6.8975,
+        "pnl": 14.65962500000004,
+        "time": "18:24:54"
       },
       {
-        "time": 1770313200,
-        "open": 550.79,
-        "high": 551.33,
-        "low": 550.03,
-        "close": 551.33,
-        "volume": 2037
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 146.78,
+        "qty": 3.4082,
+        "pnl": 0.0,
+        "time": "18:25:40"
       },
       {
-        "time": 1770313500,
-        "open": 551.2,
-        "high": 551.88,
-        "low": 551.16,
-        "close": 551.41,
-        "volume": 4025
+        "symbol": "PEP",
+        "side": "SELL",
+        "price": 144.33,
+        "qty": 3.4082,
+        "pnl": -8.52008999999996,
+        "time": "18:25:45"
       },
       {
-        "time": 1770313800,
-        "open": 551.49,
-        "high": 552.675,
-        "low": 551.27,
-        "close": 552.675,
-        "volume": 2787
+        "symbol": "PEP",
+        "side": "BUY/SELL",
+        "price": 144.4,
+        "qty": 3.4082,
+        "pnl": -7.855901000000023,
+        "time": "18:25:45"
       },
       {
-        "time": 1770314100,
-        "open": 553.04,
-        "high": 553.56,
-        "low": 551.82,
-        "close": 551.82,
-        "volume": 2931
+        "symbol": "PEP",
+        "side": "BUY",
+        "price": 169.56,
+        "qty": 2.9503,
+        "pnl": 0.0,
+        "time": "18:26:16"
       },
       {
-        "time": 1770314400,
-        "open": 551.0,
-        "high": 553.065,
-        "low": 551.0,
-        "close": 552.7,
-        "volume": 3874
+        "symbol": "NKE",
+        "side": "BUY",
+        "price": 66.07,
+        "qty": 7.5717,
+        "pnl": 0.0,
+        "time": "18:27:13"
       },
       {
-        "time": 1770314700,
-        "open": 553.09,
-        "high": 553.29,
-        "low": 552.39,
-        "close": 552.63,
-        "volume": 864
+        "symbol": "NKE",
+        "side": "SELL",
+        "price": 64.65,
+        "qty": 7.5717,
+        "pnl": -10.921813999999905,
+        "time": "18:27:14"
       },
       {
-        "time": 1770315000,
-        "open": 552.46,
-        "high": 552.87,
-        "low": 552.13,
-        "close": 552.81,
-        "volume": 1822
+        "symbol": "NKE",
+        "side": "BUY/SELL",
+        "price": 64.68,
+        "qty": 7.5717,
+        "pnl": -10.259653499999922,
+        "time": "18:27:14"
       },
       {
-        "time": 1770315300,
-        "open": 553.08,
-        "high": 553.25,
-        "low": 553.03,
-        "close": 553.19,
-        "volume": 840
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 876.46,
+        "qty": 0.5708,
+        "pnl": 0.0,
+        "time": "18:28:52"
       },
       {
-        "time": 1770315600,
-        "open": 552.98,
-        "high": 552.98,
-        "low": 552.53,
-        "close": 552.6,
-        "volume": 1925
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 879.22,
+        "qty": 0.5708,
+        "pnl": 1.4054079999999949,
+        "time": "18:28:55"
       },
       {
-        "time": 1770315900,
-        "open": 552.56,
-        "high": 552.56,
-        "low": 551.58,
-        "close": 551.58,
-        "volume": 1539
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 879.66,
+        "qty": 0.5708,
+        "pnl": 2.077711999999992,
+        "time": "18:28:55"
       },
       {
-        "time": 1770316200,
-        "open": 551.93,
-        "high": 552.0,
-        "low": 551.02,
-        "close": 551.02,
-        "volume": 3267
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 926.77,
+        "qty": 0.5398,
+        "pnl": 0.0,
+        "time": "18:28:59"
       },
       {
-        "time": 1770316500,
-        "open": 550.92,
-        "high": 551.005,
-        "low": 550.04,
-        "close": 550.04,
-        "volume": 1473
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 929.59,
+        "qty": 0.5398,
+        "pnl": 1.3522360000000269,
+        "time": "18:29:01"
       },
       {
-        "time": 1770316800,
-        "open": 550.07,
-        "high": 551.0,
-        "low": 550.035,
-        "close": 551.0,
-        "volume": 618
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 930.06,
+        "qty": 0.5398,
+        "pnl": 2.0269489999999974,
+        "time": "18:29:01"
       },
       {
-        "time": 1770317100,
-        "open": 551.025,
-        "high": 551.53,
-        "low": 551.02,
-        "close": 551.4,
-        "volume": 1060
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 956.84,
+        "qty": 0.5228,
+        "pnl": 0.0,
+        "time": "18:29:07"
       },
       {
-        "time": 1770317400,
-        "open": 551.405,
-        "high": 551.63,
-        "low": 551.37,
-        "close": 551.46,
-        "volume": 3649
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 987.655,
+        "qty": 0.5228,
+        "pnl": 16.358411999999984,
+        "time": "18:29:11"
       },
       {
-        "time": 1770317700,
-        "open": 551.365,
-        "high": 551.52,
-        "low": 550.88,
-        "close": 550.88,
-        "volume": 1725
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 987.16,
+        "qty": 0.5228,
+        "pnl": 15.681295999999968,
+        "time": "18:29:11"
       },
       {
-        "time": 1770318000,
-        "open": 550.51,
-        "high": 551.405,
-        "low": 550.44,
-        "close": 551.405,
-        "volume": 858
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 984.2,
+        "qty": 0.5083,
+        "pnl": 0.0,
+        "time": "18:29:15"
       },
       {
-        "time": 1770318300,
-        "open": 551.42,
-        "high": 551.765,
-        "low": 550.96,
-        "close": 550.96,
-        "volume": 734
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 967.47,
+        "qty": 0.5083,
+        "pnl": -8.673859000000009,
+        "time": "18:29:17"
       },
       {
-        "time": 1770318600,
-        "open": 551.05,
-        "high": 552.09,
-        "low": 551.045,
-        "close": 552.0,
-        "volume": 1314
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 967.95,
+        "qty": 0.5083,
+        "pnl": -8.008266499999998,
+        "time": "18:29:17"
       },
       {
-        "time": 1770318900,
-        "open": 551.66,
-        "high": 552.055,
-        "low": 551.55,
-        "close": 552.01,
-        "volume": 598
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 965.0,
+        "qty": 0.5184,
+        "pnl": 0.0,
+        "time": "18:29:19"
       },
       {
-        "time": 1770319200,
-        "open": 552.145,
-        "high": 552.145,
-        "low": 551.96,
-        "close": 552.06,
-        "volume": 804
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 947.76,
+        "qty": 0.5184,
+        "pnl": -9.107216000000005,
+        "time": "18:29:21"
       },
       {
-        "time": 1770319500,
-        "open": 551.86,
-        "high": 552.15,
-        "low": 551.6,
-        "close": 551.71,
-        "volume": 1386
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 948.23,
+        "qty": 0.5184,
+        "pnl": -8.442143999999983,
+        "time": "18:29:21"
       },
       {
-        "time": 1770319800,
-        "open": 551.51,
-        "high": 551.51,
-        "low": 550.745,
-        "close": 551.17,
-        "volume": 2043
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 968.09,
+        "qty": 0.5167,
+        "pnl": 0.0,
+        "time": "18:29:26"
       },
       {
-        "time": 1770320100,
-        "open": 550.99,
-        "high": 551.11,
-        "low": 550.86,
-        "close": 550.86,
-        "volume": 1270
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 976.11,
+        "qty": 0.5167,
+        "pnl": 3.973933999999991,
+        "time": "18:29:30"
       },
       {
-        "time": 1770320400,
-        "open": 550.74,
-        "high": 551.55,
-        "low": 550.74,
-        "close": 551.49,
-        "volume": 1404
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 976.6,
+        "qty": 0.5167,
+        "pnl": 4.647716500000003,
+        "time": "18:29:30"
       },
       {
-        "time": 1770320700,
-        "open": 551.815,
-        "high": 551.82,
-        "low": 551.655,
-        "close": 551.66,
-        "volume": 701
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 999.73,
+        "qty": 0.5004,
+        "pnl": 0.0,
+        "time": "18:29:33"
       },
       {
-        "time": 1770321000,
-        "open": 551.925,
-        "high": 551.925,
-        "low": 551.78,
-        "close": 551.88,
-        "volume": 579
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 980.35,
+        "qty": 0.5004,
+        "pnl": -9.867751999999998,
+        "time": "18:29:35"
       },
       {
-        "time": 1770321300,
-        "open": 551.79,
-        "high": 552.04,
-        "low": 551.43,
-        "close": 551.43,
-        "volume": 1767
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 980.84,
+        "qty": 0.5004,
+        "pnl": -9.202355999999993,
+        "time": "18:29:35"
       },
       {
-        "time": 1770321600,
-        "open": 551.185,
-        "high": 551.24,
-        "low": 550.795,
-        "close": 550.795,
-        "volume": 1058
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 976.29,
+        "qty": 0.5124,
+        "pnl": 0.0,
+        "time": "18:29:36"
       },
       {
-        "time": 1770321900,
-        "open": 550.73,
-        "high": 551.615,
-        "low": 550.73,
-        "close": 551.615,
-        "volume": 2090
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1005.885,
+        "qty": 0.5124,
+        "pnl": 15.415554000000018,
+        "time": "18:29:38"
       },
       {
-        "time": 1770322200,
-        "open": 551.78,
-        "high": 552.18,
-        "low": 551.77,
-        "close": 551.99,
-        "volume": 938
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1005.38,
+        "qty": 0.5124,
+        "pnl": 14.735716000000016,
+        "time": "18:29:38"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 1018.08,
+        "qty": 0.4914,
+        "pnl": 0.0,
+        "time": "18:29:39"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 1000.79,
+        "qty": 0.4914,
+        "pnl": -8.666306000000038,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 1001.29,
+        "qty": 0.4914,
+        "pnl": -8.00244900000004,
+        "time": "18:29:42"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY",
+        "price": 981.52,
+        "qty": 0.5097,
+        "pnl": 0.0,
+        "time": "18:29:47"
+      },
+      {
+        "symbol": "COST",
+        "side": "SELL",
+        "price": 986.38,
+        "qty": 0.5097,
+        "pnl": 2.3071420000000074,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "COST",
+        "side": "BUY/SELL",
+        "price": 986.87,
+        "qty": 0.5097,
+        "pnl": 2.9791965000000142,
+        "time": "18:29:52"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY",
+        "price": 185.51,
+        "qty": 2.6967,
+        "pnl": 0.0,
+        "time": "18:30:55"
+      },
+      {
+        "symbol": "CRM",
+        "side": "BUY/SELL",
+        "price": 191.035,
+        "qty": 2.6967,
+        "pnl": 15.155454000000011,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "CRM",
+        "side": "SELL",
+        "price": 190.94,
+        "qty": 2.6967,
+        "pnl": 14.473081000000018,
+        "time": "18:30:57"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": 0.0,
+        "time": "18:32:12"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.81,
+        "qty": 13.9684,
+        "pnl": -0.17,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.83,
+        "qty": 13.9684,
+        "pnl": 0.48889399999995237,
+        "time": "18:32:22"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.72,
+        "qty": 14.0036,
+        "pnl": 0.0,
+        "time": "18:32:23"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.95,
+        "qty": 14.0036,
+        "pnl": 3.050828000000056,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.97,
+        "qty": 14.0036,
+        "pnl": 3.710954000000008,
+        "time": "18:32:34"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 35.87,
+        "qty": 13.9451,
+        "pnl": 0.0,
+        "time": "18:32:35"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.94,
+        "qty": 13.9451,
+        "pnl": 0.8061570000000039,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.96,
+        "qty": 13.9451,
+        "pnl": 1.4642355000000555,
+        "time": "18:32:41"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY",
+        "price": 36.02,
+        "qty": 13.887,
+        "pnl": 0.0,
+        "time": "18:32:42"
+      },
+      {
+        "symbol": "SH",
+        "side": "SELL",
+        "price": 35.78,
+        "qty": 13.887,
+        "pnl": -3.5028800000000277,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "SH",
+        "side": "BUY/SELL",
+        "price": 35.8,
+        "qty": 13.887,
+        "pnl": -2.846835000000075,
+        "time": "18:32:47"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.88,
+        "qty": 16.742,
+        "pnl": 0.0,
+        "time": "18:33:03"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.64,
+        "qty": 16.742,
+        "pnl": -4.188079999999974,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.65,
+        "qty": 16.742,
+        "pnl": -3.599529999999998,
+        "time": "18:33:10"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.76,
+        "qty": 16.8095,
+        "pnl": 0.0,
+        "time": "18:33:11"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.1,
+        "qty": 16.8095,
+        "pnl": 5.545229999999997,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.12,
+        "qty": 16.8095,
+        "pnl": 6.3035625,
+        "time": "18:33:15"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.98,
+        "qty": 16.6861,
+        "pnl": 0.0,
+        "time": "18:33:16"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.49,
+        "qty": 16.6861,
+        "pnl": -8.346189000000033,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.5,
+        "qty": 16.6861,
+        "pnl": -7.759036499999998,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.56,
+        "qty": 16.9233,
+        "pnl": 0.0,
+        "time": "18:33:19"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 29.58,
+        "qty": 16.9233,
+        "pnl": 0.16846599999999282,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 29.59,
+        "qty": 16.9233,
+        "pnl": 0.7615484999999688,
+        "time": "18:33:22"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 29.71,
+        "qty": 16.8379,
+        "pnl": 0.0,
+        "time": "18:33:24"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 30.625,
+        "qty": 16.8379,
+        "pnl": 15.659246999999997,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 30.61,
+        "qty": 16.8379,
+        "pnl": 14.984109999999978,
+        "time": "18:33:26"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.33,
+        "qty": 16.4935,
+        "pnl": 0.0,
+        "time": "18:33:30"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY/SELL",
+        "price": 31.275,
+        "qty": 16.4935,
+        "pnl": 15.833759999999957,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "SELL",
+        "price": 31.26,
+        "qty": 16.4935,
+        "pnl": 15.168955000000055,
+        "time": "18:33:35"
+      },
+      {
+        "symbol": "PSQ",
+        "side": "BUY",
+        "price": 30.73,
+        "qty": 16.2787,
+        "pnl": 0.0,
+        "time": "18:33:41"
       }
     ],
-    "status": "running",
+    "candles": [],
+    "status": "completed",
     "next_scan_in": 0,
     "is_waiting": false,
     "mock_time_930": false,
-    "blocks": [
-      "Sin se\u00f1al clara (Wait)"
-    ]
+    "blocks": [],
+    "sim_start": "",
+    "sim_end": ""
   }
 }

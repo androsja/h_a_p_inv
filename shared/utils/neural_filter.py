@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 # ── Constantes ────────────────────────────────────────────────────────────────
 MODEL_PATH          = config.DATA_DIR / "neural_model.joblib"
-CONFIDENCE_THRESHOLD = 0.55   # Umbral mínimo de probabilidad para permitir BUY
+CONFIDENCE_THRESHOLD = config.CONFIDENCE_THRESHOLD 
 MIN_SAMPLES         = 8       # Mínimo de trades antes de confiar en el MLP
 
 # Encoding de regímenes (debe coincidir con detect_regime en indicators.py)
@@ -220,10 +220,10 @@ class NeuralTradeFilter:
         score = 0.5  # Inicio neutro
         reasons = []
 
-        # RSI > 70 en TREND_UP (peor patrón encontrado) → penalizar fuerte
-        if regime_enc == 0 and rsi > 68:   # TREND_UP tardío
+        # RSI > 72 en TREND_UP (antes 68) → penalizar si es extremo
+        if regime_enc == 0 and rsi > 72:   # TREND_UP muy tardío
             score -= 0.25
-            reasons.append(f"TREND_UP tardío RSI={rsi:.0f}")
+            reasons.append(f"TREND_UP muy tardío RSI={rsi:.0f}")
 
         # RANGE con MACD sin fuerza → falsas señales
         if regime_enc == 2 and abs(macd_norm) < 0.1:

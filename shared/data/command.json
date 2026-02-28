@@ -1,1 +1,1 @@
-{"force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO", "reset_all": false, "restart_sim": false}
+{"restart_sim": false, "reset_all": false, "force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO"}

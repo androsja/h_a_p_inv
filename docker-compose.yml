@@ -17,12 +17,9 @@ services:
       - ./simulation_mode:/app/simulation_mode
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./shared:/app/shared
       - ./shared/assets_sim.json:/app/assets_sim.json
-      - ./shared/broker:/app/broker
-      - ./shared/strategy:/app/strategy
-      - ./shared/utils:/app/utils
-      - ./shared/config.py:/app/config.py
-      - ./shared/data/market_data.py:/app/shared/data/market_data.py
+      - ./shared/assets_live.json:/app/assets_live.json
     deploy:
       resources:
         limits:
@@ -46,12 +43,12 @@ services:
     ports:
       - "8080:8080" # → Abrir http://localhost:8080
     volumes:
+      - ./dashboard:/app/dashboard
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./shared:/app/shared
       - ./shared/assets_sim.json:/app/assets_sim.json
       - ./shared/assets_live.json:/app/assets_live.json
-      - ./shared/config.py:/app/config.py
-      - ./shared/train_ai.py:/app/train_ai.py
     depends_on:
       - trading-bot-sim
     healthcheck:

@@ -46,7 +46,8 @@ print(f"📊 DATASET CREADO: {len(df)} Trades Históricos capturados en secreto.
 print(f"   Ganadores: {wins} | Perdedores: {losses} (Acuracidad base simulador: {winrate:.1f}%)")
 
 if len(df) < 20:
-    print("\n⏳ (Se requieren al menos 20 trades para que el Machine Learning detecte patrones. Dejaremos que termine el ciclo actual).")
+    print(f"\n⏳ Se han detectado {len(df)} trades, pero el Machine Learning requiere al menos 20 para encontrar patrones confiables.")
+    print("Por favor, deja que el bot simule unos activos más y vuelve a intentarlo.")
     exit()
 
 # Entrenar un Decision Tree (Árbol de Decisión) rápido para sacar deducciones lógicas ("Insights Humanos")
