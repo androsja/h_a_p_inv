@@ -12,7 +12,7 @@ import logging.handlers
 import sys
 from pathlib import Path
 from colorama import Fore, Style, init as colorama_init
-import config
+from shared import config
 
 colorama_init(autoreset=True)
 
@@ -118,7 +118,7 @@ def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl:
         f"qty={qty:.4f} | fill_price=${fill_price:.2f} {pnl_str}"
     )
     try:
-        from utils.state_writer import record_trade
+        from shared.utils.state_writer import record_trade
         record_trade(symbol, side, fill_price, qty, pnl if pnl is not None else 0.0)
     except Exception as e:
         log.error(f"Error registrando trade en state.json: {e}")

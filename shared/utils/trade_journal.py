@@ -22,7 +22,7 @@ import json
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
-import config
+from shared import config
 
 JOURNAL_PATH = config.TRADE_JOURNAL_FILE
 _journal_lock = threading.Lock()
@@ -189,5 +189,5 @@ def record_trade(
             pass
 
     except Exception as e:
-        from utils.logger import log
+        from shared.utils.logger import log
         log.error(f"[trade_journal] Error guardando trade: {e}")

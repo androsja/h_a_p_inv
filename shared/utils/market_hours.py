@@ -11,7 +11,7 @@ La librería pytz maneja esto automáticamente.
 
 from datetime import datetime, time, timedelta
 import pytz
-import config
+from shared import config
 
 # ─── Zonas horarias ─────────────────────────────────────────────────────────
 TZ_NYC      = pytz.timezone("America/New_York")

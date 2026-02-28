@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 
-import config
+from shared import config
 _state_path = config.STATE_FILE
 _state_lock = threading.Lock()
 

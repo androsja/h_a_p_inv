@@ -6,7 +6,7 @@ import os
 import threading
 import time
 
-import config
+from shared import config
 log = logging.getLogger("trading_bot")
 
 def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], session_num: int, run_bot_fn, init_broker_fn, checkpoint_fn=None) -> None:

@@ -14,9 +14,9 @@ import uuid
 import requests
 from datetime import datetime, timezone
 
-import config
-from broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
-from utils.logger import log, log_rate_limit
+from shared import config
+from shared.broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
+from shared.utils.logger import log, log_rate_limit
 
 
 # ─── Configuración de reintentos ─────────────────────────────────────────────

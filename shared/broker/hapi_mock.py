@@ -20,10 +20,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-import config
-from broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
-from data.market_data import MarketReplay, LivePaperReplay
-from utils.logger import log, log_order_filled
+from shared import config
+from shared.broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
+from shared.data.market_data import MarketReplay, LivePaperReplay
+from shared.utils.logger import log, log_order_filled
 
 
 # ─── Orden pendiente en el simulador ────────────────────────────────────────
@@ -192,7 +192,7 @@ class HapiMock(BrokerInterface):
         bid = Open de la vela (precio de venta más conservador)
         ask = Close de la vela (precio de compra más actualizado)
         """
-        from utils.market_hours import _is_mock_time_active
+        from shared.utils.market_hours import _is_mock_time_active
         
         if not self._replay.has_next():
             raise StopIteration("No quedan más datos históricos para simular.")
@@ -363,7 +363,7 @@ class HapiMock(BrokerInterface):
         log_order_filled(order.symbol, "BUY", actual_fill_price, order.qty)
         # Update global state for UI tracking
         try:
-            from utils.state_writer import _state
+            from shared.utils.state_writer import _state
             _state.available_cash = self._cash
         except: pass
 
@@ -404,7 +404,7 @@ class HapiMock(BrokerInterface):
         
         # Update global state
         try:
-            from utils.state_writer import _state
+            from shared.utils.state_writer import _state
             _state.available_cash = self._cash
             _state.net_profit += net_pnl
             _state.total_fees_paid += total_fees

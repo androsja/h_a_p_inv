@@ -37,19 +37,19 @@ from datetime import datetime
 from pathlib import Path
 
 import importlib
-import shared.data.market_data as market_data
-import config
+from shared.data import market_data as market_data
+from shared import config
 from shared.utils.logger import log, log_order_attempt, log_market_closed, set_symbol_log
 from shared.utils.market_hours import is_market_open, market_status_str, next_open_str
 from shared.utils import state_writer, market_hours, logger, trade_journal, checkpoint
 from shared.utils.state_writer import set_state_file
 from shared.data.market_data import set_assets_file, get_symbols
-from broker.interface import BrokerInterface, Quote, OrderResponse
-from broker.hapi_live import HapiLive
-from broker.hapi_mock import HapiMock
-from strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
-from strategy.risk_manager import RiskManager, AccountState, OpenPosition
-from strategy.ml_predictor import ml_predictor
+from shared.broker.interface import BrokerInterface, Quote, OrderResponse
+from shared.broker.hapi_live import HapiLive
+from shared.broker.hapi_mock import HapiMock
+from shared.strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
+from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
+from shared.strategy.ml_predictor import ml_predictor
 from shared.utils.trade_journal import record_trade as journal_record_trade
 from shared.utils.trade_journal import record_trade as journal_record_trade
 from dataclasses import asdict
@@ -293,7 +293,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             break # Salir de este loop para reiniciar sesión con el nuevo
                 except: pass
             else:
-                from data.market_data import download_bars
+                from shared.data.market_data import download_bars
                 df = download_bars(symbol)
 
             signal = analyze(df, symbol=symbol)
@@ -782,6 +782,9 @@ def main() -> None:
                     clear_state()
                     if is_purgue:
                         if config.RESULTS_FILE.exists(): config.RESULTS_FILE.unlink()
+                        if config.TRADE_JOURNAL_FILE.exists(): config.TRADE_JOURNAL_FILE.unlink()
+                        from shared.utils.checkpoint import clear_simulation_checkpoints
+                        clear_simulation_checkpoints()
                     importlib.reload(market_data)
                     set_assets_file(config.ASSETS_FILE_SIM)
                     all_symbols = market_data.get_symbols()

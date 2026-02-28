@@ -31,7 +31,7 @@ import pandas as pd
 import os
 import joblib
 from functools import lru_cache
-import config
+from shared import config
 
 # ── CACHÉ DE IA PARA VELOCIDAD ULTRA-RÁPIDA (< 1 ms) ──────────
 @lru_cache(maxsize=1)
@@ -502,7 +502,7 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         vol_ratio = vol_ratio,
     )
     regime_label = REGIMEN_LABELS.get(current_regime, current_regime)
-    from utils.logger import log as _log
+    from shared.utils.logger import log as _log
     sym_prefix = f"[{symbol}] " if symbol else ""
     _log.info(f"{sym_prefix}🌍 RÉGIMEN DETECTADO: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
 
@@ -547,13 +547,13 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
     # ── ESTRATEGIA B: Rebote Institucional (Estilo SMB Capital) ───────────
     # El precio colapsa irracionalmente separándose del VWAP (Z-Score < -2.0).
     # Oportunidad de compra estadística si la vela hace reversión confirmada (Cierre Verde o Martillo).
-    # IMPORTANTE: Solo comprar el "dip" si microscópicamente colapsó, pero MACROSCÓPICAMENTE
-    # la tendencia general sigue siendo alcista (Precio > EMA 200). De lo contrario es atajar un cuchillo.
+    # OPTIMIZACIÓN: Permitir rebotes EXTREMOS incluso si la macro es bajista (Z < -3.0)
     vwap_oversold = zscore_now < -2.0
+    vwap_extreme  = zscore_now < -3.0
     vwap_reversal = (close_now > open_now) or is_hammer
     macro_bullish = close_now > ema_200_now
     
-    is_vwap_bounce = vwap_oversold and vwap_reversal and macro_bullish
+    is_vwap_bounce = (vwap_oversold and vwap_reversal and macro_bullish) or (vwap_extreme and vwap_reversal)
 
     # ══ EVALUACIÓN POR RÉGIMEN ═ El sistema elige la estrategia óptima ══
     if current_regime in ("TREND_UP", "MOMENTUM", "NEUTRAL"):
@@ -571,30 +571,25 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         confirmations_buy.clear()
         
     # ── FILTRO INTELIGENTE BASADO EN MACHINE LEARNING HISTÓRICO ───────────
-    # Filtrar operaciones en la "ZONA DE LA MUERTE" (Whipsaws).
-    # Optimización: Reducimos la zona de bloqueo de (26.5-62.2) a (30-60) para ser más oportunistas.
-    is_whipsaw_zone = (rsi_now > 30.0) and (rsi_now < 60.0)
+    # OPTIMIZACIÓN: Reducimos la zona de bloqueo del RSI para ser más agresivos.
+    # Antes: (30-60). Ahora: solo bloqueamos si el RSI está excesivamente "muerto" (40-50) sin dirección.
+    is_whipsaw_zone = (rsi_now > 40.0) and (rsi_now < 50.0)
     
     # Filtro ADX: Evitamos laterales sin dirección.
-    # Excepción: Si hay un patrón de reversión FUERTE (Hammer/Engulf), permitimos ignorar ADX bajo.
-    is_low_trend = adx_now < 18.0 and not (is_hammer or is_engulf)
+    # OPTIMIZACIÓN: Bajamos el umbral de 18 a 15.
+    is_low_trend = adx_now < 15.0 and not (is_hammer or is_engulf)
     
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
         signal = SIGNAL_HOLD
         if is_whipsaw_zone:
-            blocks_buy.append(f"Filtro ML: RSI en zona de riesgo ({rsi_now:.1f})")
+            blocks_buy.append(f"Filtro ML: RSI en zona muerta ({rsi_now:.1f})")
         if is_low_trend:
-            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 18)")
+            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 15)")
         confirmations_buy.clear()
 
-    # ── NUEVA REGLA: TREND_UP tardío (RSI > 68) → compra ya al final del movimiento ──
-    if signal == SIGNAL_BUY and current_regime == "TREND_UP" and rsi_now > 68:
-        signal = SIGNAL_HOLD
-        msg = f"RSI tardío en TREND_UP ({rsi_now:.1f} > 68)"
-        blocks_buy.append(msg)
-        confirmations_buy.clear()
-        from utils.logger import log as _log
-        _log.info(f"🚧 BLOQUEADO: {msg}")
+    # ── REGLA TREND_UP: Eliminamos el bloqueo de RSI > 68 para permitir momentum ──
+    # En una tendencia fuerte alcista, el RSI puede mantenerse alto mucho tiempo.
+    pass 
 
     # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
     # Excepción Pro: Si el Z-Score es EXTREMADAMENTE bajo (< -2.5), es un rebote de alta probabilidad
@@ -604,7 +599,7 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         msg = f"RANGE: Z-Score insuficiente ({zscore_now:.2f} > -2.5)"
         blocks_buy.append(msg)
         confirmations_buy.clear()
-        from utils.logger import log as _log
+        from shared.utils.logger import log as _log
         _log.info(f"🚧 BLOQUEADO: {msg}")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
@@ -650,13 +645,13 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
                     signal = SIGNAL_HOLD
                     confirmations_buy.clear()
             except Exception as e:
-                from utils.logger import log
+                from shared.utils.logger import log
                 log.error(f"Error AI prediction: {e}")
 
     # 2. Red Neuronal MLP (filtro de pre-aprobación adaptativo)
     if signal == SIGNAL_BUY:
         try:
-            from utils.neural_filter import get_neural_filter
+            from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter()
             features_vec = nf.build_features(
                 rsi          = rsi_now,
@@ -671,7 +666,7 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
             )
             proba, reason = nf.predict(features_vec)
 
-            from utils.logger import log as _log
+            from shared.utils.logger import log as _log
             _log.info(f"🧠 Red Neuronal: {reason}")
 
             if proba < 0.55:   # CONFIDENCE_THRESHOLD
@@ -682,16 +677,16 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
                 confirmations_buy.append(f"🧠 Red Neuronal: aprobado (P={proba:.0%})")
 
         except Exception as e:
-            from utils.logger import log as _log
+            from shared.utils.logger import log as _log
             _log.warning(f"Error en filtro neuronal, omitiendo: {e}")
 
 
     # Logeamos la ejecución del escuadrón (con RÉGIMEN)
     if signal == SIGNAL_BUY:
-        from utils.logger import log
+        from shared.utils.logger import log
         log.info(f"🔫 COMPRA PERMITIDA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_buy))
     elif signal == SIGNAL_SELL:
-        from utils.logger import log
+        from shared.utils.logger import log
         _log.info(f"{sym_prefix}🔴 VENTA ALERTA TÁCTICA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
 
     return SignalResult(

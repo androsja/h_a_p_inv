@@ -27,8 +27,8 @@ except ImportError:
     # Fallback si todavía no se ha reconstruido el contenedor
     StockHistoricalDataClient = None
 
-import config
-from utils.logger import log
+from shared import config
+from shared.utils.logger import log
 
 ET = pytz.timezone("America/New_York")
 
@@ -56,7 +56,7 @@ def _is_cache_valid(path: Path) -> bool:
     
     age = time.time() - path.stat().st_mtime
     
-    from utils.market_hours import _is_mock_time_active
+    from shared.utils.market_hours import _is_mock_time_active
     if _is_mock_time_active():
         return age < CACHE_TTL_SECONDS
         
@@ -114,7 +114,7 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
     Usa caché local Parquet para evitar excesivas peticiones.
     """
     cache = _cache_path(symbol)
-    from utils.market_hours import _is_mock_time_active, now_nyc
+    from shared.utils.market_hours import _is_mock_time_active, now_nyc
 
     # 1. Intentar cargar desde Caché
     df = None
@@ -127,7 +127,7 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
     if df is None or df.empty:
         log.info(f"data | {symbol} | Descargando {config.DATA_INTERVAL} desde Alpaca API...")
         try:
-            from utils.state_writer import update_state
+            from shared.utils.state_writer import update_state
             update_state(symbol=symbol, status="downloading")
             client = get_alpaca_client()
             
@@ -305,7 +305,7 @@ class LivePaperReplay:
         
     def next_bar(self) -> pd.Series | None:
         """Devuelve la vela actual (real o simulada)"""
-        from utils.market_hours import _is_mock_time_active, now_nyc
+        from shared.utils.market_hours import _is_mock_time_active, now_nyc
         import pytz
         
         is_mock = _is_mock_time_active()

@@ -14,8 +14,8 @@ Reglas implementadas:
 
 from dataclasses import dataclass, field
 from datetime    import date, datetime, timezone
-import config
-from utils.logger import log, log_risk_block, log_settlement_block
+from shared import config
+from shared.utils.logger import log, log_risk_block, log_settlement_block
 
 
 # ════════════════════════════════════════════════════════════════════════════

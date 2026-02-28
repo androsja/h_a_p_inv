@@ -561,11 +561,56 @@
         }
 
         /* Confluencias en sidebar */
+        /* Confluencias en sidebar */
         .confirm-list {
             padding: 8px 12px;
             display: flex;
             flex-direction: column;
             gap: 2px;
+        }
+
+        .conf-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .conf-stats {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .badge-count {
+            background: var(--blue);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .btn-view-conf {
+            background: #3c404b;
+            color: var(--blue);
+            border: 1px solid #4a4f5d;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-view-conf:hover {
+            background: #4a4f5d;
+            border-color: var(--blue);
         }
 
         .confirm-item {
@@ -585,6 +630,64 @@
 
         .confirm-item.muted {
             color: var(--muted);
+        }
+
+        /* Modal de Confluencias */
+        .conf-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 100000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .conf-modal {
+            background: #1e212b;
+            border: 1px solid #3c404b;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .conf-modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #3c404b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .conf-modal-title {
+            color: var(--blue);
+            font-weight: bold;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .conf-modal-close {
+            background: none;
+            border: none;
+            color: #9aa0a6;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .conf-modal-body {
+            padding: 15px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         /* Posición en sidebar */
@@ -1280,8 +1383,31 @@
                 <!-- Confluencias -->
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Confluencias de señal</div>
-                    <div class="confirm-list" id="confirm-list">
+                    <div id="confirm-summary-container">
+                        <div class="conf-summary">
+                            <div class="conf-stats">
+                                <span class="badge-count" id="conf-count">0</span>
+                                <span>filtros activos</span>
+                            </div>
+                            <button class="btn-view-conf" onclick="showConfModal()">Ver detalles</button>
+                        </div>
+                    </div>
+                    <!-- Mantener el listado oculto por si se necesita renderizar en el modal -->
+                    <div class="confirm-list" id="confirm-list" style="display:none;">
                         <div class="confirm-item muted">Esperando señal…</div>
+                    </div>
+                </div>
+
+                <!-- Modal de Confluencias Detalladas -->
+                <div class="conf-modal-overlay" id="conf-modal-overlay">
+                    <div class="conf-modal">
+                        <div class="conf-modal-header">
+                            <h3 class="conf-modal-title">🔍 Detalle de Confluencias</h3>
+                            <button class="conf-modal-close" onclick="closeConfModal()">×</button>
+                        </div>
+                        <div class="conf-modal-body" id="conf-modal-body" style="padding: 20px; color: white;">
+                            <!-- Se llena dinámicamente -->
+                        </div>
                     </div>
                 </div>
 
@@ -1961,18 +2087,57 @@
             ">${m.label}</span>`;
         }
 
-        function renderBlockingSummary(summary, mlCount) {
-            if ((!summary || Object.keys(summary).length === 0) && !mlCount) return '<span style="color:var(--muted)">Sin bloqueos</span>';
-            let html = '';
-            if (summary) {
-                for (const [key, val] of Object.entries(summary)) {
-                    html += `<span style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; color:#aaa; margin-right:4px; margin-bottom:4px; display:inline-block;">${key}:${val}</span>`;
+        function renderBlockingSummary(summary, mlCount, symbol = '─') {
+            if ((!summary || Object.keys(summary).length === 0) && !mlCount) return '<span style="color:var(--muted)">Sin filtros</span>';
+            const count = (summary ? Object.keys(summary).length : 0) + (mlCount > 0 ? 1 : 0);
+
+            // Unicode-aware base64 encoding
+            const jsonStr = JSON.stringify({ s: summary, m: mlCount, sym: symbol });
+            const dataStr = btoa(unescape(encodeURIComponent(jsonStr)));
+
+            return `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="background:rgba(0,188,212,0.2); color:#00bcd4; padding:2px 8px; border-radius:10px; font-weight:bold; font-size:10px; border:1px solid rgba(0,188,212,0.3);">${count} filtros</span>
+                    <button onclick="showBlockingDetails('${dataStr}')" 
+                            style="background:#2b2f3a; color:#00bcd4; border:1px solid #3c404b; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer; font-weight:bold;">
+                        Ver detalles
+                    </button>
+                </div>
+            `;
+        }
+
+        function showBlockingDetails(encoded) {
+            try {
+                // Unicode-aware base64 decoding
+                const jsonStr = decodeURIComponent(escape(atob(encoded)));
+                const { s, m, sym } = JSON.parse(jsonStr);
+
+                const modalBody = document.getElementById('conf-modal-body');
+                const modalTitle = document.querySelector('.conf-modal-title');
+
+                if (modalTitle) modalTitle.textContent = `🛡️ Filtros Activos: ${sym}`;
+
+                let html = '';
+                if (s) {
+                    for (const [key, val] of Object.entries(s)) {
+                        html += `<div class="confirm-item ok" style="font-size:11px; padding:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:4px; margin-bottom:4px;">
+                                    <b>${esc(key)}</b>: se activó ${val} veces
+                                 </div>`;
+                    }
                 }
-            }
-            if (mlCount) {
-                html += `<span style="background:rgba(191,149,255,0.1); border:1px solid rgba(191,149,255,0.3); padding:1px 4px; border-radius:3px; color:var(--purple); font-weight:bold; display:inline-block;">🧠 AI:${mlCount}</span>`;
-            }
-            return html;
+                if (m) {
+                    html += `<div class="confirm-item block" style="font-size:11px; padding:6px; background:rgba(191,149,255,0.1); border:1px solid rgba(191,149,255,0.2); border-radius:4px; color:#bb86fc;">
+                                🧠 <b>Machine Learning</b>: bloqueó la operación ${m} veces tras análisis
+                             </div>`;
+                }
+
+                if (modalBody) {
+                    modalBody.innerHTML = html || '<div class="muted">Sin detalles disponibles</div>';
+                }
+
+                const overlay = document.getElementById('conf-modal-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            } catch (e) { console.error("Error showing blocking details", e); }
         }
 
         async function fetchConfig() {
@@ -2050,7 +2215,18 @@
                     if (lastResultCount !== 0) {
                         lastResultCount = 0;
                         totalNetValue = 0;
-                        if (tbody) tbody.innerHTML = '';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
+
+                        // Reset Summary Cards explicitly
+                        const ids = ['summary-gross-pnl', 'summary-total-fees', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
+                        ids.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.textContent = id === 'summary-final-balance' ? '$10000.00' : '─';
+                                el.style.color = '';
+                            }
+                        });
+
                         const summaryDiv = document.getElementById('ml-progress');
                         if (summaryDiv) summaryDiv.innerHTML = `
         <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
@@ -2196,7 +2372,7 @@
         <td style="padding:10px;">${row.drawdown}%</td>
         <td style="padding:10px;">
             <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
-                ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count)}
+                ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
             </div>
         </td>
         <td style="padding:10px; text-align:left;">
@@ -2569,14 +2745,34 @@
         // ═══════════════════════════════════════════════════════
         function renderConfirmations(confs) {
             const list = document.getElementById('confirm-list');
+            const countEl = document.getElementById('conf-count');
+            const modalBody = document.getElementById('conf-modal-body');
+
             if (!confs || confs.length === 0) {
                 list.innerHTML = '<div class="confirm-item muted">Sin señal activa</div>';
+                if (countEl) countEl.textContent = '0';
+                if (modalBody) modalBody.innerHTML = '<div class="confirm-item muted">Sin señal activa</div>';
                 return;
             }
-            list.innerHTML = confs.map(c => {
+
+            const activeCount = confs.filter(c => c.startsWith('✅')).length;
+            if (countEl) countEl.textContent = activeCount;
+
+            const html = confs.map(c => {
                 const cls = c.startsWith('✅') ? 'ok' : c.startsWith('❌') ? 'block' : 'muted';
                 return `<div class="confirm-item ${cls}">${esc(c)}</div>`;
             }).join('');
+
+            list.innerHTML = html;
+            if (modalBody) modalBody.innerHTML = html;
+        }
+
+        function showConfModal() {
+            document.getElementById('conf-modal-overlay').style.display = 'flex';
+        }
+
+        function closeConfModal() {
+            document.getElementById('conf-modal-overlay').style.display = 'none';
         }
 
         async function setFocusSymbol(sym) {

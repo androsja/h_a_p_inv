@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import os
-import config
+from shared import config
 from sklearn.ensemble import RandomForestClassifier
-from utils.logger import log
+from shared.utils.logger import log
 import collections
 
 DATASET_PATH = config.ML_DATASET_FILE

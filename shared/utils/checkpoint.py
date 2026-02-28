@@ -18,7 +18,7 @@ from __future__ import annotations
 import sqlite3
 import threading
 from datetime import datetime, timezone
-import config
+from shared import config
 DB_PATH = config.CHECKPOINT_DB
 _lock   = threading.Lock()
 
@@ -89,6 +89,19 @@ def load_simulation_checkpoint() -> dict:
             import logging
             logging.getLogger("trading_bot").warning(f"Checkpoint load error: {e}")
     return {"symbol_idx": 0, "symbol": "", "session_num": 0}
+
+
+def clear_simulation_checkpoints() -> None:
+    """Borra todos los checkpoints de simulación para empezar de cero."""
+    with _lock:
+        try:
+            conn = _connect()
+            conn.execute("DELETE FROM checkpoints WHERE mode = 'SIMULATED'")
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            import logging
+            logging.getLogger("trading_bot").warning(f"Checkpoint clear error: {e}")
 
 
 def get_live_paper_symbols() -> list[str]:

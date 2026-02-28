@@ -140,7 +140,7 @@ class BrokerInterface(ABC):
         Las subclases pueden sobreescribir esto para validar contra la API.
         """
         import json
-        import config
+        from shared import config
         with open(config.ASSETS_FILE) as f:
             assets = json.load(f)["assets"]
         allowed = {a["symbol"] for a in assets}

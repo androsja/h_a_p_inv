@@ -25,7 +25,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-import config
+from shared import config
 
 log = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ También sirve el dashboard HTML estático.
 
 import json
 import asyncio
-import config
+from shared import config
 from pathlib import Path
 from datetime import datetime
 
@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import (
+from shared.config import (
     STATE_FILE, LOG_FILE, ASSETS_FILE, COMMAND_FILE, RESULTS_FILE, 
     ML_DATASET_FILE, CHECKPOINT_DB, DATA_DIR, NEURAL_MODEL_FILE,
     STATE_FILE_SIM, STATE_FILE_LIVE
@@ -235,17 +235,6 @@ async def reset_all():
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         
-        # Limpiar archivos en background
-        for f in [RESULTS_FILE, STATE_FILE, STATE_FILE_SIM, STATE_FILE_LIVE, CHECKPOINT_DB]:
-            try:
-                if f.exists():
-                    f.unlink()
-                # También intentar borrar .tmp
-                tmp = f.with_suffix(".tmp")
-                if tmp.exists():
-                    tmp.unlink()
-            except: pass
-            
         # Limpiar logs
         try:
             if LOG_FILE.exists():
