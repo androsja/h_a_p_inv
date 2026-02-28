@@ -32,15 +32,22 @@ build: ## Construye la imagen Docker
 	@echo "$(CYAN)🔨 Construyendo imagen Docker...$(RESET)"
 	docker compose build
 
-sim: build ## Inicia el bot en modo SIMULADO (sin dinero real)
+sim: build ## Inicia el bot en modo SIMULADO
 	@echo "$(GREEN)🔵 Iniciando modo SIMULADO...$(RESET)"
 	docker compose up trading-bot-sim
+
+live: build ## Inicia el bot en modo LIVE (CUENTA REAL)
+	@echo "$(RED)🔥 ATENCIÓN: Iniciando modo LIVE con dinero real...$(RESET)"
+	docker compose --profile live up trading-bot-live
+
+live-paper: build ## Inicia el bot en modo LIVE PAPER (datos reales, dinero ficticio)
+	@echo "$(YELLOW)🧪 Iniciando modo LIVE PAPER...$(RESET)"
+	docker compose --profile paper up trading-bot-paper
 
 sim-detached: build ## Inicia el modo SIMULADO en segundo plano
 	@echo "$(GREEN)🔵 Iniciando modo SIMULADO en background...$(RESET)"
 	docker compose up -d trading-bot-sim
 
-live: build ## ⚠️  Inicia el bot en modo LIVE (dinero real — requiere .env configurado)
 	@echo "$(YELLOW)⚠️  ADVERTENCIA: Modo LIVE usa DINERO REAL.$(RESET)"
 	@read -p "¿Estás seguro? (escribe 'SI' para continuar): " confirm; \
 		[ "$$confirm" = "SI" ] && docker compose --profile live up trading-bot-live || echo "Cancelado."
@@ -61,16 +68,16 @@ clean: stop ## Detiene y elimina contenedores, imágenes y volúmenes de caché
 	@rm -rf data/cache/ logs/
 	@echo "$(GREEN)✅ Limpieza completa.$(RESET)"
 
-test: ## Verifica que los módulos del bot importan correctamente (sin Docker)
+test: ## Verifica que los módulos del bot importan correctamente
 	@echo "$(CYAN)🧪 Verificando imports...$(RESET)"
-	@python3 -c " \
-		import sys; sys.path.insert(0, '.'); \
+	@export PYTHONPATH=$$PYTHONPATH:. && python3 -c " \
+		import sys; sys.path.insert(0, './shared'); \
 		from config import TRADING_MODE; \
 		from utils.market_hours import market_status_str; \
 		print('  ✅ config      OK'); \
 		print('  ✅ utils       OK'); \
 		print('  ✅ Estado:', market_status_str()); \
-	" 2>&1 || echo "$(YELLOW)⚠️  Falta instalar dependencias. Corre 'make build' para usar Docker.$(RESET)"
+	" 2>&1 || echo "$(YELLOW)⚠️  Error de dependencias. Verifica lib shared/.$(RESET)"
 
 status: ## Muestra el estado de los contenedores del bot
 	docker compose ps

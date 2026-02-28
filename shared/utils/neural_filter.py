@@ -25,10 +25,12 @@ from pathlib import Path
 import joblib
 import numpy as np
 
+import config
+
 log = logging.getLogger(__name__)
 
 # ── Constantes ────────────────────────────────────────────────────────────────
-MODEL_PATH          = Path("/app/data/neural_model.joblib")
+MODEL_PATH          = config.DATA_DIR / "neural_model.joblib"
 CONFIDENCE_THRESHOLD = 0.55   # Umbral mínimo de probabilidad para permitir BUY
 MIN_SAMPLES         = 8       # Mínimo de trades antes de confiar en el MLP
 

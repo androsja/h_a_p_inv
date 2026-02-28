@@ -89,32 +89,26 @@ def smart_sleep(seconds: float):
 # ═══════════════════════════════════════════════════════════════════════════════
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Bot de trading algorítmico para Hapi Trade"
-    )
-    parser.add_argument(
-        "--mode",
-        choices=["LIVE", "SIMULATED"],
-        default=config.TRADING_MODE,
-        help="Modo de operación: LIVE (dinero real) o SIMULATED (yfinance)",
+        description="Bot de Trading - Modo LIVE"
     )
     parser.add_argument(
         "--symbol",
         default=None,
-        help="Símbolo específico para simular (ej. AAPL). También se lee de FIXED_SYMBOL en .env.",
+        help="Símbolo específico para operar.",
     )
     parser.add_argument(
-        "--cash",
-        type=float,
-        default=10_000.0,
-        help="Capital inicial para el modo SIMULATED (default: $10,000)",
+        "--paper",
+        action="store_true",
+        help="Activar modo PAPER TRADING con datos en vivo (sin dinero real).",
     )
     p = parser.parse_args()
-    # FIXED_SYMBOL en .env tiene prioridad sobre el flag --symbol
+    p.mode = "LIVE"
+    p.cash = 10000.0 # Inicial para Paper si se usa
+    
     import os
     fixed = os.getenv("FIXED_SYMBOL", "").strip()
     if fixed and not p.symbol:
         p.symbol = fixed
-        log.info(f"🔒 Símbolo fijo configurado: {fixed} (FIXED_SYMBOL en .env)")
     return p
 
 
@@ -122,64 +116,21 @@ def parse_args() -> argparse.Namespace:
 #  INICIALIZACIÓN DEL BRÓKER
 # ═══════════════════════════════════════════════════════════════════════════════
 def init_broker(args: argparse.Namespace, is_live_paper_override: bool = False) -> BrokerInterface:
-    """
-    Crea e inicializa el bróker correcto según el modo de operación.
-    Si las credenciales de Hapi están vacías, cambia automáticamente
-    al modo simulado con una advertencia.
-    """
-    if args.mode == "LIVE":
-        # Verificar credenciales en .env
-        api_key    = config.HAPI_API_KEY
-        client_id  = config.HAPI_CLIENT_ID
-        user_token = config.HAPI_USER_TOKEN
+    """Inicializa el bróker (Real o Paper)."""
+    if args.paper or is_live_paper_override:
+        log.info("🧪 Iniciando en modo LIVE PAPER (Datos reales, dinero ficticio)")
+        return HapiMock(symbol=args.symbol, initial_cash=args.cash, live_paper=True)
+        
+    # Verificar credenciales en .env
+    api_key    = config.HAPI_API_KEY
+    client_id  = config.HAPI_CLIENT_ID
+    user_token = config.HAPI_USER_TOKEN
 
-        if not all([api_key, client_id, user_token]):
-            log.warning(
-                "⚠️  Credenciales de Hapi no encontradas en .env. "
-                "Solicitando interactivamente…"
-            )
-            print("\n📋 Ingresa tus credenciales de Hapi Trade:")
-            api_key    = input("   API_KEY    : ").strip()
-            client_id  = input("   CLIENT_ID  : ").strip()
-            user_token = getpass.getpass("   USER_TOKEN : ").strip()
+    if not all([api_key, client_id, user_token]):
+        log.error("❌ ERROR CRÍTICO: Credenciales de Hapi no encontradas en .env.")
+        sys.exit(1)
 
-        # Si aún están vacías, caer a modo simulado
-        if not all([api_key, client_id, user_token]):
-            log.warning(
-                "❌ Credenciales vacías. Cambiando automáticamente a modo SIMULATED."
-            )
-            return HapiMock(symbol=args.symbol, initial_cash=args.cash)
-
-        return HapiLive(api_key=api_key, client_id=client_id, user_token=user_token)
-
-    # ── Modo SIMULATED / LIVE PAPER ──────────────────────────────────────────
-    is_live_paper = is_live_paper_override
-    force_symbols = []
-    try:
-        import json, os
-        cmd_file = config.COMMAND_FILE
-        if cmd_file.exists():
-            with open(cmd_file) as f:
-                cmds = json.load(f)
-            
-            # Si is_live_paper_override ya es True, no lo sobreescribimos a False 
-            if cmds.get("force_paper_trading", False):
-                is_live_paper = True
-                
-            force_symbols = cmds.get("force_symbols", [])
-            force_symbol_val = cmds.get("force_symbol", "")
-            
-            if is_live_paper:
-                if force_symbols and not (len(force_symbols) == 1 and force_symbols[0] == "AUTO"):
-                    # If we have a list, use the current active one from args or fallback to first
-                    if not args.symbol or args.symbol not in force_symbols:
-                        args.symbol = force_symbols[0]
-                elif force_symbol_val and force_symbol_val != "AUTO":
-                    args.symbol = force_symbol_val
-    except Exception:
-        pass
-
-    return HapiMock(symbol=args.symbol, initial_cash=args.cash, live_paper=is_live_paper)
+    return HapiLive(api_key=api_key, client_id=client_id, user_token=user_token)
 
 
 # ── Auxiliar para formatear velas ──────────────────────────────────────────────
@@ -735,8 +686,12 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 def main() -> None:
     print(BANNER)
     args = parse_args()
-
-    log.info(f"Modo seleccionado: {args.mode}")
+    from shared.utils.state_writer import set_state_file
+    from shared.data.market_data import set_assets_file
+    set_state_file(config.STATE_FILE_LIVE)
+    set_assets_file(config.ASSETS_FILE_LIVE)
+    
+    log.info(f"Modo seleccionado: {args.mode} {'(PAPER)' if args.paper else '(REAL)'}")
     log.info(market_status_str())
 
     from utils.state_writer import update_state

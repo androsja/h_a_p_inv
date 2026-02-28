@@ -5,8 +5,13 @@ from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 
 import config
-STATE_PATH = config.STATE_FILE
+_state_path = config.STATE_FILE
 _state_lock = threading.Lock()
+
+def set_state_file(path: Path) -> None:
+    global _state_path
+    with _state_lock:
+        _state_path = path
 
 @dataclass
 class TradeRecord:
@@ -76,12 +81,15 @@ def clear_state() -> None:
         _symbol_states.clear()
         _trades.clear()
         try:
-            if STATE_PATH.exists():
-                STATE_PATH.unlink()
+            # Eliminar archivos físicos
+            if _state_path and _state_path.exists():
+                _state_path.unlink()
+            
             # También borrar el .tmp si existe
-            tmp = STATE_PATH.with_suffix(".tmp")
-            if tmp.exists():
-                tmp.unlink()
+            if _state_path:
+                tmp = _state_path.with_suffix(".tmp")
+                if tmp.exists():
+                    tmp.unlink()
         except Exception:
             pass
 
@@ -168,7 +176,7 @@ def update_state(
 
 def _flush() -> None:
     try:
-        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _state_path.parent.mkdir(parents=True, exist_ok=True)
         # El estado final es un diccionario de símbolos
         output = {sym: asdict(st) for sym, st in _symbol_states.items()}
         
@@ -179,8 +187,8 @@ def _flush() -> None:
             last_sym = list(_symbol_states.keys())[-1]
             output["_main"] = asdict(_symbol_states[last_sym])
         
-        tmp = STATE_PATH.with_suffix(".tmp")
+        tmp = _state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(output, indent=2, default=str))
-        tmp.replace(STATE_PATH)
+        tmp.replace(_state_path)
     except Exception:
         pass

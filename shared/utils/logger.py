@@ -80,7 +80,7 @@ def set_symbol_log(symbol: str) -> None:
         log.removeHandler(h)
     
     # Crear nuevo handler exclusivo para este símbolo
-    sym_log_path = Path(f"/app/logs/historial_{symbol}.log")
+    sym_log_path = Path(f"logs/historial_{symbol}.log")
     sym_log_path.parent.mkdir(parents=True, exist_ok=True)
     
     file_handler = logging.handlers.RotatingFileHandler(

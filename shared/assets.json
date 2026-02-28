@@ -1,0 +1,400 @@
+{
+    "assets": [
+        {
+            "symbol": "AAPL",
+            "name": "Apple Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MSFT",
+            "name": "Microsoft Corporation",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "NVDA",
+            "name": "NVIDIA Corporation",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "TSLA",
+            "name": "Tesla Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "META",
+            "name": "Meta Platforms Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "AMZN",
+            "name": "Amazon.com Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GOOGL",
+            "name": "Alphabet Inc. Class A",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "AMD",
+            "name": "Advanced Micro Devices",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "UBER",
+            "name": "Uber Technologies Inc",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "NFLX",
+            "name": "Netflix Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "JPM",
+            "name": "JPMorgan Chase & Co.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "BA",
+            "name": "Boeing Company",
+            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "DIS",
+            "name": "Walt Disney Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "INTC",
+            "name": "Intel Corporation",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SPY",
+            "name": "SPDR S&P 500 ETF Trust",
+            "type": "etf",
+            "enabled": false
+        },
+        {
+            "symbol": "QQQ",
+            "name": "Invesco QQQ Trust",
+            "type": "etf",
+            "enabled": false
+        },
+        {
+            "symbol": "PLTR",
+            "name": "Palantir Technologies",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SOFI",
+            "name": "SoFi Technologies",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "HOOD",
+            "name": "Robinhood Markets",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "RIVN",
+            "name": "Rivian Automotive",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "COIN",
+            "name": "Coinbase Global",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MSTR",
+            "name": "MicroStrategy",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ABNB",
+            "name": "Airbnb",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "PYPL",
+            "name": "PayPal Holdings",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "TSM",
+            "name": "Taiwan Semiconductor",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ARM",
+            "name": "Arm Holdings",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SMCI",
+            "name": "Super Micro Computer",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MU",
+            "name": "Micron Technology",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "CRWD",
+            "name": "CrowdStrike Holdings",
+            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "SNOW",
+            "name": "Snowflake Inc",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "V",
+            "name": "Visa Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MA",
+            "name": "Mastercard Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "CRM",
+            "name": "Salesforce Inc.",
+            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "ADBE",
+            "name": "Adobe Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "WMT",
+            "name": "Walmart Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "PG",
+            "name": "Procter & Gamble",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "PEP",
+            "name": "PepsiCo Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "KO",
+            "name": "Coca-Cola Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "XOM",
+            "name": "Exxon Mobil",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "CVX",
+            "name": "Chevron",
+            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "HD",
+            "name": "Home Depot",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MCD",
+            "name": "McDonald's",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "NKE",
+            "name": "Nike",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SBUX",
+            "name": "Starbucks",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "JNJ",
+            "name": "Johnson & Johnson",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "UNH",
+            "name": "UnitedHealth Group",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "BABA",
+            "name": "Alibaba Group",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SHOP",
+            "name": "Shopify Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SQ",
+            "name": "Block Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ROKU",
+            "name": "Roku Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "DKNG",
+            "name": "DraftKings Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "SPOT",
+            "name": "Spotify Technology",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "PFE",
+            "name": "Pfizer Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MRNA",
+            "name": "Moderna Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "ABBV",
+            "name": "AbbVie Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GS",
+            "name": "Goldman Sachs Group",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MS",
+            "name": "Morgan Stanley",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "LMT",
+            "name": "Lockheed Martin",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "NOC",
+            "name": "Northrop Grumman",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "RTX",
+            "name": "RTX Corporation",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "DE",
+            "name": "Deere & Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "CAT",
+            "name": "Caterpillar Inc.",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "MMM",
+            "name": "3M Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GE",
+            "name": "General Electric",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "F",
+            "name": "Ford Motor Company",
+            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "GM",
+            "name": "General Motors",
+            "type": "stock",
+            "enabled": false
+        }
+    ]
+}

@@ -8,7 +8,7 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 
 # 1. Recolectar datos
 data = []
-for log_file in glob.glob('/app/logs/historial_*.log'):
+for log_file in glob.glob('logs/historial_*.log'):
     with open(log_file, 'r') as f:
         for line in f:
             if 'SAVING TRADE:' in line:
@@ -65,9 +65,9 @@ print(tree_rules)
 # Guardar el modelo entrenado para usarlo ráfido en tiempo real
 import joblib
 import os
-os.makedirs('/app/data', exist_ok=True)
-joblib.dump(clf, '/app/data/ai_model.joblib')
-print("\n✅ MODELO GUARDADO EN: /app/data/ai_model.joblib (Listo para Inferencia Ultra-Rápida)")
+os.makedirs('data', exist_ok=True)
+joblib.dump(clf, 'data/ai_model.joblib')
+print("\n✅ MODELO GUARDADO EN: data/ai_model.joblib (Listo para Inferencia Ultra-Rápida)")
 
 # Mostrar la importancia de cada indicador (Feature Importance)
 print("\n📈 PESO DE CADA INDICADOR (¿Cuál es el culpable de hacerte perder o ganar?):")

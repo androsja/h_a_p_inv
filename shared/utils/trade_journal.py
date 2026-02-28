@@ -14,7 +14,7 @@ Esto permite responder preguntas como:
   ¿Con qué ADX promedio los trades de MSFT son rentables?
   ¿El R/R real es el esperado o se aleja?
 
-Archivo: /app/data/trade_journal.csv
+Archivo: data/trade_journal.csv
 """
 
 import csv

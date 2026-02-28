@@ -18,9 +18,8 @@ from __future__ import annotations
 import sqlite3
 import threading
 from datetime import datetime, timezone
-from pathlib import Path
-
-DB_PATH = Path("/app/data/checkpoint.db")
+import config
+DB_PATH = config.CHECKPOINT_DB
 _lock   = threading.Lock()
 
 

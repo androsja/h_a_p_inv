@@ -8,6 +8,7 @@ También sirve el dashboard HTML estático.
 
 import json
 import asyncio
+import config
 from pathlib import Path
 from datetime import datetime
 
@@ -18,10 +19,12 @@ from pydantic import BaseModel
 
 from config import (
     STATE_FILE, LOG_FILE, ASSETS_FILE, COMMAND_FILE, RESULTS_FILE, 
-    ML_DATASET_FILE, CHECKPOINT_DB, DATA_DIR, NEURAL_MODEL_FILE
+    ML_DATASET_FILE, CHECKPOINT_DB, DATA_DIR, NEURAL_MODEL_FILE,
+    STATE_FILE_SIM, STATE_FILE_LIVE
 )
 
-HTML_FILE  = Path(__file__).parent / "static" / "index.html"
+SIM_HTML_FILE  = Path(__file__).parent / "static" / "simulation" / "index.html"
+LIVE_HTML_FILE = Path(__file__).parent / "static" / "live" / "index.html"
 
 app = FastAPI(title="Hapi Bot Dashboard")
 
@@ -34,23 +37,35 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 # ─── Manager de conexiones WebSocket ─────────────────────────────────────────
 class ConnectionManager:
     def __init__(self):
-        self.active: list[WebSocket] = []
+        # self.active ahora es un dict: { "sim": [ws, ...], "live": [ws, ...] }
+        self.active: dict[str, list[WebSocket]] = {"sim": [], "live": []}
 
-    async def connect(self, ws: WebSocket):
+    async def connect(self, ws: WebSocket, mode: str):
         await ws.accept()
-        self.active.append(ws)
+        if mode not in self.active:
+            self.active[mode] = []
+        self.active[mode].append(ws)
 
     def disconnect(self, ws: WebSocket):
-        if ws in self.active:
-            self.active.remove(ws)
+        for mode in self.active:
+            if ws in self.active[mode]:
+                self.active[mode].remove(ws)
+                break
 
-    async def broadcast(self, data: dict):
+    async def broadcast(self, data: any, mode: str):
+        if mode not in self.active:
+            return
+            
         dead = []
-        for ws in self.active:
+        for ws in self.active[mode]:
             try:
-                await ws.send_json(data)
+                if isinstance(data, str):
+                    await ws.send_text(data)
+                else:
+                    await ws.send_json(data)
             except Exception:
                 dead.append(ws)
+        
         for ws in dead:
             self.disconnect(ws)
 
@@ -59,16 +74,17 @@ manager = ConnectionManager()
 
 
 # ─── Lectura del estado del bot ───────────────────────────────────────────────
-def read_state() -> dict:
+def read_state(mode: str = "sim") -> dict:
     state = {}
+    target_file = config.STATE_FILE_SIM if mode == "sim" else config.STATE_FILE_LIVE
     try:
-        if STATE_FILE.exists():
-            with open(STATE_FILE) as f:
+        if target_file.exists():
+            with open(target_file) as f:
                 state = json.load(f)
     except Exception:
         state = {"status": "starting", "timestamp": datetime.utcnow().isoformat()}
 
-    # Inyectar símbolos forzados (si hay) para que el UI genere las pestañas
+    # Inyectar símbolos forzados (si hay)
     if COMMAND_FILE.exists():
         try:
             with open(COMMAND_FILE) as f:
@@ -109,12 +125,39 @@ def read_last_logs(n: int = 50) -> list[str]:
 
 # ─── Broadcaster en background ────────────────────────────────────────────────
 async def state_broadcaster():
-    """Tarea en background: empuja el estado a todos los clientes cada 1 segundo."""
+    """Lee periódicamente los estados y los envía a los websockets correspondientes."""
+    last_sim_mtime = 0
+    last_live_mtime = 0
+    
     while True:
-        state = read_state()
-        state["logs"] = read_last_logs(30)
-        await manager.broadcast(state)
-        await asyncio.sleep(1)
+        try:
+            # 1. Procesar Simulación
+            if config.STATE_FILE_SIM.exists():
+                mtime = config.STATE_FILE_SIM.stat().st_mtime
+                if mtime > last_sim_mtime:
+                    last_sim_mtime = mtime
+                    content = config.STATE_FILE_SIM.read_text(encoding="utf-8")
+                    await manager.broadcast(content, mode="sim")
+            elif last_sim_mtime > 0:
+                # Si el archivo existía y ya no existe, enviar estado vacío para limpiar UI
+                last_sim_mtime = 0
+                await manager.broadcast(json.dumps({}), mode="sim")
+            
+            # 2. Procesar Live
+            if config.STATE_FILE_LIVE.exists():
+                mtime = config.STATE_FILE_LIVE.stat().st_mtime
+                if mtime > last_live_mtime:
+                    last_live_mtime = mtime
+                    content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
+                    await manager.broadcast(content, mode="live")
+            elif last_live_mtime > 0:
+                last_live_mtime = 0
+                await manager.broadcast(json.dumps({}), mode="live")
+                    
+        except Exception as e:
+            print(f"Error en broadcaster: {e}")
+        
+        await asyncio.sleep(0.5)
 
 
 @app.on_event("startup")
@@ -124,29 +167,42 @@ async def startup():
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
-async def index():
-    content = HTML_FILE.read_text(encoding="utf-8")
-    return HTMLResponse(content=content, headers={
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-    })
+async def simulation_index():
+    if not SIM_HTML_FILE.exists():
+        return HTMLResponse("Simulation UI missing", status_code=404)
+    content = SIM_HTML_FILE.read_text(encoding="utf-8")
+    return HTMLResponse(content=content)
+
+@app.get("/live", response_class=HTMLResponse)
+async def live_index():
+    if not LIVE_HTML_FILE.exists():
+        return HTMLResponse("Live UI missing", status_code=404)
+    content = LIVE_HTML_FILE.read_text(encoding="utf-8")
+    return HTMLResponse(content=content)
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+@app.websocket("/ws/sim")
+async def websocket_sim(websocket: WebSocket):
+    await manager.connect(websocket, mode="sim")
     try:
         while True:
-            # Mantener la conexión viva esperando mensajes del cliente
-            await websocket.receive_text()
+            await websocket.receive_text() # Mantener vivo
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+@app.websocket("/ws/live")
+async def websocket_live(websocket: WebSocket):
+    await manager.connect(websocket, mode="live")
+    try:
+        while True:
+            await websocket.receive_text() # Mantener vivo
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 
 @app.get("/api/state")
-async def get_state():
-    return read_state()
+async def get_state(mode: str = "sim"):
+    return read_state(mode=mode)
 
 
 @app.post("/api/set_symbol")
@@ -179,11 +235,15 @@ async def reset_all():
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         
-        # Limpiar archivos en background (Preservamos ML_DATASET_FILE para aprendizaje continuo)
-        for f in [RESULTS_FILE, STATE_FILE]:
+        # Limpiar archivos en background
+        for f in [RESULTS_FILE, STATE_FILE, STATE_FILE_SIM, STATE_FILE_LIVE, CHECKPOINT_DB]:
             try:
                 if f.exists():
                     f.unlink()
+                # También intentar borrar .tmp
+                tmp = f.with_suffix(".tmp")
+                if tmp.exists():
+                    tmp.unlink()
             except: pass
             
         # Limpiar logs
@@ -356,11 +416,12 @@ async def train_ai():
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(mode: str = "sim"):
     import json
+    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
     try:
-        if ASSETS_FILE.exists():
-            with open(ASSETS_FILE) as f:
+        if path.exists():
+            with open(path) as f:
                 data = json.load(f)
                 active_symbols = [a for a in data.get('assets', []) if a.get('enabled', True)]
                 return {"total_symbols": len(active_symbols)}
@@ -369,11 +430,12 @@ async def get_config():
         return {"total_symbols": 46}
 
 @app.get("/api/active_symbols")
-async def get_active_symbols():
+async def get_active_symbols(mode: str = "sim"):
     import json
+    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
     try:
-        if ASSETS_FILE.exists():
-            with open(ASSETS_FILE) as f:
+        if path.exists():
+            with open(path) as f:
                 data = json.load(f)
                 active = [a.get('symbol') for a in data.get('assets', []) if a.get('enabled', True)]
                 return {"status": "success", "symbols": active}
@@ -382,11 +444,12 @@ async def get_active_symbols():
         return {"status": "error", "symbols": []}
 
 @app.get("/api/all_symbols")
-async def get_all_symbols():
+async def get_all_symbols(mode: str = "sim"):
     import json
+    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
     try:
-        if ASSETS_FILE.exists():
-            with open(ASSETS_FILE) as f:
+        if path.exists():
+            with open(path) as f:
                 data = json.load(f)
                 return {"status": "success", "assets": data.get('assets', [])}
         return {"status": "error", "assets": []}
@@ -396,13 +459,15 @@ async def get_all_symbols():
 class ToggleRequest(BaseModel):
     symbol: str
     enabled: bool
+    mode: str = "sim"
 
 @app.post("/api/toggle_symbol")
 async def toggle_symbol(req: ToggleRequest):
     import json
+    path = config.ASSETS_FILE_SIM if req.mode == "sim" else config.ASSETS_FILE_LIVE
     try:
-        if ASSETS_FILE.exists():
-            with open(ASSETS_FILE, "r") as f:
+        if path.exists():
+            with open(path, "r") as f:
                 data = json.load(f)
             
             found = False
@@ -413,13 +478,13 @@ async def toggle_symbol(req: ToggleRequest):
                     break
             
             if found:
-                with open(ASSETS_FILE, "w") as f:
+                with open(path, "w") as f:
                     json.dump(data, f, indent=4)
-                return {"status": "success", "message": f"{req.symbol} updated"}
+                return {"status": "success", "message": f"{req.symbol} updated in {path.name}"}
             else:
-                return {"status": "not_found", "message": "Symbol not found in assets.json"}
+                return {"status": "not_found", "message": f"Symbol not found in {path.name}"}
                 
-        return {"status": "error", "message": "assets.json missing"}
+        return {"status": "error", "message": f"{path.name} missing"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

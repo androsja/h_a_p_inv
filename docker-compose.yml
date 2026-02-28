@@ -12,17 +12,17 @@ services:
     environment:
       - TRADING_MODE=SIMULATED
       - HAPI_IS_TEST_MODE=true
-    command: [ "python", "main.py", "--mode", "SIMULATED" ]
+    command: [ "python", "simulation_mode/main_sim.py" ]
     volumes:
-      - ./data:/app/data # Estado compartido con el dashboard
+      - ./simulation_mode:/app/simulation_mode
+      - ./data:/app/data
       - ./logs:/app/logs
-      - ./main.py:/app/main.py
-      - ./assets.json:/app/assets.json
-      - ./broker:/app/broker
-      - ./strategy:/app/strategy
-      - ./utils:/app/utils
-      - ./config.py:/app/config.py
-      - ./data/market_data.py:/app/data/market_data.py
+      - ./shared/assets_sim.json:/app/assets_sim.json
+      - ./shared/broker:/app/broker
+      - ./shared/strategy:/app/strategy
+      - ./shared/utils:/app/utils
+      - ./shared/config.py:/app/config.py
+      - ./shared/data/market_data.py:/app/shared/data/market_data.py
     deploy:
       resources:
         limits:
@@ -46,12 +46,12 @@ services:
     ports:
       - "8080:8080" # → Abrir http://localhost:8080
     volumes:
-      - ./data:/app/data # Lee el state.json del bot
-      - ./logs:/app/logs # Lee los logs del bot
-      - ./assets.json:/app/assets.json # Read and update symbols enabled state
-      - ./dashboard:/app/dashboard # <--- MOUNT DASHBOARD FOR HOT-RELOAD
-      - ./config.py:/app/config.py
-      - ./train_ai.py:/app/train_ai.py
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./shared/assets_sim.json:/app/assets_sim.json
+      - ./shared/assets_live.json:/app/assets_live.json
+      - ./shared/config.py:/app/config.py
+      - ./shared/train_ai.py:/app/train_ai.py
     depends_on:
       - trading-bot-sim
     healthcheck:
@@ -73,11 +73,47 @@ services:
     environment:
       - TRADING_MODE=LIVE
       - HAPI_IS_TEST_MODE=false
-    command: [ "python", "main.py", "--mode", "LIVE" ]
+    command: [ "python", "live_mode/main_live.py" ]
     volumes:
+      - ./live_mode:/app/live_mode
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./data/market_data.py:/app/data/market_data.py
+      - ./shared/assets_live.json:/app/assets_live.json
+      - ./shared/data/market_data.py:/app/shared/data/market_data.py
+      - ./shared/broker:/app/broker
+      - ./shared/strategy:/app/strategy
+      - ./shared/utils:/app/utils
+      - ./shared/config.py:/app/config.py
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
+  # ─── Bot LIVE PAPER (datos reales, dinero ficticio) ─────────────────────────
+  trading-bot-paper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hapi-scalping-bot:latest
+    container_name: hapi_bot_paper
+    restart: unless-stopped
+    profiles: [ paper ]
+    env_file: .env
+    environment:
+      - TRADING_MODE=LIVE
+      - HAPI_IS_TEST_MODE=true
+    command: [ "python", "live_mode/main_live.py", "--paper" ]
+    volumes:
+      - ./live_mode:/app/live_mode
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./shared/assets_live.json:/app/assets_live.json
+      - ./shared/data/market_data.py:/app/shared/data/market_data.py
+      - ./shared/broker:/app/broker
+      - ./shared/strategy:/app/strategy
+      - ./shared/utils:/app/utils
+      - ./shared/config.py:/app/config.py
     deploy:
       resources:
         limits:

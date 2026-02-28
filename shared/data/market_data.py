@@ -38,6 +38,12 @@ CACHE_DIR: Path = config.DATA_CACHE_DIR
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_TTL_SECONDS = 3600   # Refrescar caché cada hora (las velas de 5m son más estables)
 
+_assets_path = config.ASSETS_FILE
+
+def set_assets_file(path: Path) -> None:
+    global _assets_path
+    _assets_path = path
+
 
 def _cache_path(symbol: str) -> Path:
     interval = config.DATA_INTERVAL.replace("m","min").replace("h","hr")
@@ -182,15 +188,22 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
 
 
 def get_symbols() -> list[str]:
-    """Lee la lista de símbolos activos desde assets.json."""
+    """Lee la lista de símbolos activos desde el archivo configurado."""
     try:
-        if not config.ASSETS_FILE.exists():
-            return ["AAPL"] # Minimal fallback
-        with open(config.ASSETS_FILE, "r") as f:
+        if not _assets_path.exists():
+            # Si el específico no existe, probar el genérico
+            if config.ASSETS_FILE.exists():
+                path = config.ASSETS_FILE
+            else:
+                return ["AAPL"]
+        else:
+            path = _assets_path
+
+        with open(path, "r") as f:
             data = json.load(f)
             assets_list = data.get("assets", [])
             enabled_symbols = [a["symbol"] for a in assets_list if a.get("enabled", True)]
-            log.info(f"data | 🔄 Catálogo cargado: {len(enabled_symbols)} símbolos activos.")
+            log.info(f"data | 🔄 Catálogo cargado ({path.name}): {len(enabled_symbols)} símbolos activos.")
             return enabled_symbols
     except Exception as exc:
         log.error(f"data | ❌ Error crítico leyendo assets.json: {exc}")

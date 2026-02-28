@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hapi Trading Bot · Dashboard</title>
+    <title>Hapi LIVE · Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
@@ -21,19 +21,19 @@
         }
 
         :root {
-            --bg: #000000;
-            /* Deep Noir */
-            --panel: #0a0c10;
+            --bg: #0c0a09;
+            /* Warm Black/Stone */
+            --panel: #1c1917;
             --border: rgba(255, 255, 255, 0.05);
-            --accent: #00ffd5;
-            /* Neon Cyan */
-            --accent2: #0066ff;
-            --green: #00ffa3;
-            --red: #ff2b5e;
-            --yellow: #ffea00;
-            --purple: #bf95ff;
-            --text: #f8fafc;
-            --muted: #475569;
+            --accent: #fbbf24;
+            /* Liquid Gold */
+            --accent2: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --purple: #d946ef;
+            --text: #f5f5f4;
+            --muted: #78716c;
             --sidebar: 280px;
         }
 
@@ -1168,19 +1168,6 @@
                     🏦 BANCO
                 </button>
 
-                <button onclick="resetAllData()"
-                    style="background:var(--red);color:white;border:none;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:5px;">
-                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                        </path>
-                    </svg>
-                    WIPE MEMORY
-                </button>
-                <button onclick="restartSim()"
-                    style="background:#00bcd4;color:#111;border:none;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;">
-                    🔄 RESTART SIM
-                </button>
                 <div class="status-dot-wrap" style="margin-left: 10px;">
                     <div class="dot off" id="status-dot"></div>
                     <span id="status-text" style="color:var(--muted);">Conectando…</span>
@@ -1461,7 +1448,7 @@
                                 ">
                                     <span
                                         style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite;"></span>
-                                    <span id="results-mode-text">EN VIVO</span>
+                                    <span id="results-mode-text">REAL-TIME TRADING</span>
                                 </span>
                             </div>
                             <div style="font-size:12px; color:var(--muted); margin-bottom: 15px;">
@@ -1614,7 +1601,7 @@
 
         async function loadSuggestions() {
             try {
-                const res = await fetch('/api/active_symbols');
+                const res = await fetch('/api/active_symbols?mode=live');
                 const data = await res.json();
                 if (data.status === 'success') {
                     suggestedSymbols = data.symbols;
@@ -1911,7 +1898,7 @@
 
         async function fetchConfig() {
             try {
-                const res = await fetch('/api/config');
+                const res = await fetch('/api/config?mode=live');
                 const data = await res.json();
                 if (data && data.total_symbols) {
                     TOTAL_SYMBOLS = data.total_symbols;
@@ -2019,6 +2006,24 @@
                     const completionPercent = Math.min((uniqueSymbolsCount / TOTAL_SYMBOLS) * 100, 100);
 
                     const tbody = document.getElementById('results-table-body');
+
+                    // Actualizar Modo
+                    const modeChip = document.getElementById('mode-chip');
+                    if (modeChip && main) {
+                        const isPaper = main.mode === 'LIVE' && main.mock_time_930 === false; // mock_time_930 is only for sim, but mode field is better
+                        // Actually main.mode is "LIVE" or "SIMULATED".
+                        // Let's use the broker type if available, or just the mode field.
+                        modeChip.textContent = main.mode || 'LIVE';
+                        if (main.mode === 'SIMULATED') {
+                            modeChip.style.background = 'rgba(0, 188, 212, 0.2)';
+                            modeChip.style.color = '#00bcd4';
+                        } else {
+                            // Check if it's paper or real (we could use a custom field, but for now let's just show the mode)
+                            modeChip.textContent = main.is_waiting ? 'LIVE (WAIT)' : 'LIVE';
+                            modeChip.style.background = 'rgba(0, 87, 255, 0.2)';
+                            modeChip.style.color = 'var(--accent2)';
+                        }
+                    }
 
                     // Actualizar UI del progreso
                     let summaryDiv = document.getElementById('ml-progress');
@@ -2605,7 +2610,7 @@
                 } else {
                     liveBadge.style.color = '#4caf50'; // Verde
                     liveBadge.querySelector('span').style.background = '#4caf50';
-                    modeText.textContent = 'EN VIVO (REAL TIME)';
+                    modeText.textContent = 'REAL-TIME TRADING';
                 }
             }
 
@@ -2960,7 +2965,7 @@
         // ═══════════════════════════════════════════════════════
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-            const ws = new WebSocket(`${proto}://${location.host}/ws`);
+            const ws = new WebSocket(`${proto}://${location.host}/ws/live`);
 
             ws.onopen = () => {
                 document.getElementById('status-dot').classList.remove('off');
@@ -2995,122 +3000,13 @@
             ws.onerror = () => ws.close();
         }
 
-        function restartSim() {
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0'; overlay.style.left = '0';
-            overlay.style.width = '100%'; overlay.style.height = '100%';
-            overlay.style.background = 'rgba(0,0,0,0.85)';
-            overlay.style.zIndex = '99999';
-            overlay.style.display = 'flex';
-            overlay.style.alignItems = 'center';
-            overlay.style.justifyContent = 'center';
-            overlay.style.backdropFilter = 'blur(4px)';
+        // Funciones de simulación eliminadas en modo Live
 
-            const box = document.createElement('div');
-            box.style.background = '#1e212b';
-            box.style.padding = '30px';
-            box.style.borderRadius = '12px';
-            box.style.border = '1px solid #3c404b';
-            box.style.textAlign = 'center';
-            box.style.maxWidth = '400px';
-            box.style.boxShadow = '0 10px 40px rgba(0,0,0,0.8)';
-
-            box.innerHTML = `
-                <h3 style="color:#00bcd4; margin-top:0;">🔄 REINICIAR SIMULACIÓN</h3>
-                <p style="color:#e0e0e0; margin:15px 0;">¿Deseas reiniciar la simulación al Día 1?</p>
-                <div style="color:#9aa0a6; font-size:13px; margin-bottom:25px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px;">
-                    📈 <b>NOTA:</b> ¡Esto NO borrará la base de datos de entrenamiento de Machine Learning! La Inteligencia Artificial mantendrá su aprendizaje intacto.
-                </div>
-                <div style="display:flex; gap:10px; justify-content:center;">
-                    <button id="btn-cancelar-sim" style="background:#3c404b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
-                    <button id="btn-confirmar-sim" style="background:#00bcd4; color:#111; font-weight:bold; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Reiniciar Ya</button>
-                </div>
-            `;
-            overlay.appendChild(box);
-            document.body.appendChild(overlay);
-
-            document.getElementById('btn-cancelar-sim').onclick = () => overlay.remove();
-            document.getElementById('btn-confirmar-sim').onclick = () => {
-                fetch('/api/restart_sim', { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        showToast(data.message || 'Reinicio solicitado');
-                        overlay.remove();
-                    });
-            };
-        }
-
-        function resetAllData() {
-            // Montar un modal personalizado en vez de usar window.confirm nativo que falla en algunos navegadores
-            const overlay = document.createElement('div');
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0'; overlay.style.left = '0';
-            overlay.style.width = '100%'; overlay.style.height = '100%';
-            overlay.style.background = 'rgba(0,0,0,0.85)';
-            overlay.style.zIndex = '99999';
-            overlay.style.display = 'flex';
-            overlay.style.alignItems = 'center';
-            overlay.style.justifyContent = 'center';
-            overlay.style.backdropFilter = 'blur(4px)';
-
-            const modal = document.createElement('div');
-            modal.style.background = 'var(--bg-card)';
-            modal.style.padding = '30px';
-            modal.style.borderRadius = '12px';
-            modal.style.border = '1px solid var(--red)';
-            modal.style.width = '80%';
-            modal.style.maxWidth = '500px';
-            modal.style.boxShadow = '0 10px 40px rgba(255,0,0,0.2)';
-            modal.style.textAlign = 'center';
-
-            modal.innerHTML = `
-                    <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR MEMORIA (WIPE)</h2>
-                    <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?</p>
-                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de Inteligencia Artificial y no se puede deshacer.</p>
-                    <div style="display:flex; justify-content:center; gap:15px;">
-                        <button id="btn-cancel-wipe" style="background:var(--panel); color:var(--text); border:1px solid var(--border); padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
-                        <button id="btn-confirm-wipe" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">SÍ, PURGAR AHORA</button>
-                    </div>
-                `;
-
-            overlay.appendChild(modal);
-            document.body.appendChild(overlay);
-
-            document.getElementById('btn-cancel-wipe').onclick = () => {
-                document.body.removeChild(overlay);
-            };
-
-            document.getElementById('btn-confirm-wipe').onclick = async () => {
-                document.getElementById('btn-confirm-wipe').innerText = "Purgando...";
-                document.getElementById('btn-confirm-wipe').disabled = true;
-                try {
-                    const res = await fetch('/api/reset_all', { method: 'POST' });
-                    if (res.ok) {
-                        lastResultCount = 0;
-                        totalNetValue = 0;
-                        document.getElementById('results-table-body').innerHTML = '';
-                        modal.innerHTML = `
-                                <h2 style="color:var(--green); margin-top:0;">✅ Orden Ejecutada</h2>
-                                <p style="color:var(--text); margin-bottom:25px;">El servidor interno está purgando la base de datos... reiniciando bot.</p>
-                            `;
-                        setTimeout(() => location.reload(), 2500);
-                    } else {
-                        modal.innerHTML = `<h2 style="color:var(--red);">Error reiniciando el bot.</h2>`;
-                        setTimeout(() => document.body.removeChild(overlay), 2000);
-                    }
-                } catch (e) {
-                    console.error(e);
-                    modal.innerHTML = `<h2 style="color:var(--red);">Error de conexión.</h2>`;
-                    setTimeout(() => document.body.removeChild(overlay), 2000);
-                }
-            };
-        }
 
         // ── Pre-cargar config de activos en background para evitar fallos del botón Live Paper ──
         async function _preloadConfigAssets() {
             try {
-                const res = await fetch('/api/all_symbols');
+                const res = await fetch('/api/all_symbols?mode=live');
                 const data = await res.json();
                 if (data.status === 'success') {
                     window.configAssets = data;
@@ -3374,7 +3270,7 @@
                     await fetch('/api/toggle_symbol', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ symbol: sym, enabled: enable })
+                        body: JSON.stringify({ symbol: sym, enabled: enable, mode: 'live' })
                     });
                 }
             } finally {
