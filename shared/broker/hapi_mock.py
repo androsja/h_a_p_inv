@@ -143,9 +143,9 @@ class HapiMock(BrokerInterface):
       4. El capital virtual se actualiza con cada fill.
     """
 
-    def __init__(self, symbol: str | None = None, initial_cash: float = 10_000.0, live_paper: bool = False):
+    def __init__(self, symbol: str | None = None, initial_cash: float = 10_000.0, live_paper: bool = False, start_date: str | None = None):
         self._live_paper     = live_paper
-        self._replay         = LivePaperReplay(symbol) if live_paper else MarketReplay(symbol)
+        self._replay         = LivePaperReplay(symbol) if live_paper else MarketReplay(symbol, start_date=start_date)
         self._cash           = initial_cash
         self._initial_cash   = initial_cash
         self._pending_orders: list[PendingOrder] = []

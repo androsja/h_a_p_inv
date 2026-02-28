@@ -220,18 +220,29 @@ async def set_symbol(symbol: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+class ResetRequest(BaseModel):
+    sim_start_date: str | None = None
+
 @app.post("/api/reset_all")
-async def reset_all():
+async def reset_all(req: ResetRequest = None):
     import json
     try:
         data = {}
         if COMMAND_FILE.exists():
             with open(COMMAND_FILE) as f:
                 data = json.load(f)
+        
         data["reset_all"] = True
         data["force_paper_trading"] = False
         data["force_symbols"] = []
         data["force_symbol"] = "AUTO"
+        
+        # Guardar fecha de inicio personalizada si se proporciona
+        if req and req.sim_start_date:
+            data["sim_start_date"] = req.sim_start_date
+        else:
+            data["sim_start_date"] = None # Reset a default
+            
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         
@@ -247,7 +258,7 @@ async def reset_all():
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/restart_sim")
-async def restart_sim():
+async def restart_sim(req: ResetRequest = None):
     import json
     try:
         data = {}
@@ -258,6 +269,12 @@ async def restart_sim():
         # Este comando le dirá al bot que reinicie la fecha 
         # y la sesión sin purgar los datasets.
         data["restart_sim"] = True
+
+        # Guardar fecha de inicio personalizada si se proporciona
+        if req and req.sim_start_date:
+            data["sim_start_date"] = req.sim_start_date
+        else:
+            data["sim_start_date"] = None
         
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)

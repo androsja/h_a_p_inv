@@ -233,9 +233,10 @@ class MarketReplay:
     El MockBroker usa esta clase para simular el mercado intraday.
     """
 
-    def __init__(self, symbol: str | None = None):
+    def __init__(self, symbol: str | None = None, start_date: str | None = None):
         """
         Si symbol es None, elige uno al azar de assets.json.
+        start_date: Formato "YYYY-MM-DD" para filtrar el inicio de la simulación.
         """
         if symbol is None:
             symbols = get_symbols()
@@ -244,6 +245,17 @@ class MarketReplay:
 
         self.symbol = symbol
         self.df: pd.DataFrame = download_bars(symbol)   # 5min × 60d
+
+        # Aplicar filtro de fecha de inicio si se proporciona
+        if start_date:
+            try:
+                # Convertir start_date a datetime UTC para comparar con el índice
+                start_dt = pd.to_datetime(start_date).tz_localize(ET).tz_convert("UTC")
+                self.df = self.df[self.df.index >= start_dt].copy()
+                log.info(f"replay | {symbol} | Filtro de fecha aplicado: desde {start_date}")
+            except Exception as e:
+                log.error(f"replay | {symbol} | Error al aplicar filtro de fecha {start_date}: {e}")
+
         self._index: int = 0
 
         min_bars = max(config.EMA_SLOW, config.RSI_PERIOD) + 5

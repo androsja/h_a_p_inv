@@ -142,6 +142,7 @@ def init_broker(args: argparse.Namespace, is_live_paper_override: bool = False) 
     """Inicializa el bróker de simulación (siempre Mock)."""
     is_live_paper = is_live_paper_override
     force_symbols = []
+    sim_start_date = None
     try:
         import json, os
         cmd_file = config.COMMAND_FILE
@@ -161,10 +162,12 @@ def init_broker(args: argparse.Namespace, is_live_paper_override: bool = False) 
                         args.symbol = force_symbols[0]
                 elif force_symbol_val and force_symbol_val != "AUTO":
                     args.symbol = force_symbol_val
+                
+            sim_start_date = cmds.get("sim_start_date")
     except Exception:
         pass
 
-    return HapiMock(symbol=args.symbol, initial_cash=args.cash, live_paper=is_live_paper)
+    return HapiMock(symbol=args.symbol, initial_cash=args.cash, live_paper=is_live_paper, start_date=sim_start_date)
 
 
 # ── Auxiliar para formatear velas ──────────────────────────────────────────────

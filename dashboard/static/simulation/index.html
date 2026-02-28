@@ -3387,9 +3387,15 @@
 
             box.innerHTML = `
                 <h3 style="color:#00bcd4; margin-top:0;">🔄 REINICIAR SIMULACIÓN</h3>
-                <p style="color:#e0e0e0; margin:15px 0;">¿Deseas reiniciar la simulación al Día 1?</p>
+                <p style="color:#e0e0e0; margin:15px 0;">¿Deseas reiniciar la simulación?</p>
+                <div style="margin-bottom: 20px; text-align: left;">
+                    <label style="color:#9aa0a6; font-size:12px; display:block; margin-bottom:5px;">📅 Fecha de Inicio (Opcional):</label>
+                    <input type="date" id="sim-start-input" 
+                        style="width:100%; background:#0f172a; color:white; border:1px solid #3c404b; padding:10px; border-radius:6px; font-family:'Inter', sans-serif;">
+                    <span style="color:#64748b; font-size:10px; display:block; margin-top:5px;">Deja en blanco para usar los últimos 60 días automáticamente.</span>
+                </div>
                 <div style="color:#9aa0a6; font-size:13px; margin-bottom:25px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px;">
-                    📈 <b>NOTA:</b> ¡Esto NO borrará la base de datos de entrenamiento de Machine Learning! La Inteligencia Artificial mantendrá su aprendizaje intacto.
+                    📈 <b>NOTA:</b> ¡Esto NO borrará la base de datos de entrenamiento de Machine Learning!
                 </div>
                 <div style="display:flex; gap:10px; justify-content:center;">
                     <button id="btn-cancelar-sim" style="background:#3c404b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
@@ -3401,7 +3407,12 @@
 
             document.getElementById('btn-cancelar-sim').onclick = () => overlay.remove();
             document.getElementById('btn-confirmar-sim').onclick = () => {
-                fetch('/api/restart_sim', { method: 'POST' })
+                const startDate = document.getElementById('sim-start-input').value;
+                fetch('/api/restart_sim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sim_start_date: startDate || null })
+                })
                     .then(res => res.json())
                     .then(data => {
                         showToast(data.message || 'Reinicio solicitado');
@@ -3436,7 +3447,12 @@
             modal.innerHTML = `
                     <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR MEMORIA (WIPE)</h2>
                     <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?</p>
-                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de Inteligencia Artificial y no se puede deshacer.</p>
+                    <div style="margin: 20px 0; text-align: left; padding: 15px; background: rgba(255,0,0,0.05); border-radius: 8px; border: 1px solid rgba(255,0,0,0.1);">
+                        <label style="color:var(--muted); font-size:12px; display:block; margin-bottom:5px;">📅 Nueva Fecha de Inicio (Opcional):</label>
+                        <input type="date" id="wipe-start-input" 
+                            style="width:100%; background:#0f172a; color:white; border:1px solid #3c404b; padding:10px; border-radius:6px; font-family:'Inter', sans-serif;">
+                    </div>
+                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de IA. No se puede deshacer.</p>
                     <div style="display:flex; justify-content:center; gap:15px;">
                         <button id="btn-cancel-wipe" style="background:var(--panel); color:var(--text); border:1px solid var(--border); padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
                         <button id="btn-confirm-wipe" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">SÍ, PURGAR AHORA</button>
@@ -3454,7 +3470,12 @@
                 document.getElementById('btn-confirm-wipe').innerText = "Purgando...";
                 document.getElementById('btn-confirm-wipe').disabled = true;
                 try {
-                    const res = await fetch('/api/reset_all', { method: 'POST' });
+                    const startDate = document.getElementById('wipe-start-input').value;
+                    const res = await fetch('/api/reset_all', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sim_start_date: startDate || null })
+                    });
                     if (res.ok) {
                         lastResultCount = 0;
                         totalNetValue = 0;
