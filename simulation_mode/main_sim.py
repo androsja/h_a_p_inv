@@ -37,13 +37,13 @@ from datetime import datetime
 from pathlib import Path
 
 import importlib
-import data.market_data
+import shared.data.market_data as market_data
 import config
 from shared.utils.logger import log, log_order_attempt, log_market_closed, set_symbol_log
 from shared.utils.market_hours import is_market_open, market_status_str, next_open_str
 from shared.utils import state_writer, market_hours, logger, trade_journal, checkpoint
 from shared.utils.state_writer import set_state_file
-from shared.data.market_data import set_assets_file
+from shared.data.market_data import set_assets_file, get_symbols
 from broker.interface import BrokerInterface, Quote, OrderResponse
 from broker.hapi_live import HapiLive
 from broker.hapi_mock import HapiMock
@@ -753,9 +753,10 @@ def main() -> None:
     while True:
         # ── 1. Recarga Dinámica de Símbolos ──────────────────────────────────
         try:
-            import importlib
-            importlib.reload(data.market_data)
-            all_symbols = data.market_data.get_symbols()
+            importlib.reload(market_data)
+            # Volver a setear el archivo correcto tras el reload
+            set_assets_file(config.ASSETS_FILE_SIM)
+            all_symbols = market_data.get_symbols()
         except Exception as e_reload:
             log.warning(f"⚠️ Error recargando símbolos: {e_reload}")
 
@@ -781,9 +782,10 @@ def main() -> None:
                     clear_state()
                     if is_purgue:
                         if config.RESULTS_FILE.exists(): config.RESULTS_FILE.unlink()
-
-                    importlib.reload(data.market_data)
-                    all_symbols = data.market_data.get_symbols()
+                    importlib.reload(market_data)
+                    set_assets_file(config.ASSETS_FILE_SIM)
+                    all_symbols = market_data.get_symbols()
+                     # No necesitamos set_assets_file aquí porque ya se seteó al inicio y market_data ya lo tiene.
                     symbol_idx = 0
                     session_num = 0
                     
@@ -803,8 +805,9 @@ def main() -> None:
         # ── 3. Verificar Fin de Exploración ──────────────────────────────────
         if is_simulated and all_symbols and symbol_idx >= len(all_symbols):
             # Verificar si se han añadido nuevos símbolos desde el Dashboard
-            importlib.reload(data.market_data)
-            current_list = data.market_data.get_symbols()
+            importlib.reload(market_data)
+            set_assets_file(config.ASSETS_FILE_SIM)
+            current_list = market_data.get_symbols()
             if len(current_list) > len(all_symbols):
                 log.info(f"✨ ¡Nuevos símbolos detectados ({len(current_list)})! Reanudando...")
                 all_symbols = current_list

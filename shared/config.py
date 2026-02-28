@@ -8,7 +8,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # ─── Cargar .env ────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).parent
+BASE_DIR = Path(__file__).resolve().parent
+# Si este archivo está dentro de 'shared/', subir un nivel para encontrar el root
+if BASE_DIR.name == "shared":
+    BASE_DIR = BASE_DIR.parent
+
 load_dotenv(BASE_DIR / ".env")
 
 # URL base de la API de Hapi Trade
