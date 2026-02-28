@@ -174,6 +174,19 @@ def record_trade(
             with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=COLUMNS)
                 writer.writerow(row)
+        
+        # 🔗 Notificar al state_writer para actualización en tiempo real del Dashboard
+        try:
+            from shared.utils import state_writer
+            state_writer.record_trade(
+                symbol=symbol,
+                side="BUY/SELL", # Genérico para el historial rápido
+                price=exit_price,
+                qty=qty,
+                pnl=gross_pnl
+            )
+        except Exception:
+            pass
 
     except Exception as e:
         from utils.logger import log

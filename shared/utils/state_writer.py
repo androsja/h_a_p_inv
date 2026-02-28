@@ -58,6 +58,10 @@ class BotState:
     winning_trades: int   = 0
     gross_profit:   float = 0.0
     gross_loss:     float = 0.0
+    # Estadísticas Acumuladas (para simulaciones de múltiples activos)
+    total_sim_trades: int = 0
+    total_sim_wins:   int = 0
+    total_sim_pnl:    float = 0.0
 
     # Posición abierta
     position: dict | None = None
@@ -74,12 +78,54 @@ class BotState:
 _symbol_states: dict[str, BotState] = {}
 _trades: list[TradeRecord] = []
 
+# Estadísticas acumulativas globales de la simulación
+_global_sim_trades: int = 0
+_global_sim_wins:   int = 0
+_global_sim_pnl:    float = 0.0
+
+def load_global_stats_from_journal() -> None:
+    """Carga los totales acumulados desde el archivo CSV de la bitácora."""
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl
+    try:
+        journal_path = config.TRADE_JOURNAL_FILE
+        if not journal_path.exists():
+            return
+
+        import csv
+        trades_count = 0
+        wins_count = 0
+        total_pnl = 0.0
+        
+        with open(journal_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    trades_count += 1
+                    pnl = float(row.get("gross_pnl", 0))
+                    total_pnl += pnl
+                    if int(row.get("is_win", 0)) == 1:
+                        wins_count += 1
+                except: continue
+        
+        with _state_lock:
+            _global_sim_trades = trades_count
+            _global_sim_wins = wins_count
+            _global_sim_pnl = total_pnl
+    except Exception:
+        pass
+
+# Inicializar al cargar el módulo
+load_global_stats_from_journal()
+
 def clear_state() -> None:
     """Borra todos los estados de símbolos y trades en memoria y en disco."""
-    global _symbol_states, _trades
+    global _symbol_states, _trades, _global_sim_trades, _global_sim_wins, _global_sim_pnl
     with _state_lock:
         _symbol_states.clear()
         _trades.clear()
+        _global_sim_trades = 0
+        _global_sim_wins = 0
+        _global_sim_pnl = 0.0
         try:
             # Eliminar archivos físicos
             if _state_path and _state_path.exists():
@@ -93,11 +139,24 @@ def clear_state() -> None:
         except Exception:
             pass
 
+def clear_symbol_states() -> None:
+    """Borra solo los estados de los símbolos activos, manteniendo el historial de trades."""
+    global _symbol_states
+    with _state_lock:
+        _symbol_states.clear()
+
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float) -> None:
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl
     with _state_lock:
         _trades.append(TradeRecord(symbol=symbol, side=side, price=price, qty=qty, pnl=pnl))
-        if len(_trades) > 50:
+        if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
+        
+        # Actualizar acumulados globales
+        _global_sim_trades += 1
+        if pnl > 0:
+            _global_sim_wins += 1
+        _global_sim_pnl += pnl
 
 def update_state(
     symbol: str,
@@ -123,6 +182,9 @@ def update_state(
     winning_trades: int = 0,
     gross_profit: float = 0.0,
     gross_loss: float = 0.0,
+    total_sim_trades: int = None,
+    total_sim_wins: int = None,
+    total_sim_pnl: float = None,
     position: dict | None = None,
     candles: list | None = None,
     timestamp: str | None = None,
@@ -132,8 +194,13 @@ def update_state(
     status: str = "running",
     **kwargs
 ) -> None:
-    global _symbol_states
+    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl
     
+    # Si no se pasan acumulados específicos, usar los de la memoria global
+    ts_trades = total_sim_trades if total_sim_trades is not None else _global_sim_trades
+    ts_wins   = total_sim_wins   if total_sim_wins   is not None else _global_sim_wins
+    ts_pnl    = total_sim_pnl    if total_sim_pnl    is not None else _global_sim_pnl
+
     new_s = BotState(
         mode=mode,
         symbol=symbol,
@@ -160,6 +227,9 @@ def update_state(
         winning_trades=winning_trades,
         gross_profit=gross_profit,
         gross_loss=gross_loss,
+        total_sim_trades=ts_trades,
+        total_sim_wins=ts_wins,
+        total_sim_pnl=ts_pnl,
         position=position,
         trades=[asdict(t) for t in _trades],
         candles=candles or [],

@@ -1252,6 +1252,23 @@
                             id="pf-val">─</span></div>
                 </div>
 
+                <!-- Simulación Global -->
+                <div class="sidebar-section" id="global-sim-section">
+                    <div class="sidebar-section-title">Total Simulación</div>
+                    <div class="kv">
+                        <span class="kv-key">📊 Trades Totales</span>
+                        <span class="kv-val" id="global-trades-val">0</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">💰 PnL Acumulado</span>
+                        <span class="kv-val" id="global-pnl-val">+$0.00</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">🎯 Win Rate Global</span>
+                        <span class="kv-val" id="global-wr-val">0%</span>
+                    </div>
+                </div>
+
                 <!-- Posición abierta -->
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Posición Abierta</div>
@@ -2891,6 +2908,20 @@
             document.getElementById('trades-val').textContent = `${total} trade${total !== 1 ? 's' : ''} `;
             document.getElementById('wins-val').textContent = wins;
             document.getElementById('losses-val').textContent = total - wins;
+
+            // Stats Globales de Simulación
+            const gTotal = state.total_sim_trades ?? 0;
+            const gWins = state.total_sim_wins ?? 0;
+            const gPnl = state.total_sim_pnl ?? 0.0;
+            const gWr = gTotal > 0 ? (gWins / gTotal) * 100 : 0;
+
+            if (document.getElementById('global-trades-val')) document.getElementById('global-trades-val').textContent = gTotal;
+            if (document.getElementById('global-pnl-val')) {
+                const gpnlEl = document.getElementById('global-pnl-val');
+                gpnlEl.textContent = `${gPnl >= 0 ? '+' : ''}$${gPnl.toFixed(2)}`;
+                gpnlEl.className = `kv-val ${gPnl > 0 ? 'g' : gPnl < 0 ? 'r' : ''}`;
+            }
+            if (document.getElementById('global-wr-val')) document.getElementById('global-wr-val').textContent = `${gWr.toFixed(1)}%`;
 
             // Countdown visibility 
             const cdContainer = document.getElementById('scan-countdown');

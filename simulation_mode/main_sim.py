@@ -850,8 +850,8 @@ def main() -> None:
             try:
                 # Limpiar estados previos para evitar "fantasmas" paralelos en el dashboard (solo en serial)
                 try:
-                    from shared.utils.state_writer import clear_state
-                    clear_state()
+                    from shared.utils.state_writer import clear_symbol_states
+                    clear_symbol_states()
                 except: pass
 
                 broker = init_broker(args)
