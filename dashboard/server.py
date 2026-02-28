@@ -398,7 +398,7 @@ async def train_ai():
     import os
     try:
         # Resolve train_ai.py relative to project root
-        train_script = Path(__file__).resolve().parent.parent / "train_ai.py"
+        train_script = Path(__file__).resolve().parent.parent / "shared" / "train_ai.py"
         result = subprocess.run(["python3", str(train_script)], capture_output=True, text=True)
         return {"status": "success", "output": result.stdout}
     except Exception as e:
@@ -409,14 +409,24 @@ async def get_config(mode: str = "sim"):
     import json
     path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
     try:
+        total_syms = 0
         if path.exists():
             with open(path) as f:
                 data = json.load(f)
                 active_symbols = [a for a in data.get('assets', []) if a.get('enabled', True)]
-                return {"total_symbols": len(active_symbols)}
-        return {"total_symbols": 46}
+                total_syms = len(active_symbols)
+        
+        return {
+            "total_symbols": total_syms,
+            "max_risk_pct": config.MAX_RISK_PCT * 100,
+            "stop_loss_pct": config.STOP_LOSS_PCT * 100,
+            "take_profit_pct": config.TAKE_PROFIT_PCT * 100,
+            "trading_window": f"{config.TRADING_OPEN_HOUR:02d}:{config.TRADING_OPEN_MIN:02d} - {config.TRADING_CLOSE_HOUR:02d}:{config.TRADING_CLOSE_MIN:02d}",
+            "interval": config.DATA_INTERVAL,
+            "max_pos_usd": config.MAX_POSITION_USD
+        }
     except Exception:
-        return {"total_symbols": 46}
+        return {"total_symbols": 0, "max_risk_pct": 2.5}
 
 @app.get("/api/active_symbols")
 async def get_active_symbols(mode: str = "sim"):

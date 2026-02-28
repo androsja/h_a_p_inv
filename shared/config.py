@@ -31,7 +31,7 @@ HAPI_TEST_MODE  = os.getenv("HAPI_IS_TEST_MODE", "true").lower() == "true"
 STOP_LOSS_PCT       = float(os.getenv("STOP_LOSS_PCT",    "0.025"))   # 2.5% SL
 TAKE_PROFIT_PCT     = float(os.getenv("TAKE_PROFIT_PCT",  "0.05"))    # 5.0% TP  → ratio 1:2
 MAX_POSITION_USD    = float(os.getenv("MAX_POSITION_USD", "10000"))   # Relajado a tamaño total de la cuenta
-MAX_RISK_PCT        = float(os.getenv("MAX_RISK_PCT", "0.01"))      # Máximo riesgo de 1% del capital por trade
+MAX_RISK_PCT        = float(os.getenv("MAX_RISK_PCT", "0.025"))      # Máximo riesgo de 2.5% del capital por trade
 CLEARING_COST_USD   = float(os.getenv("CLEARING_COST_USD","0.15"))   # $0.15 Apex
 
 # ─── Latencia Bogotá → Nueva York ───────────────────────────────────────────
@@ -44,21 +44,25 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # ─── Estrategia Intraday (velas de 5 minutos) ────────────────────────────────
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
+# 🤖 Inteligencia Artificial
+# Hyper-Aggressive V3: Ajustado a 0.48 para filtro inteligente (Anti-Trampas).
+CONFIDENCE_THRESHOLD = 0.48
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
-RSI_OVERBOUGHT = 70     # Más estricto: no comprar si RSI > 70 (evita sobrecompra)
-RSI_OVERSOLD   = 35     # Más estricto: señal de impulso si RSI < 35
+RSI_OVERBOUGHT = 75     # Más agresivo: permite tendencias fuertes (antes 70)
+RSI_OVERSOLD   = 40     # Más agresivo: entra más temprano en rebotes (antes 35)
 
 # ─── Datos de mercado ────────────────────────────────────────────────────────
 # Intervalo y período para yfinance (intraday en lugar de scalping)
-DATA_INTERVAL  = "5m"   # Velas de 5 minutos  (yfinance permite 5m × 60d gratis)
+DATA_INTERVAL  = "5m"   # Regresando a 5m para mayor estabilidad, manteniendo 20 activos.
 DATA_PERIOD    = "60d"  # 60 días de historial → ~7,800 velas por símbolo
 
 # ─── Ventana de trading: apertura de NY (mayor liquidez intraday) ────────────
-# Solo operamos de 9:30 a 11:30 AM ET (primeras 2 horas = 80% del volumen diario)
+# 🕒 Ventana de Trading (Horario NY)
+# Hiper-Agresivo V3: Expandimos la ventana de 2 a 4 horas.
 TRADING_OPEN_HOUR   = 9    # Hora de apertura (NY)
 TRADING_OPEN_MIN    = 30
-TRADING_CLOSE_HOUR  = 11   # Hora de cierre de ventana
+TRADING_CLOSE_HOUR  = 13   # Hora de cierre de ventana
 TRADING_CLOSE_MIN   = 30
 
 # ─── Archivos de datos ──────────────────────────────────────────────────────

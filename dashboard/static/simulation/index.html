@@ -1355,6 +1355,19 @@
                             id="pf-val">─</span></div>
                 </div>
 
+                <!-- Periodo de Simulación -->
+                <div class="sidebar-section" id="sim-period-section">
+                    <div class="sidebar-section-title">Periodo de Datos</div>
+                    <div class="kv">
+                        <span class="kv-key">📅 Inicio</span>
+                        <span class="kv-val" id="sim-start" style="color:var(--accent2);">─</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">📅 Fin</span>
+                        <span class="kv-val" id="sim-end" style="color:var(--accent2);">─</span>
+                    </div>
+                </div>
+
                 <!-- Simulación Global -->
                 <div class="sidebar-section" id="global-sim-section">
                     <div class="sidebar-section-title">Total Simulación</div>
@@ -1369,6 +1382,35 @@
                     <div class="kv">
                         <span class="kv-key">🎯 Win Rate Global</span>
                         <span class="kv-val" id="global-wr-val">0%</span>
+                    </div>
+                </div>
+
+                <!-- Parámetros Estrategia -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Configuración Bot</div>
+                    <div class="kv">
+                        <span class="kv-key">⚖️ Riesgo por Trade</span>
+                        <span class="kv-val" id="cfg-risk" style="color:var(--accent);">2.5%</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">🛑 Stop Loss</span>
+                        <span class="kv-val" id="cfg-sl" style="color:var(--red);">2.5%</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">🎯 Take Profit</span>
+                        <span class="kv-val" id="cfg-tp" style="color:var(--green);">5.0%</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">🕒 Ventana Trading</span>
+                        <span class="kv-val" id="cfg-window" style="font-size: 10px;">09:30 - 13:30</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">🕯️ Intervalo Velas</span>
+                        <span class="kv-val" id="cfg-interval">5m</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">💰 Cap. Máx / Trade</span>
+                        <span class="kv-val" id="cfg-max-pos" style="color:var(--yellow);">$10,000</span>
                     </div>
                 </div>
 
@@ -2147,6 +2189,12 @@
                 if (data && data.total_symbols) {
                     TOTAL_SYMBOLS = data.total_symbols;
                 }
+                if (data.max_risk_pct) document.getElementById('cfg-risk').textContent = data.max_risk_pct.toFixed(1) + '%';
+                if (data.stop_loss_pct) document.getElementById('cfg-sl').textContent = data.stop_loss_pct.toFixed(1) + '%';
+                if (data.take_profit_pct) document.getElementById('cfg-tp').textContent = data.take_profit_pct.toFixed(1) + '%';
+                if (data.trading_window) document.getElementById('cfg-window').textContent = data.trading_window;
+                if (data.interval) document.getElementById('cfg-interval').textContent = data.interval;
+                if (data.max_pos_usd) document.getElementById('cfg-max-pos').textContent = '$' + data.max_pos_usd.toLocaleString();
             } catch (e) { console.error("Error loading config:", e); }
         }
 
@@ -2900,6 +2948,12 @@
                     simDateDisplay.textContent = d.toISOString().split('T')[0];
                 } catch (e) { }
             }
+
+            // Actualizar Periodo de Datos (Simulación)
+            const simStartEl = document.getElementById('sim-start');
+            const simEndEl = document.getElementById('sim-end');
+            if (simStartEl && state.sim_start) simStartEl.textContent = state.sim_start;
+            if (simEndEl && state.sim_end) simEndEl.textContent = state.sim_end;
 
             // Auto-actualizar ML Dataset si hay cambio de símbolo
             if (currentSymbol !== null && sym !== '─' && sym !== currentSymbol) {

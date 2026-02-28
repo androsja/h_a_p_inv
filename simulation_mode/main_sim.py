@@ -69,6 +69,13 @@ BANNER = """
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  EXCEPCIONES DE CONTROL
+# ═══════════════════════════════════════════════════════════════════════════════
+class SessionInterrupted(Exception):
+    """Lanzada cuando llega un comando de reinicio global o cambio de modo."""
+    pass
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  HELPERS PARA RESPONSIVIDAD
 # ═══════════════════════════════════════════════════════════════════════════════
 def smart_sleep(seconds: float):
@@ -90,9 +97,11 @@ def smart_sleep(seconds: float):
                 with open(cmd_file, "r") as f:
                     cmds = json.load(f)
                 if cmds.get("reset_all") or cmds.get("restart_sim"):
-                    return True # Señal explícita de interrupción
+                    raise SessionInterrupted("Reinicio solicitado")
                 if cmds.get("force_paper_trading") != initial_cmds.get("force_paper_trading"):
-                    return True # Cambio de modo
+                    raise SessionInterrupted("Cambio de modo detectado")
+        except SessionInterrupted:
+            raise
         except: pass
         time.sleep(1)
     return False
@@ -218,7 +227,7 @@ def print_status(
 # ═══════════════════════════════════════════════════════════════════════════════
 #  MOTOR PRINCIPAL DEL BOT
 # ═══════════════════════════════════════════════════════════════════════════════
-def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int = 1, stop_event: threading.Event = None) -> None:
+def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int = 1, stop_event: threading.Event = None, asset_type: str = "normal") -> None:
     """
     Bucle principal del bot de trading para un símbolo específico.
     """
@@ -240,6 +249,17 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
     log.info(f"Estrategia: EMA({config.EMA_FAST}/{config.EMA_SLOW}) + RSI({config.RSI_PERIOD})")
     log.info(f"SL: {config.STOP_LOSS_PCT*100:.0f}%  TP: {config.TAKE_PROFIT_PCT*100:.0f}%  MaxPos: ${config.MAX_POSITION_USD}")
     log.info(f"{'─'*60}")
+
+    sim_start_date = ""
+    sim_end_date   = ""
+    if is_mock:
+        try:
+            # MarketReplay usa .df, LivePaperReplay usa .full_df
+            _df = getattr(broker._replay, 'df', getattr(broker._replay, 'full_df', None))
+            if _df is not None and not _df.empty:
+                sim_start_date = _df.index[0].strftime("%Y-%m-%d")
+                sim_end_date   = _df.index[-1].strftime("%Y-%m-%d")
+        except: pass
 
     # 📊 SEGUIMIENTO DE BLOQUEOS (Para análisis de estrategia)
     import collections
@@ -296,7 +316,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 from shared.data.market_data import download_bars
                 df = download_bars(symbol)
 
-            signal = analyze(df, symbol=symbol)
+            signal = analyze(df, symbol=symbol, asset_type=asset_type)
 
             # 📊 REGISTRAR BLOQUEOS: Si no hay señal y hay razones de bloqueo
             if signal.signal == "HOLD" and signal.blocks:
@@ -512,7 +532,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 timestamp=signal.timestamp.isoformat() if hasattr(signal, 'timestamp') and signal.timestamp else None,
                 regime=getattr(signal, 'regime', 'NEUTRAL'),
                 mock_time_930=is_mock_active,
-                blocks=signal.blocks
+                blocks=signal.blocks,
+                sim_start=sim_start_date,
+                sim_end=sim_end_date
             )
 
             # ── 7. Display de estado (cada 10 iteraciones en simulación) ─────
@@ -565,15 +587,14 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         next_scan_in=i,
                         is_waiting=True,
                         mock_time_930=is_mock_active,
-                        blocks=signal.blocks
+                        blocks=signal.blocks,
+                        sim_start=sim_start_date,
+                        sim_end=sim_end_date
                     )
                     smart_sleep(1)
                 
         if not (stop_event and stop_event.is_set()):
             smart_sleep(1)
-            # Verificar si llegó una orden de parar o resetear durante la pausa.
-            # En Live Paper, los hilos solo responden a stop_event (del launcher),
-            # no al flag reset_all (que puede ser un artefacto del arranque).
             if not is_live_paper_b:
                 try:
                     if config.COMMAND_FILE.exists():
@@ -606,10 +627,11 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             should_save = True
             try:
                 cmd_file = config.COMMAND_FILE
-                if os.path.exists(cmd_file):
-                    with open(cmd_file, "r") as f:
-                        if json.load(f).get("reset_all"):
-                            log.info("Cancelando guardado de sesión debido a Wipe Memory.")
+                if os.path.exists(config.COMMAND_FILE):
+                    with open(config.COMMAND_FILE, "r") as f:
+                        cmds = json.load(f)
+                        if cmds.get("reset_all") or cmds.get("restart_sim"):
+                            log.info("Cancelando guardado de sesión debido a comando de reinicio/wipe.")
                             should_save = False
             except Exception:
                 pass
@@ -756,9 +778,16 @@ def main() -> None:
             importlib.reload(market_data)
             # Volver a setear el archivo correcto tras el reload
             set_assets_file(config.ASSETS_FILE_SIM)
-            all_symbols = market_data.get_symbols()
+            
+            # Obtener objetos completos de activos para conocer su 'type'
+            with open(config.ASSETS_FILE_SIM, "r") as f:
+                _assets_data = json.load(f)
+                all_assets = [a for a in _assets_data.get("assets", []) if a.get("enabled", True)]
+                all_symbols = [a["symbol"] for a in all_assets]
         except Exception as e_reload:
             log.warning(f"⚠️ Error recargando símbolos: {e_reload}")
+            all_symbols = []
+            all_assets  = []
 
         # ── 2. Procesar Comandos Globales (Reinicios/Wipe) ────────────────────
         cmd_file = config.COMMAND_FILE
@@ -770,7 +799,7 @@ def main() -> None:
                 
                 if cmds.get("reset_all") or cmds.get("restart_sim"):
                     is_purgue = cmds.get("reset_all", False)
-                    log.info(f"🔄 {'PURGANDO MEMORIA' if is_purgue else 'REINICIANDO SIMULACIÓN'} por orden del usuario...")
+                    log.info(f"🔄 {'PURGANDO MEMORIA TOTAL' if is_purgue else 'REINICIANDO SIMULACIÓN'} por orden del usuario...")
                     
                     # Limpiar flags
                     cmds["reset_all"] = False
@@ -780,11 +809,22 @@ def main() -> None:
                     
                     from shared.utils.state_writer import clear_state
                     clear_state()
+                    
+                    # ── LIMPIEZA DE RESULTADOS (Siempre en ambos casos) ───────────
+                    if config.RESULTS_FILE.exists(): 
+                        log.info(f"🗑️ Eliminando resultados previos: {config.RESULTS_FILE.name}")
+                        config.RESULTS_FILE.unlink()
+                    if config.TRADE_JOURNAL_FILE.exists(): 
+                        log.info(f"🗑️ Eliminando diario de trades: {config.TRADE_JOURNAL_FILE.name}")
+                        config.TRADE_JOURNAL_FILE.unlink()
+                    
+                    # ── LIMPIEZA ADICIONAL (Solo en Reset Total / Wipe) ──────────
                     if is_purgue:
-                        if config.RESULTS_FILE.exists(): config.RESULTS_FILE.unlink()
-                        if config.TRADE_JOURNAL_FILE.exists(): config.TRADE_JOURNAL_FILE.unlink()
+                        log.info("🧹 Limpieza profunda (Checkpoints + ML Model)...")
                         from shared.utils.checkpoint import clear_simulation_checkpoints
                         clear_simulation_checkpoints()
+                        if config.NEURAL_MODEL_FILE.exists():
+                            config.NEURAL_MODEL_FILE.unlink()
                     importlib.reload(market_data)
                     set_assets_file(config.ASSETS_FILE_SIM)
                     all_symbols = market_data.get_symbols()
@@ -810,9 +850,14 @@ def main() -> None:
             # Verificar si se han añadido nuevos símbolos desde el Dashboard
             importlib.reload(market_data)
             set_assets_file(config.ASSETS_FILE_SIM)
-            current_list = market_data.get_symbols()
+            with open(config.ASSETS_FILE_SIM, "r") as f:
+                _new_data = json.load(f)
+                current_assets = [a for a in _new_data.get("assets", []) if a.get("enabled", True)]
+                current_list = [a["symbol"] for a in current_assets]
+
             if len(current_list) > len(all_symbols):
                 log.info(f"✨ ¡Nuevos símbolos detectados ({len(current_list)})! Reanudando...")
+                all_assets = current_assets
                 all_symbols = current_list
             else:
                 from shared.utils.state_writer import update_state
@@ -858,7 +903,16 @@ def main() -> None:
                 except: pass
 
                 broker = init_broker(args)
-                run_bot(broker, args, session_num)
+                
+                # Obtener tipo de activo (normal por defecto)
+                current_asset_type = "normal"
+                if all_assets and symbol_idx < len(all_assets):
+                    current_asset_type = all_assets[symbol_idx].get("type", "normal")
+                
+                run_bot(broker, args, session_num, asset_type=current_asset_type)
+            except SessionInterrupted:
+                log.info("📢 Sesión interrumpida por comando superior. Reiniciando bucle...")
+                continue # Re-evaluar comandos globales de inmediato
             except Exception as e:
                 log.error(f"❌ Error en sesión para {args.symbol}: {e}")
                 try:

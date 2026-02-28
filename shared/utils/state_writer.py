@@ -73,6 +73,8 @@ class BotState:
     is_waiting: bool = False
     mock_time_930: bool = False
     blocks: list[str] = None
+    sim_start: str = ""   # Fecha de inicio de los datos
+    sim_end:   str = ""   # Fecha de fin de los datos
 
 # Almacenamiento global multinivel
 _symbol_states: dict[str, BotState] = {}
@@ -191,6 +193,8 @@ def update_state(
     regime: str = "NEUTRAL",
     mock_time_930: bool = False,
     blocks: list[str] | None = None,
+    sim_start: str = "",
+    sim_end: str = "",
     status: str = "running",
     **kwargs
 ) -> None:
@@ -237,7 +241,9 @@ def update_state(
         next_scan_in=kwargs.get("next_scan_in", 0),
         is_waiting=kwargs.get("is_waiting", False),
         mock_time_930=mock_time_930,
-        blocks=blocks or []
+        blocks=blocks or [],
+        sim_start=sim_start,
+        sim_end=sim_end
     )
     
     with _state_lock:

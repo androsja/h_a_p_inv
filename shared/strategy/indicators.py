@@ -266,7 +266,7 @@ def super_smoother(series: pd.Series, period: int = 10) -> pd.Series:
     return result
 
 
-def zscore_vwap(df: pd.DataFrame, window: int = 20) -> pd.Series:
+def zscore_vwap(df: pd.DataFrame, window: int = 20):
     """
     Z-Score del precio respecto al VWAP — Reversión a la Media Institucional.
 
@@ -274,16 +274,26 @@ def zscore_vwap(df: pd.DataFrame, window: int = 20) -> pd.Series:
 
     Interpretación:
     - Z-Score > +2.0  → Sobrecompra estadística → NO comprar
-    - Z-Score < -2.0  → Sobreventa estadística  → Oportunidad de compra
-    - Z-Score ~ 0     → Zona neutral              → Normal
+    - Z-Score < -2.0  → Sobrevendido estadístico → Posible compra
 
     El VWAP como media de referencia es el estándar institucional porque
     considera dónde se negó el mayor volumen (equilibrio real del mercado).
     """
-    vwap_vals = vwap(df)
-    close     = df["Close"].astype(float)
-    std       = close.rolling(window).std()
-    return (close - vwap_vals) / std.replace(0, np.nan)
+    if len(df) < window: return pd.Series(0, index=df.index)
+    v = vwap(df)
+    std = df["Close"].rolling(window).std()
+    z = (df["Close"] - v) / std
+    return z
+
+# ─── Bandas de Bollinger ───────────────────────────────────────────────────
+def bollinger_bands(series: pd.Series, window: int = 20, num_std: float = 2.0):
+    if len(series) < window:
+        return series, series, series
+    sma = series.rolling(window).mean()
+    std = series.rolling(window).std()
+    upper = sma + (std * num_std)
+    lower = sma - (std * num_std)
+    return upper, sma, lower
 
 def detect_engulfing(df: pd.DataFrame) -> pd.Series:
     """
@@ -422,7 +432,7 @@ class SignalResult:
 MIN_BARS = max(200, config.EMA_SLOW, config.RSI_PERIOD) + 10
 
 
-def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
+def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> SignalResult:
     """
     Evalúa la señal de trading usando un sistema de confluencia multi-indicador.
 
@@ -432,6 +442,7 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
     Args:
         df: DataFrame OHLCV con suficientes barras históricas.
         symbol: Símbolo del activo (para identificación en logs).
+        asset_type: Tipo de activo ("normal" o "inverted").
 
     Returns:
         SignalResult con señal final y todos los valores de indicadores.
@@ -489,6 +500,10 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
     vol_avg     = float(vol_series.rolling(20).mean().iloc[-1]) if len(vol_series) >= 20 else float(vol_series.mean())
     vol_ratio   = float(vol_series.iloc[-1]) / vol_avg if vol_avg > 0 else 1.0
     atr_pct     = (atr_now / close_now) * 100 if close_now else 0.0
+    
+    # Pendiente del ADX (para detectar si la tendencia se está fortaleciendo)
+    adx_prev    = float(adx_vals.iloc[-2]) if not pd.isna(adx_vals.iloc[-2]) else adx_now
+    is_adx_rising = adx_now > adx_prev
 
     # ╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬╬
     #  DETECTOR DE RÉGIMEN ─ Se ejecuta PRIMERO
@@ -543,64 +558,110 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
     velez_bounce = (close_now > ema_20_now) and (close_now > open_now) # Rebotó y cerró verde
     
     is_velez_setup = velez_trend_ok and velez_pullback and velez_bounce
-    
+
     # ── ESTRATEGIA B: Rebote Institucional (Estilo SMB Capital) ───────────
     # El precio colapsa irracionalmente separándose del VWAP (Z-Score < -2.0).
-    # Oportunidad de compra estadística si la vela hace reversión confirmada (Cierre Verde o Martillo).
-    # OPTIMIZACIÓN: Permitir rebotes EXTREMOS incluso si la macro es bajista (Z < -3.0)
     vwap_oversold = zscore_now < -2.0
     vwap_extreme  = zscore_now < -3.0
     vwap_reversal = (close_now > open_now) or is_hammer
     macro_bullish = close_now > ema_200_now
     
     is_vwap_bounce = (vwap_oversold and vwap_reversal and macro_bullish) or (vwap_extreme and vwap_reversal)
-
-    # ══ EVALUACIÓN POR RÉGIMEN ═ El sistema elige la estrategia óptima ══
-    if current_regime in ("TREND_UP", "MOMENTUM", "NEUTRAL"):
+    
+    # ── ESTRATEGIA C: Reversión de Bandas de Bollinger ────────────────────
+    # El precio perfora la banda inferior de Bollinger (Pánico) y luego 
+    # recupera con un cierre superior al Low anterior o media de las bandas.
+    bb_upper, bb_mid, bb_lower = bollinger_bands(closes)
+    bb_low_now = float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else 0.0
+    
+    is_bb_reversal = (low_now <= bb_low_now) and (close_now > open_now) # Touch + Green Close
+    
+    # ── Determinar si es un activo invertido (Inverse ETF) ────────────────────
+    is_inverted = asset_type == "inverted"
+    
+    # ── EVALUACIÓN POR RÉGIMEN ═ El sistema elige la estrategia óptima ══
+    
+    # LÓGICA ESPECIAL PARA ETFs INVERSOS: El bot gana cuando el mercado general baja.
+    # Por lo tanto, si el mercado está en TREND_DOWN, para el ETF inverso esto es una oportunidad.
+    effective_regime = current_regime
+    if is_inverted:
+        if current_regime == "TREND_DOWN":
+            effective_regime = "TREND_UP"     # Invertimos la percepción
+        elif current_regime == "TREND_UP":
+            effective_regime = "TREND_DOWN"   # Evitamos comprar si el mercado sube
+            
+    if effective_regime in ("TREND_UP", "MOMENTUM", "NEUTRAL"):
         if is_velez_setup:
             signal = SIGNAL_BUY
-            confirmations_buy.append(f"🎯 [{regime_label}] Estrategia A: Rebote Oliver Vélez en la EMA 20.")
+            prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
+            confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia A: Rebote Oliver Vélez en la EMA 20.")
 
-    if current_regime in ("RANGE", "NEUTRAL"):
+    if effective_regime in ("RANGE", "NEUTRAL"):
         if signal != SIGNAL_BUY and is_vwap_bounce:
             signal = SIGNAL_BUY
-            confirmations_buy.append(f"🎯 [{regime_label}] Estrategia B: Anomalía VWAP (Z={zscore_now:.2f}) con rechazo alcista.")
+            prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
+            confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia B: Anomalía VWAP (Z={zscore_now:.2f}) con rechazo alcista.")
+        
+        if signal != SIGNAL_BUY and is_bb_reversal:
+            signal = SIGNAL_BUY
+            prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
+            confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia C: Reversión de Bandas de Bollinger (Toque Inferior).")
 
-    if current_regime in ("TREND_DOWN", "CHAOS"):
-        signal = SIGNAL_HOLD
-        confirmations_buy.clear()
+    if effective_regime in ("TREND_DOWN", "CHAOS"):
+        # AGRESIVO V3: Permitimos compras en tendencia bajista SOLO SI es un "Flash Crash"
+        # detectado por un Z-Score extremo o una desviación gigante de BB.
+        if (zscore_now < -2.5) and (is_hammer or is_engulf or is_bb_reversal):
+            signal = SIGNAL_BUY
+            prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
+            confirmations_buy.append(f"🔥 {prefix}[{regime_label}] COMPRA DE CAPITULACIÓN: Z-Score={zscore_now:.2f} con patrón de reversión.")
+        else:
+            signal = SIGNAL_HOLD
+            confirmations_buy.clear()
         
     # ── FILTRO INTELIGENTE BASADO EN MACHINE LEARNING HISTÓRICO ───────────
-    # OPTIMIZACIÓN: Reducimos la zona de bloqueo del RSI para ser más agresivos.
-    # Antes: (30-60). Ahora: solo bloqueamos si el RSI está excesivamente "muerto" (40-50) sin dirección.
-    is_whipsaw_zone = (rsi_now > 40.0) and (rsi_now < 50.0)
+    # AGRESIVO: Reducimos la zona de bloqueo del RSI (antes 40-50).
+    is_whipsaw_zone = (rsi_now > 43.0) and (rsi_now < 47.0)
     
     # Filtro ADX: Evitamos laterales sin dirección.
-    # OPTIMIZACIÓN: Bajamos el umbral de 18 a 15.
-    is_low_trend = adx_now < 15.0 and not (is_hammer or is_engulf)
+    # AGRESIVO V3: Bajamos el umbral a 10.
+    is_low_trend = adx_now < 10.0 and not (is_hammer or is_engulf or is_bb_reversal)
     
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
-        signal = SIGNAL_HOLD
-        if is_whipsaw_zone:
-            blocks_buy.append(f"Filtro ML: RSI en zona muerta ({rsi_now:.1f})")
-        if is_low_trend:
-            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 15)")
-        confirmations_buy.clear()
+        # EXCEPCIÓN: Si es una compra de CAPITULACIÓN extrema, ignoramos el ADX (porque el ADX suele ser bajo en giros rápidos)
+        if zscore_now < -2.3: 
+            pass 
+        else:
+            signal = SIGNAL_HOLD
+            if is_whipsaw_zone:
+                blocks_buy.append(f"Filtro ML: RSI en zona muerta ({rsi_now:.1f})")
+            if is_low_trend:
+                blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 10)")
+            confirmations_buy.clear()
 
     # ── REGLA TREND_UP: Eliminamos el bloqueo de RSI > 68 para permitir momentum ──
     # En una tendencia fuerte alcista, el RSI puede mantenerse alto mucho tiempo.
     pass 
 
     # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
-    # Excepción Pro: Si el Z-Score es EXTREMADAMENTE bajo (< -2.5), es un rebote de alta probabilidad
-    # incluso en RANGE, así que permitimos la entrada.
-    if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -2.5:
+    # AGRESIVO: Excepción Pro: Si el Z-Score es suficientemente bajo (< -1.8), permitimos la entrada.
+    if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -1.8:
         signal = SIGNAL_HOLD
-        msg = f"RANGE: Z-Score insuficiente ({zscore_now:.2f} > -2.5)"
+        msg = f"RANGE: Z-Score insuficiente ({zscore_now:.2f} > -1.8)"
         blocks_buy.append(msg)
         confirmations_buy.clear()
         from shared.utils.logger import log as _log
         _log.info(f"🚧 BLOQUEADO: {msg}")
+
+    if signal == SIGNAL_BUY and (20.0 < adx_now < 30.0) and is_adx_rising:
+        if current_regime in ("NEUTRAL", "RANGE"):
+            pass
+            if not (is_hammer or is_engulf):
+                signal = SIGNAL_HOLD
+                msg = f"SMART FILTER: ADX en zona de duda ({adx_now:.1f}) y sin patrón de vela."
+                blocks_buy.append(msg)
+                confirmations_buy.clear()
+                from shared.utils.logger import log as _log
+                _log.info(f"🚧 BLOQUEADO: {msg}")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
     # Tu Take Profit (3%) o Trailing Stop harán el 90% del trabajo de salida. 
@@ -653,6 +714,8 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         try:
             from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter()
+            from shared.config import CONFIDENCE_THRESHOLD as _MIN_CONF
+            
             features_vec = nf.build_features(
                 rsi          = rsi_now,
                 macd_hist    = macd_now,
@@ -669,7 +732,7 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
             from shared.utils.logger import log as _log
             _log.info(f"🧠 Red Neuronal: {reason}")
 
-            if proba < 0.55:   # CONFIDENCE_THRESHOLD
+            if proba < _MIN_CONF:   
                 signal = SIGNAL_HOLD
                 confirmations_buy.clear()
                 blocks_buy.append(f"🧠 Red Neuronal bloqueó la entrada: {reason}")
