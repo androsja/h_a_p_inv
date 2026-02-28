@@ -36,6 +36,8 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
+import importlib
+import data.market_data
 import config
 from utils.logger import log, log_order_attempt, log_market_closed, set_symbol_log
 from utils.market_hours import is_market_open, market_status_str, next_open_str
@@ -69,16 +71,16 @@ BANNER = """
 # ═══════════════════════════════════════════════════════════════════════════════
 def smart_sleep(seconds: float):
     """Sleep interrumpible que revisa cambios de comando cada segundo."""
-    cmd_file = "/app/data/command.json"
+    cmd_file = config.COMMAND_FILE
     start_time = time.time()
     while (time.time() - start_time) < seconds:
         try:
             if os.path.exists(cmd_file):
                 with open(cmd_file, "r") as f:
                     cmds = json.load(f)
-                if cmds.get("reset_all") or cmds.get("force_paper_trading") is not None:
+                if cmds.get("reset_all") or cmds.get("restart_sim") or cmds.get("force_paper_trading") is not None:
                     # Si hubo un cambio de modo o reset, salimos del sleep para procesar
-                    break
+                    return True # Señal de interrupción
         except: pass
         time.sleep(1)
 
@@ -155,8 +157,8 @@ def init_broker(args: argparse.Namespace, is_live_paper_override: bool = False) 
     force_symbols = []
     try:
         import json, os
-        cmd_file = "/app/data/command.json"
-        if os.path.exists(cmd_file):
+        cmd_file = config.COMMAND_FILE
+        if cmd_file.exists():
             with open(cmd_file) as f:
                 cmds = json.load(f)
             
@@ -263,6 +265,10 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
     log.info(f"SL: {config.STOP_LOSS_PCT*100:.0f}%  TP: {config.TAKE_PROFIT_PCT*100:.0f}%  MaxPos: ${config.MAX_POSITION_USD}")
     log.info(f"{'─'*60}")
 
+    # 📊 SEGUIMIENTO DE BLOQUEOS (Para análisis de estrategia)
+    blocking_history = collections.Counter()
+    ml_predictor.blocking_count = 0  # Reiniciar contador para esta sesión
+
     iteration = 0
     try:
         while not (stop_event and stop_event.is_set()):
@@ -295,7 +301,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 
                 # REVISAR COMANDOS DESDE EL DASHBOARD (Instántaneo)
                 try:
-                    cmd_file = "/app/data/command.json"
+                    cmd_file = config.COMMAND_FILE
                     if os.path.exists(cmd_file):
                         with open(cmd_file, "r") as f:
                             cmds = json.load(f)
@@ -314,6 +320,13 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 df = download_bars(symbol)
 
             signal = analyze(df, symbol=symbol)
+
+            # 📊 REGISTRAR BLOQUEOS: Si no hay señal y hay razones de bloqueo
+            if signal.signal == "HOLD" and signal.blocks:
+                for b in signal.blocks:
+                    # Limpiar el mensaje para agrupar mejor (ej: "ADX: 15 < 18" -> "ADX")
+                    clean_b = b.split(":")[0].strip()
+                    blocking_history[clean_b] += 1
 
             # ── 4. Gestionar SALIDA (si hay posición abierta) ────────────────
             if position is not None:
@@ -586,8 +599,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # no al flag reset_all (que puede ser un artefacto del arranque).
             if not is_live_paper_b:
                 try:
-                    if os.path.exists("/app/data/command.json"):
-                        with open("/app/data/command.json", "r") as f:
+                    if config.COMMAND_FILE.exists():
+                        with open(config.COMMAND_FILE, "r") as f:
                             c = json.load(f)
                         if c.get("reset_all") or c.get("force_paper_trading") is False:
                             log.info(f"🛑 Interrupción detectada para {symbol}.")
@@ -614,7 +627,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # Si se interrumpió por reset_all, no guardamos estadística corrupta
             should_save = True
             try:
-                cmd_file = "/app/data/command.json"
+                cmd_file = config.COMMAND_FILE
                 if os.path.exists(cmd_file):
                     with open(cmd_file, "r") as f:
                         if json.load(f).get("reset_all"):
@@ -629,7 +642,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     import json
                     from datetime import datetime
                     from pathlib import Path
-                    res_file = Path("/app/data/backtest_results.json")
+                    res_file = config.RESULTS_FILE
                     if not getattr(broker, 'total_trades', 0): pass
                     
                     # ── Generar un Diagnóstico Rápido de la Estrategia (Insight) ──
@@ -675,8 +688,11 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         "gross_loss":     round(getattr(broker.stats, 'gross_loss', 0.0), 2),
                         "profit_factor":  round(getattr(broker.stats, 'profit_factor', 0.0), 2),
                         "drawdown":       round(getattr(broker.stats, 'max_drawdown', 0.0), 2),
+                        "last_price":     round(getattr(final_info, 'last_price', 0.0), 2),
                         "insight":        insight,
-                        "regime":         regime_val
+                        "regime":         regime_val,
+                        "blocking_summary": dict(blocking_history),
+                        "ml_blocked_count": ml_predictor.blocking_count
                     }
                     
                     with results_lock:
@@ -685,14 +701,27 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             with open(res_file, "r") as f:
                                 res_data = json.load(f)
                                 
-                        # Deduplicar: Filtramos y removemos TODOS los registros anteriores de este símbolo
-                        res_data = [r for r in res_data if r.get("symbol") != symbol]
+                        # Deduplicar: Solo si coincide símbolo Y sesión (evita duplicados exactos en re-arranques)
+                        res_data = [r for r in res_data if not (r.get("symbol") == symbol and r.get("session_num") == session_num)]
                         res_data.append(session_result)
                             
                         with open(res_file, "w") as f:
                             json.dump(res_data, f, indent=2)
                         
                     log.info(f"[{symbol}] 📝 ESTRATEGIA RESULTADO | {insight}")
+                    # Limpiar estado activo para este símbolo
+                    from utils.state_writer import update_state
+                    update_state(
+                        mode=args.mode,
+                        symbol=symbol,
+                        status="completed",
+                        session=session_num,
+                        iteration=0,
+                        bid=0, ask=0, signal="HOLD", rsi=50, ema_fast=0, ema_slow=0, ema_200=0, macd_hist=0, vwap=0, atr=0, confirmations=[],
+                        initial_cash=account.total_cash, available_cash=account.available_cash, settlement=0,
+                        win_rate=broker.stats.win_rate, total_trades=broker.stats.total_trades, winning_trades=broker.stats.winning_trades,
+                        gross_profit=broker.stats.gross_profit, gross_loss=broker.stats.gross_loss
+                    )
                 except Exception as e:
                     log.error(f"Error guardando bitácora: {e}")
         else:
@@ -710,16 +739,15 @@ def main() -> None:
     log.info(f"Modo seleccionado: {args.mode}")
     log.info(market_status_str())
 
+    from utils.state_writer import update_state
+    update_state(mode=args.mode, status="initializing", symbol="─", session=0, iteration=0)
+
     is_simulated = args.mode == "SIMULATED"
     SESSION_PAUSE = 10   # segundos entre sesiones simuladas
     session_num   = 0
 
     import os, json
-    try:
-        from data.market_data import get_symbols
-        all_symbols = get_symbols()
-    except Exception:
-        all_symbols = []
+    all_symbols = []
     symbol_idx = 0
 
     # ── Restaurar checkpoint de simulación (si existe) ────────────────────────
@@ -738,11 +766,70 @@ def main() -> None:
         _checkpoint_fn = None
 
     # Inicializar el primer símbolo secuencial si no se especificó uno fijo ni en args
-    if is_simulated and not args.symbol and not os.getenv("FIXED_SYMBOL", "").strip():
-        if all_symbols and symbol_idx < len(all_symbols):
-            args.symbol = all_symbols[symbol_idx]
+    log.info("🚀 SISTEMA INICIADO: Preparando motores de trading...")
 
     while True:
+        # ── 1. Recarga Dinámica de Símbolos ──────────────────────────────────
+        try:
+            import importlib
+            importlib.reload(data.market_data)
+            all_symbols = data.market_data.get_symbols()
+        except Exception as e_reload:
+            log.warning(f"⚠️ Error recargando símbolos: {e_reload}")
+
+        # ── 2. Procesar Comandos Globales (Reinicios/Wipe) ────────────────────
+        cmd_file = config.COMMAND_FILE
+        if os.path.exists(cmd_file):
+            try:
+                import json
+                with open(cmd_file, "r") as f:
+                    cmds = json.load(f)
+                
+                if cmds.get("reset_all") or cmds.get("restart_sim"):
+                    is_purgue = cmds.get("reset_all", False)
+                    log.info(f"🔄 {'PURGANDO MEMORIA' if is_purgue else 'REINICIANDO SIMULACIÓN'} por orden del usuario...")
+                    
+                    # Limpiar flags
+                    cmds["reset_all"] = False
+                    cmds["restart_sim"] = False
+                    with open(cmd_file, "w") as f:
+                        json.dump(cmds, f)
+                    
+                    from utils.state_writer import clear_state
+                    clear_state()
+                    if is_purgue:
+                        if config.RESULTS_FILE.exists(): config.RESULTS_FILE.unlink()
+
+                    importlib.reload(data.market_data)
+                    all_symbols = data.market_data.get_symbols()
+                    symbol_idx = 0
+                    session_num = 0
+                    
+                    from utils.state_writer import update_state
+                    from utils.market_hours import _is_mock_time_active
+                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
+                    continue # Saltar al inicio con el nuevo estado
+            except Exception as e_cmd:
+                log.error(f"Error procesando comandos: {e_cmd}")
+
+        # ── 3. Verificar Fin de Exploración ──────────────────────────────────
+        if is_simulated and all_symbols and symbol_idx >= len(all_symbols):
+            # Verificar si se han añadido nuevos símbolos desde el Dashboard
+            importlib.reload(data.market_data)
+            current_list = data.market_data.get_symbols()
+            if len(current_list) > len(all_symbols):
+                log.info(f"✨ ¡Nuevos símbolos detectados ({len(current_list)})! Reanudando...")
+                all_symbols = current_list
+            else:
+                from utils.state_writer import update_state
+                update_state(mode="SIMULATED", status="completed", symbol="─", session=session_num, iteration=0)
+                smart_sleep(5)
+                continue # Volver a chequear comandos/símbolos
+
+        # ── 4. Preparar Símbolo para esta Sesión ───────────────────────────────
+        if is_simulated and all_symbols:
+            args.symbol = all_symbols[symbol_idx]
+        
         session_num += 1
 
         # ── Detectar si hay Live Paper ANTES de inicializar broker ──────────
@@ -751,8 +838,8 @@ def main() -> None:
         force_symbols = []
         is_lp = False
         try:
-            if os.path.exists("/app/data/command.json"):
-                with open("/app/data/command.json") as f:
+            if config.COMMAND_FILE.exists():
+                with open(config.COMMAND_FILE) as f:
                     cmds_pre = json.load(f)
                     force_symbols = cmds_pre.get("force_symbols", [])
                     is_lp = cmds_pre.get("force_paper_trading", False)
@@ -766,190 +853,41 @@ def main() -> None:
             # ── FLUJO SINGLE-THREAD NORMAL (Simulación) ──────────────────────
             if is_simulated:
                 log.info(f"{'═'*60}")
-                log.info(f"  🔁 SESIÓN DE SIMULACIÓN #{session_num}")
+                log.info(f"  🔁 SESIÓN DE SIMULACIÓN #{session_num} | Activo: {args.symbol}")
                 log.info(f"{'═'*60}")
 
             try:
                 broker = init_broker(args)
-                log.info(
-                    f"Bróker inicializado: {broker.name} | "
-                    f"Paper trading: {broker.is_paper_trading}"
-                )
+                run_bot(broker, args, session_num)
             except Exception as e:
-                log.error(f"❌ Error al inicializar bróker para {args.symbol}: {e}. Saltando de activo.")
-                
+                log.error(f"❌ Error en sesión para {args.symbol}: {e}")
                 try:
                     from utils.state_writer import update_state
-                    from datetime import datetime, timezone
-                    from utils.market_hours import _is_mock_time_active
-                    update_state(
-                        mode=args.mode,
-                        status="error_skipping",
-                        symbol=args.symbol or "UNKNOWN",
-                        session=session_num,
-                        iteration=0,
-                        available_cash=10000.0,
-                        pnl=0.0,
-                        win_rate=0.0,
-                        total_trades=0,
-                        insight="Sin datos suficientes de mercado.",
-                        mock_time_930=_is_mock_time_active(),
-                        blocks=["Error: Datos insuficientes"]
-                    )
+                    update_state(mode=args.mode, status="error", symbol=args.symbol, session=session_num, insight=f"Error: {e}")
+                except: pass
 
-                    res_file = Path("/app/data/backtest_results.json")
-                    res_data = []
-                    if res_file.exists():
-                        with open(res_file, "r") as f:
-                            res_data = json.load(f)
-                    
-                    res_data = [r for r in res_data if r.get("symbol") != args.symbol]
-                    res_data.append({
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "symbol": args.symbol,
-                        "session_num": session_num,
-                        "total_trades": 0, "winning_trades": 0, "losing_trades": 0,
-                        "win_rate": 0.0, "pnl": 0.0, "gross_pnl": 0.0, "total_fees": 0.0,
-                        "slippage_est": 0.0, "gross_profit": 0.0, "gross_loss": 0.0,
-                        "profit_factor": 0.0, "drawdown": 0.0,
-                        "insight": "Sin datos suficientes (Omitido)."
-                    })
-                    with open(res_file, "w") as f:
-                        json.dump(res_data, f, indent=2)
-                except Exception as e_dash:
-                    log.error(f"Error actualizando dashboard para símbolo omitido: {e_dash}")
-
-                if is_simulated and all_symbols:
-                    symbol_idx += 1
-                    if symbol_idx >= len(all_symbols):
-                        log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
-                        symbol_idx = len(all_symbols) - 1
-                        smart_sleep(SESSION_PAUSE)
-                        continue
-                    args.symbol = all_symbols[symbol_idx]
-                else:
-                    smart_sleep(SESSION_PAUSE)
-                continue
-
-            run_bot(broker, args, session_num)
-
-        # En modo LIVE el bot solo llega aquí por KeyboardInterrupt o señal externa → salir
+        # Ssalir si no es simulación (Live Mode finalizado)
         if not is_simulated:
             break
 
-        # ════════════════════════════════════════════════════════════════════
-        # En modo SIMULATED: descansar y reiniciar o procesar comandos
-        # ════════════════════════════════════════════════════════════════════
-        fixed = os.getenv("FIXED_SYMBOL", "").strip()
-        
-        cmd_file = "/app/data/command.json"
-        if os.path.exists(cmd_file):
-            try:
-                with open(cmd_file, "r") as f:
-                    cmds = json.load(f)
-                
-                # REINICIO GLOBAL (WIPE MEMORY)
-                if cmds.get("reset_all"):
-                    log.info("💥 PURGANDO MEMORIA COMPLETA del bot por orden del usuario...")
-                    cmds["reset_all"] = False # Consume flag
-                    with open(cmd_file, "w") as f:
-                        json.dump(cmds, f)
-                    
-                    # Wipe global state for fresh start 
-                    global _trades, final_pnl_global, win_pct, num_trades
-                    try:
-                        from utils.state_writer import _trades as state_trades
-                        state_trades.clear()
-                    except: pass
-                    
-                    try:
-                        import os
-                        for wipe_target in ["/app/data/backtest_results.json", "/app/data/state.json"]:
-                            if os.path.exists(wipe_target):
-                                os.remove(wipe_target)
-                    except: pass
-                    
-                    symbol_idx = 0
-                    session_num = 0
-                    fixed = ""
-                    log.info("✅ Memoria limpiada y archivos borrados de disco. Arrancando nuevo set desde 0%.")
-                    # Update state immediately to reflect the reset
-                    from utils.state_writer import update_state
-                    from utils.market_hours import _is_mock_time_active
-                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
-
-                # REINICIO SUAVE DE SIMULACIÓN (Día 1, conserva ML)
-                if cmds.get("restart_sim"):
-                    log.info("🔄 REINICIANDO SIMULACIÓN al Día 1 a petición del usuario (conservando ML)...")
-                    cmds["restart_sim"] = False # Consume flag
-                    with open(cmd_file, "w") as f:
-                        json.dump(cmds, f)
-                    
-                    symbol_idx = 0
-                    session_num = 0
-                    fixed = ""
-                    
-                    # Update state immediately to reflect the restart
-                    from utils.state_writer import update_state
-                    from utils.market_hours import _is_mock_time_active
-                    update_state(mode="SIMULATED", status="restarting", symbol="─", session=0, iteration=0, mock_time_930=_is_mock_time_active())
-
-                new_sym = cmds.get("force_symbol")
-                if new_sym and new_sym != "AUTO":
-                    fixed = new_sym
-                elif new_sym == "AUTO":
-                    fixed = "" # rotar
-            except: pass
-
-        if fixed:
-            # Overwrite arguments flag to ensure it passes the overridden fixed symbol directly into init_broker next loop
-            args.symbol = fixed
-            log.info(
-                f"⏸  Sesión #{session_num} finalizada. "
-                f"Reiniciando en {SESSION_PAUSE}s con {fixed} (símbolo fijo manual/env)…"
-            )
-        else:
-            # Solo rotamos en modo secuencia si NO estamos forzando símbolos por Live Paper.
-            # (El if de Live Paper ya bloqueó el flujo si estamos en Multi-hilo)
-            if all_symbols:
-                symbol_idx += 1
-                # 💾 Guardar checkpoint en cada rotación secuencial de símbolo
-                if _checkpoint_fn:
-                    try:
-                        _checkpoint_fn(
-                            symbol_idx,
-                            all_symbols[symbol_idx] if symbol_idx < len(all_symbols) else args.symbol or "",
-                            session_num
-                        )
-                    except Exception: pass
-
-                if symbol_idx >= len(all_symbols):
-                    log.info("🎯 Exploración de Símbolos COMPLETA. Esperando nueva orden (WIPE MEMORY)...")
-                    while True:
-                        time.sleep(10)
-                        
-                        # Monitor command json to allow escape
-                        try:
-                            if os.path.exists("/app/data/command.json"):
-                                with open("/app/data/command.json") as f:
-                                    if json.load(f).get("reset_all"):
-                                        break # escape and let the main loop wipe
-                        except: pass
-                        
-                    symbol_idx = len(all_symbols) - 1 # Mantenerse al final
-                    continue
-
-                args.symbol = all_symbols[symbol_idx]
-                log.info(
-                    f"⏸  Sesión #{session_num} finalizada. "
-                    f"Reiniciando en {SESSION_PAUSE}s con el siguiente símbolo secuencial: {args.symbol}…"
-                )
+        # ── 5. Post-Sesión: Checkpoint y Siguiente Activo ────────────────────
+        if is_simulated and all_symbols:
+            symbol_idx += 1
+            # Guardar checkpoint para reanudar si el bot se apaga
+            if _checkpoint_fn:
+                try:
+                    _checkpoint_fn(
+                        symbol_idx, 
+                        all_symbols[symbol_idx] if symbol_idx < len(all_symbols) else "─", 
+                        session_num
+                    )
+                except: pass
+            
+            if symbol_idx < len(all_symbols):
+                log.info(f"⏸ Sesión #{session_num} finalizada. Siguiente: {all_symbols[symbol_idx]} en {SESSION_PAUSE}s...")
             else:
-                args.symbol = None # auto-rotate (fallback a random)
-                log.info(
-                    f"⏸  Sesión #{session_num} finalizada. "
-                    f"Reiniciando en {SESSION_PAUSE}s con un símbolo aleatorio nuevo…"
-                )
+                log.info(f"🏁 Simulación COMPLETA. Sesión #{session_num} cerrada.")
+        
         smart_sleep(SESSION_PAUSE)
 
 

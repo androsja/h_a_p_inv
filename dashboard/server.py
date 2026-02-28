@@ -1,7 +1,7 @@
 """
 dashboard/server.py ─ Servidor FastAPI + WebSocket para el dashboard en tiempo real.
 
-Lee el estado del bot desde /app/data/state.json (volumen compartido con el bot)
+Lee el estado del bot desde config.STATE_FILE (volumen compartido con el bot)
 y lo empuja a todos los clientes conectados vía WebSocket cada segundo.
 También sirve el dashboard HTML estático.
 """
@@ -16,12 +16,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-STATE_FILE   = Path("/app/data/state.json")
-LOG_FILE     = Path("/app/logs/trading_bot.log")
-# assets.json lives at the project root (one level above dashboard/)
-# Works both inside Docker (/app/assets.json) and locally
-_here = Path(__file__).resolve().parent.parent  # trading_bot/
-ASSETS_FILE  = _here / "assets.json"
+from config import (
+    STATE_FILE, LOG_FILE, ASSETS_FILE, COMMAND_FILE, RESULTS_FILE, 
+    ML_DATASET_FILE, CHECKPOINT_DB, DATA_DIR, NEURAL_MODEL_FILE
+)
+
 HTML_FILE  = Path(__file__).parent / "static" / "index.html"
 
 app = FastAPI(title="Hapi Bot Dashboard")
@@ -70,10 +69,9 @@ def read_state() -> dict:
         state = {"status": "starting", "timestamp": datetime.utcnow().isoformat()}
 
     # Inyectar símbolos forzados (si hay) para que el UI genere las pestañas
-    cmd_file = Path("/app/data/command.json")
-    if cmd_file.exists():
+    if COMMAND_FILE.exists():
         try:
-            with open(cmd_file) as f:
+            with open(COMMAND_FILE) as f:
                 cmds = json.load(f)
                 state["force_symbols"] = cmds.get("force_symbols", [])
         except: pass
@@ -99,7 +97,7 @@ def read_last_logs(n: int = 50) -> list[str]:
             except: pass
             
         if not all_lines:
-            return ["(Sin logs recientes en /app/logs/)"]
+            return ["(Esperando logs del bot...)"]
 
         # Ordenar por tiempo (asumiendo formato ISO al inicio) y tomar las últimas n
         all_lines.sort()
@@ -154,14 +152,13 @@ async def get_state():
 @app.post("/api/set_symbol")
 async def set_symbol(symbol: str):
     import json
-    command_file = Path("/app/data/command.json")
     try:
         data = {}
-        if command_file.exists():
-            with open(command_file) as f:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
                 data = json.load(f)
         data["force_symbol"] = symbol
-        with open(command_file, "w") as f:
+        with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         return {"status": "success", "symbol": symbol}
     except Exception as e:
@@ -170,31 +167,29 @@ async def set_symbol(symbol: str):
 @app.post("/api/reset_all")
 async def reset_all():
     import json
-    command_file = Path("/app/data/command.json")
     try:
         data = {}
-        if command_file.exists():
-            with open(command_file) as f:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
                 data = json.load(f)
         data["reset_all"] = True
         data["force_paper_trading"] = False
         data["force_symbols"] = []
         data["force_symbol"] = "AUTO"
-        with open(command_file, "w") as f:
+        with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         
-        # Limpiar archivos en background
-        for f in ["/app/data/backtest_results.json", "/app/data/ml_dataset.csv", "/app/data/state.json"]:
+        # Limpiar archivos en background (Preservamos ML_DATASET_FILE para aprendizaje continuo)
+        for f in [RESULTS_FILE, STATE_FILE]:
             try:
-                if Path(f).exists():
-                    Path(f).unlink()
+                if f.exists():
+                    f.unlink()
             except: pass
             
         # Limpiar logs
-        log_file = Path("/app/logs/trading_bot.log")
         try:
-            if log_file.exists():
-                with open(log_file, 'w') as f:
+            if LOG_FILE.exists():
+                with open(LOG_FILE, 'w') as f:
                     pass # Truncate to 0 bytes
         except: pass
             
@@ -205,18 +200,17 @@ async def reset_all():
 @app.post("/api/restart_sim")
 async def restart_sim():
     import json
-    command_file = Path("/app/data/command.json")
     try:
         data = {}
-        if command_file.exists():
-            with open(command_file) as f:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
                 data = json.load(f)
         
         # Este comando le dirá al bot que reinicie la fecha 
         # y la sesión sin purgar los datasets.
         data["restart_sim"] = True
         
-        with open(command_file, "w") as f:
+        with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         return {"status": "success", "message": "Reinicio de simulación en cola"}
     except Exception as e:
@@ -225,36 +219,61 @@ async def restart_sim():
 @app.get("/api/results")
 async def get_results():
     import json
-    res_file = Path("/app/data/backtest_results.json")
     try:
-        if res_file.exists():
-            with open(res_file) as f:
+        if RESULTS_FILE.exists():
+            with open(RESULTS_FILE) as f:
                 return json.load(f)
         return []
     except Exception:
         return []
 
+@app.get("/api/trades_history")
+async def get_trades_history(limit: int = 100):
+    """Retorna los últimos trades cerrados desde trade_journal.csv."""
+    import csv
+    from config import TRADE_JOURNAL_FILE
+    trades = []
+    try:
+        if TRADE_JOURNAL_FILE.exists():
+            with open(TRADE_JOURNAL_FILE, "r", encoding="utf-8") as f:
+                # Usamos DictReader para manejar las columnas automáticamente
+                reader = csv.DictReader(f)
+                rows = list(reader)
+                # Tomar los últimos 'limit' registros
+                for r in rows[-limit:]:
+                    # Adaptar nombres de campos si es necesario para el frontend
+                    # El frontend espera: { side, price, qty, pnl, symbol }
+                    trades.append({
+                        "timestamp": r.get("timestamp_close"),
+                        "symbol":    r.get("symbol"),
+                        "side":      "SELL", # En el journal son cierres (ventas)
+                        "price":     float(r.get("exit_price", 0)),
+                        "qty":       float(r.get("qty", 0)),
+                        "pnl":       float(r.get("gross_pnl", 0))
+                    })
+        return trades
+    except Exception as e:
+        print(f"Error leyendo historial de trades: {e}")
+        return []
+
 @app.get("/api/neural_stats")
 async def get_neural_stats():
-    """Estadísticas de la Red Neuronal MLP adaptativa.
-    Lee directamente el joblib del volumen compartido, sin importar utils.
-    """
+    """Estadísticas de la Red Neuronal MLP adaptativa."""
     try:
         import joblib
-        model_path = Path("/app/data/neural_model.joblib")
-        if not model_path.exists():
+        import numpy as np
+        if not NEURAL_MODEL_FILE.exists():
             return {"status": "ok", "total_samples": 0, "wins": 0, "losses": 0,
                     "win_rate_hist": 0.0, "model_accuracy": 0.0, "mode": "cold-start",
                     "threshold": 0.55}
 
-        bundle = joblib.load(model_path)
+        bundle = joblib.load(NEURAL_MODEL_FILE)
         X_list = bundle.get("X", [])
         y_list = bundle.get("y", [])
         model  = bundle.get("model")
         n      = len(y_list)
         wins   = sum(y_list)
         acc    = 0.0
-        import numpy as np
         if model is not None and n > 0:
             try:
                 acc = float(model.score(np.array(X_list), np.array(y_list)))
@@ -275,14 +294,13 @@ async def get_neural_stats():
 
 @app.get("/api/checkpoint_info")
 async def get_checkpoint_info():
-    """Estado del checkpoint de simulación — lee checkpoint.db del volumen compartido."""
+    """Estado del checkpoint de simulación — lee checkpoint.db."""
     try:
         import sqlite3
-        db = Path("/app/data/checkpoint.db")
-        if not db.exists():
+        if not CHECKPOINT_DB.exists():
             return {"status": "ok", "last_mode": None, "last_symbol": None,
                     "last_session": 0, "saved_at": None, "live_paper_symbols_count": 0}
-        conn = sqlite3.connect(str(db))
+        conn = sqlite3.connect(str(CHECKPOINT_DB))
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT mode, symbol, session_num, created_at FROM checkpoints ORDER BY id DESC LIMIT 1"
@@ -307,8 +325,7 @@ async def set_live_paper_symbol(symbol: str, enabled: bool):
     """Habilita o deshabilita un símbolo para Live Paper (escribe en checkpoint.db)."""
     try:
         import sqlite3
-        db = Path("/app/data/checkpoint.db")
-        conn = sqlite3.connect(str(db))
+        conn = sqlite3.connect(str(CHECKPOINT_DB))
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS live_paper_symbols (
@@ -329,8 +346,11 @@ async def set_live_paper_symbol(symbol: str, enabled: bool):
 @app.post("/api/train_ai")
 async def train_ai():
     import subprocess
+    import os
     try:
-        result = subprocess.run(["python3", "/app/train_ai.py"], capture_output=True, text=True)
+        # Resolve train_ai.py relative to project root
+        train_script = Path(__file__).resolve().parent.parent / "train_ai.py"
+        result = subprocess.run(["python3", str(train_script)], capture_output=True, text=True)
         return {"status": "success", "output": result.stdout}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -338,10 +358,9 @@ async def train_ai():
 @app.get("/api/config")
 async def get_config():
     import json
-    assets_file = ASSETS_FILE
     try:
-        if assets_file.exists():
-            with open(assets_file) as f:
+        if ASSETS_FILE.exists():
+            with open(ASSETS_FILE) as f:
                 data = json.load(f)
                 active_symbols = [a for a in data.get('assets', []) if a.get('enabled', True)]
                 return {"total_symbols": len(active_symbols)}
@@ -352,10 +371,9 @@ async def get_config():
 @app.get("/api/active_symbols")
 async def get_active_symbols():
     import json
-    assets_file = ASSETS_FILE
     try:
-        if assets_file.exists():
-            with open(assets_file) as f:
+        if ASSETS_FILE.exists():
+            with open(ASSETS_FILE) as f:
                 data = json.load(f)
                 active = [a.get('symbol') for a in data.get('assets', []) if a.get('enabled', True)]
                 return {"status": "success", "symbols": active}
@@ -366,10 +384,9 @@ async def get_active_symbols():
 @app.get("/api/all_symbols")
 async def get_all_symbols():
     import json
-    assets_file = ASSETS_FILE
     try:
-        if assets_file.exists():
-            with open(assets_file) as f:
+        if ASSETS_FILE.exists():
+            with open(ASSETS_FILE) as f:
                 data = json.load(f)
                 return {"status": "success", "assets": data.get('assets', [])}
         return {"status": "error", "assets": []}
@@ -383,10 +400,9 @@ class ToggleRequest(BaseModel):
 @app.post("/api/toggle_symbol")
 async def toggle_symbol(req: ToggleRequest):
     import json
-    assets_file = ASSETS_FILE
     try:
-        if assets_file.exists():
-            with open(assets_file, "r") as f:
+        if ASSETS_FILE.exists():
+            with open(ASSETS_FILE, "r") as f:
                 data = json.load(f)
             
             found = False
@@ -397,7 +413,7 @@ async def toggle_symbol(req: ToggleRequest):
                     break
             
             if found:
-                with open(assets_file, "w") as f:
+                with open(ASSETS_FILE, "w") as f:
                     json.dump(data, f, indent=4)
                 return {"status": "success", "message": f"{req.symbol} updated"}
             else:
@@ -413,13 +429,12 @@ class DepositRequest(BaseModel):
 @app.post("/api/bank/deposit")
 async def bank_deposit(req: DepositRequest):
     import json
-    state_file = Path("/app/data/state.json")
     try:
-        if state_file.exists():
-            with open(state_file) as f:
+        if STATE_FILE.exists():
+            with open(STATE_FILE) as f:
                 data = json.load(f)
             data["available_cash"] = data.get("available_cash", 10000.0) + req.amount
-            with open(state_file, "w") as f:
+            with open(STATE_FILE, "w") as f:
                 json.dump(data, f)
             return {"status": "success", "message": f"Deposited ${req.amount:.2f}", "new_balance": data["available_cash"]}
         return {"status": "error", "message": "State file not found"}
@@ -429,10 +444,9 @@ async def bank_deposit(req: DepositRequest):
 @app.post("/api/bank/withdraw")
 async def bank_withdraw(req: DepositRequest):
     import json
-    state_file = Path("/app/data/state.json")
     try:
-        if state_file.exists():
-            with open(state_file) as f:
+        if STATE_FILE.exists():
+            with open(STATE_FILE) as f:
                 data = json.load(f)
             # Hapi fixed withdrawal fee $4.99
             withdrawal_fee = 4.99
@@ -440,7 +454,7 @@ async def bank_withdraw(req: DepositRequest):
             
             if data.get("available_cash", 10000.0) >= total_deduction:
                 data["available_cash"] -= total_deduction
-                with open(state_file, "w") as f:
+                with open(STATE_FILE, "w") as f:
                     json.dump(data, f)
                 return {"status": "success", "message": f"Withdrew ${req.amount:.2f} (Fee: ${withdrawal_fee:.2f})", "new_balance": data["available_cash"]}
             else:
@@ -456,11 +470,10 @@ class PaperTradeRequest(BaseModel):
 @app.post("/api/paper_trade_start")
 async def paper_trade_start(req: PaperTradeRequest):
     import json
-    command_file = Path("/app/data/command.json")
     try:
         data = {}
-        if command_file.exists():
-            with open(command_file) as f:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
                 data = json.load(f)
         
         # Parse symbols
@@ -474,16 +487,17 @@ async def paper_trade_start(req: PaperTradeRequest):
         data["reset_all"] = True
         data["mock_time_930"] = req.mockTime
         
-        with open(command_file, "w") as f:
+        with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
             
-        return {"status": "success", "message": f"Iniciando Live Paper para: {', '.join(symbol_list)}. Reiniciando Bot."}
+        return {"status": "success", "message": f"Iniciando Live Paper con: {', '.join(symbol_list)}. Reiniciando Bot."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/history")
 async def get_history(symbol: str, interval: str = "5m", period: str = "5d"):
     import yfinance as yf
+    import pandas as pd
     try:
         df = yf.download(tickers=symbol, period=period, interval=interval, progress=False)
         if df.empty:
@@ -514,11 +528,10 @@ async def get_history(symbol: str, interval: str = "5m", period: str = "5d"):
 @app.post("/api/paper_trade_stop")
 async def paper_trade_stop():
     import json
-    command_file = Path("/app/data/command.json")
     try:
         data = {}
-        if command_file.exists():
-            with open(command_file) as f:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
                 data = json.load(f)
         
         data["force_paper_trading"] = False
@@ -526,7 +539,7 @@ async def paper_trade_stop():
         data["force_symbol"] = "AUTO"
         data["reset_all"] = True
         
-        with open(command_file, "w") as f:
+        with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
             
         return {"status": "success", "message": "Live Paper Trading detenido. Volviendo a la Simulación Global."}

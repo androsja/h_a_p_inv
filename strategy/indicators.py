@@ -37,13 +37,13 @@ import config
 @lru_cache(maxsize=1)
 def _load_ai_model(mtime):
     try:
-        model_path = '/app/data/ai_model.joblib'
+        model_path = config.AI_MODEL_FILE
         return joblib.load(model_path)
     except Exception:
         return None
 
 def get_ai_model():
-    model_path = '/app/data/ai_model.joblib'
+    model_path = config.AI_MODEL_FILE
     if os.path.exists(model_path):
         mtime = os.path.getmtime(model_path)
         return _load_ai_model(mtime)
@@ -572,19 +572,19 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         
     # ── FILTRO INTELIGENTE BASADO EN MACHINE LEARNING HISTÓRICO ───────────
     # Filtrar operaciones en la "ZONA DE LA MUERTE" (Whipsaws).
-    # La IA (Árbol de Decisión) descubrió en 2000 trades que entradas con RSI entre 26.5 y 62.2
-    # tienen un altísimo porcentaje de fallar y tocar Stop Loss.
-    is_whipsaw_zone = (rsi_now > 26.5) and (rsi_now < 62.2)
+    # Optimización: Reducimos la zona de bloqueo de (26.5-62.2) a (30-60) para ser más oportunistas.
+    is_whipsaw_zone = (rsi_now > 30.0) and (rsi_now < 60.0)
     
-    # Adicionalmente, añadiremos el ADX que tú pedías: Evitamos laterales bruscos.
-    is_low_trend = adx_now < 20.0
+    # Filtro ADX: Evitamos laterales sin dirección.
+    # Excepción: Si hay un patrón de reversión FUERTE (Hammer/Engulf), permitimos ignorar ADX bajo.
+    is_low_trend = adx_now < 18.0 and not (is_hammer or is_engulf)
     
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
         signal = SIGNAL_HOLD
         if is_whipsaw_zone:
             blocks_buy.append(f"Filtro ML: RSI en zona de riesgo ({rsi_now:.1f})")
         if is_low_trend:
-            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 20)")
+            blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 18)")
         confirmations_buy.clear()
 
     # ── NUEVA REGLA: TREND_UP tardío (RSI > 68) → compra ya al final del movimiento ──
@@ -597,9 +597,11 @@ def analyze(df: pd.DataFrame, symbol: str = "") -> SignalResult:
         _log.info(f"🚧 BLOQUEADO: {msg}")
 
     # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
-    if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -1.5:
+    # Excepción Pro: Si el Z-Score es EXTREMADAMENTE bajo (< -2.5), es un rebote de alta probabilidad
+    # incluso en RANGE, así que permitimos la entrada.
+    if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -2.5:
         signal = SIGNAL_HOLD
-        msg = f"RANGE: Z-Score débil ({zscore_now:.2f} > -1.5)"
+        msg = f"RANGE: Z-Score insuficiente ({zscore_now:.2f} > -2.5)"
         blocks_buy.append(msg)
         confirmations_buy.clear()
         from utils.logger import log as _log

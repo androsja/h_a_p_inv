@@ -6,6 +6,7 @@ import os
 import threading
 import time
 
+import config
 log = logging.getLogger("trading_bot")
 
 def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], session_num: int, run_bot_fn, init_broker_fn, checkpoint_fn=None) -> None:
@@ -22,6 +23,23 @@ def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], ses
             log.warning(f"Error guardando checkpoint: {_e}")
 
     log.info(f"🚀 Iniciando monitoreo PARALELO para {len(force_symbols)} símbolo(s)...")
+    
+    # ── Limpiar el flag reset_all ANTES de lanzar los hilos ─────────────────
+    # El dashboard escribe reset_all:true al iniciar Live Paper.
+    # Si los hilos lo leen durante su pausa de 1s, se autodestruyen.
+    cmd_file = config.COMMAND_FILE
+    try:
+        if os.path.exists(cmd_file):
+            with open(cmd_file) as f:
+                cmd_data = json.load(f)
+            if cmd_data.get("reset_all"):
+                cmd_data["reset_all"] = False
+                with open(cmd_file, "w") as f:
+                    json.dump(cmd_data, f)
+                log.info("🧹 Flag reset_all limpiado antes de iniciar hilos.")
+    except Exception as _ce:
+        log.warning(f"No se pudo limpiar reset_all: {_ce}")
+
     threads = []
     stop_event = threading.Event()
     
@@ -29,7 +47,7 @@ def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], ses
         # Cada hilo necesita su propia instancia de argumentos y broker
         thread_args = copy.copy(args)
         thread_args.symbol = sym
-        thread_broker = init_broker_fn(thread_args)
+        thread_broker = init_broker_fn(thread_args, is_live_paper_override=True)
         
         t = threading.Thread(
             target=run_bot_fn, 
@@ -40,12 +58,15 @@ def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], ses
         t.start()
         threads.append(t)
     
-    # El hilo principal espera y vigila command.json para abortar o resetear
+    # El hilo principal espera y vigila command.json para abortar o resetear.
+    # Esperamos 5s antes del primer chequeo para evitar capturar el reset_all
+    # de arranque (que ya fue limpiado anterior pero puede haber race condition).
     try:
+        time.sleep(5)  # Gracia inicial — ignora señales del momento de arranque
         while True:
             time.sleep(2)
-            if os.path.exists("/app/data/command.json"):
-                with open("/app/data/command.json") as f:
+            if os.path.exists(cmd_file):
+                with open(cmd_file) as f:
                     c = json.load(f)
                 if c.get("reset_all") or c.get("force_paper_trading") is False:
                     log.info("🛑 Deteniendo todos los hilos paralelos...")

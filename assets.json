@@ -4,13 +4,13 @@
             "symbol": "AAPL",
             "name": "Apple Inc.",
             "type": "stock",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MSFT",
             "name": "Microsoft Corporation",
             "type": "stock",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NVDA",
@@ -70,7 +70,7 @@
             "symbol": "BA",
             "name": "Boeing Company",
             "type": "stock",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "DIS",
@@ -172,7 +172,7 @@
             "symbol": "CRWD",
             "name": "CrowdStrike Holdings",
             "type": "stock",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "SNOW",
@@ -196,7 +196,7 @@
             "symbol": "CRM",
             "name": "Salesforce Inc.",
             "type": "stock",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ADBE",
@@ -238,7 +238,7 @@
             "symbol": "CVX",
             "name": "Chevron",
             "type": "stock",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "HD",

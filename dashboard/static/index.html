@@ -1525,14 +1525,14 @@
                                         <th style="padding:10px;">Net PnL</th>
                                         <th style="padding:10px;">Saldo Final</th>
                                         <th style="padding:10px;">Drawdown</th>
+                                        <th style="padding:10px;">🛡️ Filtros Activos</th>
                                         <th style="padding:10px; text-align:left;">🌍 Tipo de Mercado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="results-table-body">
                                     <tr>
-                                        <td colspan="12" style="padding:20px; text-align:center; color:var(--muted);">
-                                            Sin
-                                            sesiones finalizadas todavía.</td>
+                                        <td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">
+                                            Sin sesiones finalizadas todavía.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1895,6 +1895,20 @@
             ">${m.label}</span>`;
         }
 
+        function renderBlockingSummary(summary, mlCount) {
+            if ((!summary || Object.keys(summary).length === 0) && !mlCount) return '<span style="color:var(--muted)">Sin bloqueos</span>';
+            let html = '';
+            if (summary) {
+                for (const [key, val] of Object.entries(summary)) {
+                    html += `<span style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:1px 4px; border-radius:3px; color:#aaa; margin-right:4px; margin-bottom:4px; display:inline-block;">${key}:${val}</span>`;
+                }
+            }
+            if (mlCount) {
+                html += `<span style="background:rgba(191,149,255,0.1); border:1px solid rgba(191,149,255,0.3); padding:1px 4px; border-radius:3px; color:var(--purple); font-weight:bold; display:inline-block;">🧠 AI:${mlCount}</span>`;
+            }
+            return html;
+        }
+
         async function fetchConfig() {
             try {
                 const res = await fetch('/api/config');
@@ -1990,7 +2004,7 @@
                     return;
                 }
 
-                if (data.length !== lastResultCount) {
+                if (data && data.length > 0) {
                     lastResultCount = data.length;
                     totalNetValue = data.reduce((sum, item) => {
                         const g = item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0;
@@ -2049,8 +2063,7 @@
                     tbody.innerHTML = '';
 
                     [...data].reverse().forEach(row => {
-                        // Ocultar sesiones sin ningún trade ejecutado (evaluadas pero sin señal)
-                        if ((row.total_trades || 0) === 0) return;
+                        // Ya NO ocultamos sesiones sin trades para evitar confusión de "símbolos borrados"
 
                         const tr = document.createElement('tr');
                         tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
@@ -2073,7 +2086,9 @@
 
                         tr.innerHTML = `
         <td style="padding:10px; font-weight:bold;">${row.symbol}</td>
-        <td style="padding:10px; color:var(--muted)">─</td>
+        <td style="padding:10px; color:${row.last_price ? 'var(--green)' : 'var(--muted)'}">
+            ${row.last_price ? '$' + parseFloat(row.last_price).toFixed(2) : '─'}
+        </td>
         <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
         <td style="padding:10px;">${row.total_trades}</td>
         <td style="padding:10px;">${row.win_rate}%</td>
@@ -2085,6 +2100,11 @@
             ${prefix}$${netPnl.toFixed(2)}</td>
         <td style="padding:10px; font-weight:bold; color:var(--text);">$${(10000 + netPnl).toFixed(2)}</td>
         <td style="padding:10px;">${row.drawdown}%</td>
+        <td style="padding:10px;">
+            <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
+                ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count)}
+            </div>
+        </td>
         <td style="padding:10px; text-align:left;">
             ${buildRegimeBadge(row.regime || liveRegimes[row.symbol] || 'NEUTRAL')}
         </td>
@@ -2366,8 +2386,23 @@
         // Llamada inicial 
         loadResults();
 
-        function renderTrades(trades) {
-            if (!trades) return; if (trades.length > lastTradeCount && lastTradeCount !== 0) {
+        // Cargar historial de trades inicial
+        fetch('/api/trades_history')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    renderTrades(data);
+                }
+            })
+            .catch(err => console.error("Error loading trades history:", err));
+
+        async function renderTrades(trades) {
+            if (!trades) return;
+
+            // Si es la carga inicial y ya tenemos trades, no los tratamos como "toasts" nuevos
+            if (lastTradeCount === 0 && trades.length > 0) {
+                lastTradeCount = trades.length;
+            } else if (trades.length > lastTradeCount && lastTradeCount !== 0) {
                 // Detectamos nuevas operaciones
                 const newTrades = trades.slice(lastTradeCount);
                 newTrades.forEach(t => showToast(t));
@@ -2543,13 +2578,27 @@
             // Actualizar la fecha simulada
             const simDateDisplay = document.getElementById('sim-date');
 
-            // Inyectar indicador de MOCK TIME si está activo
+            // Inyectar indicador de MOCK TIME o SIMULACIÓN si está activo
             const liveBadge = document.getElementById('results-live-badge');
             const modeText = document.getElementById('results-mode-text');
             if (liveBadge && modeText) {
-                // Buscamos el flag en cualquier estado de símbolo (el actual 'state')
+                const isSimulated = state && state.mode === 'SIMULATED';
                 const isMock = state && state.mock_time_930;
-                if (isMock) {
+
+                if (isSimulated) {
+                    liveBadge.style.color = '#2196f3'; // Azul
+                    liveBadge.querySelector('span').style.background = '#2196f3';
+
+                    if (state.status === 'initializing') {
+                        modeText.textContent = 'INICIALIZANDO CATÁLOGO...';
+                    } else if (state.status === 'downloading') {
+                        modeText.textContent = `DESCARGANDO DATOS (${state.symbol})...`;
+                    } else if (state.status === 'restarting') {
+                        modeText.textContent = 'REINICIANDO SIMULADOR...';
+                    } else {
+                        modeText.textContent = 'SIMULACIÓN (ALGO REPLAY)';
+                    }
+                } else if (isMock) {
                     liveBadge.style.color = '#ff9800'; // Naranja
                     liveBadge.querySelector('span').style.background = '#ff9800';
                     modeText.textContent = 'MOCK TIME (ACELERADO 60x)';
@@ -2578,7 +2627,11 @@
             // Actualizar las filas "En progreso..." en la tabla de resultados para TODOS los símbolos activos
             // Ignoramos claves genéricas y extraemos solo los estados de símbolos individuales
             const activeStates = Object.entries(fullState)
-                .filter(([k, v]) => k !== 'force_symbols' && k !== '_main' && v && v.symbol && v.symbol !== '─')
+                .filter(([k, v]) => {
+                    return k !== 'force_symbols' && k !== '_main' &&
+                        v && v.symbol && v.symbol !== '─' &&
+                        (v.status === 'running' || v.status === 'downloading');
+                })
                 .map(([k, v]) => v);
 
             if (activeStates.length > 0) {
@@ -2604,22 +2657,39 @@
 
                         currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
 
-                        // Buscamos si ya existe una fila TR para este symbol en el log final histórico.
-                        const highestCompletedSession = (window.completedSessions || {})[sSym] || 0;
+                        // ─── DEDUPLICACIÓN AGRESIVA ───
+                        // Buscamos si ya existe una fila TR estática para este símbolo
+                        const staticRows = Array.from(tbody.querySelectorAll('tr')).filter(r =>
+                            !r.id.startsWith('current-session-row') &&
+                            r.cells[0] &&
+                            r.cells[0].textContent.replace('🔄', '').trim() === sSym
+                        );
+
+                        const highestHistoricalSession = (window.completedSessions || {})[sSym] || 0;
                         const currentSession = sState.session || 0;
 
-                        if (currentSession > 0 && currentSession <= highestCompletedSession) {
-                            currentRow.style.display = 'none'; // ocultarlo 
-                        } else {
-                            // Validar también que la tabla de abajo no tenga textContent matcheando ya
-                            const alreadyRendered = Array.from(tbody.querySelectorAll('tr')).some(r => !r.id.startsWith('current-session-row') && r.cells[0] && r.cells[0].textContent.trim() === sSym);
+                        let shouldShow = true;
 
-                            if (alreadyRendered && currentSession <= 1 && highestCompletedSession >= 1) {
-                                currentRow.style.display = 'none';
-                            } else {
-                                currentRow.style.display = 'table-row';
-                            }
+                        // 1. Si la sesión actual es menor o igual a la más alta grabada, ocultar
+                        if (currentSession > 0 && currentSession <= highestHistoricalSession) {
+                            shouldShow = false;
                         }
+
+                        // 2. Si hay una fila estática ya renderizada con el mismo número de sesión, ocultar
+                        if (shouldShow && staticRows.length > 0) {
+                            const matchSameSession = staticRows.some(r => {
+                                const sText = r.cells[2].textContent.replace('#', '').trim();
+                                return parseInt(sText) === currentSession;
+                            });
+                            if (matchSameSession) shouldShow = false;
+                        }
+
+                        // 3. Si acabamos de resetear (sesión 0 o 1) y ya hay datos históricos, probablemente sea ruido
+                        if (shouldShow && currentSession <= 1 && highestHistoricalSession >= 1) {
+                            shouldShow = false;
+                        }
+
+                        currentRow.style.display = shouldShow ? 'table-row' : 'none';
 
                         currentRow.innerHTML = `
                 <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
@@ -3087,15 +3157,8 @@
                 style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
                 <!-- Lista inyectada por JS -->
             </div>
-            <div id="sm-restart-warning"
-                style="display:none; padding:12px 15px; background:rgba(255,171,64,0.1); border-top:1px solid rgba(255,171,64,0.3); color:#ffab40; font-size:12px; text-align:center;">
-                &#9888;&#65039; Al cambiar s&iacute;mbolos, el Bot deber&aacute; reiniciar para aplicar los cambios en
-                el ciclo de exploraci&oacute;n.
-                <br><br>
-                <button onclick="resetSymbolManager()"
-                    style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-weight:bold; cursor:pointer;">Reiniciar
-                    Bot Ahora</button>
-            </div>
+            <!-- El bot ahora recarga dinámicamente, ya no es necesario el aviso de reinicio -->
+            <div id="sm-restart-warning" style="display:none;"></div>
             <div
                 style="padding:15px; border-top:1px solid rgba(255,255,255,0.05); background:var(--panel); text-align:right; border-radius: 0 0 12px 12px;">
                 <button onclick="closeSymbolManager()"
@@ -3249,9 +3312,6 @@
                         if (asset) asset.enabled = isEnabled;
                     }
 
-                    document.getElementById('sm-restart-warning').style.display = 'block';
-
-                    // Actualizar tarjeta local sin redibujar toda la lista (preserva animación CSS del switch)
                     const itemDiv = document.getElementById(`smi-${symbol}`);
                     const symDiv = document.getElementById(`sms-${symbol}`);
                     if (itemDiv && symDiv) {
@@ -3300,7 +3360,7 @@
                     }
                 }
             });
-            document.getElementById('sm-restart-warning').style.display = 'block';
+            // document.getElementById('sm-restart-warning').style.display = 'block';
 
             // Process async sequence to backend
             const overlay = document.createElement('div');

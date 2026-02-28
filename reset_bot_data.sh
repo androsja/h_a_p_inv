@@ -8,7 +8,7 @@ docker stop hapi_bot_simulated hapi_dashboard >/dev/null 2>&1
 
 echo "🧹 Borrando bases de datos, bitácoras y memoria compartida del volumen..."
 # Borramos sobre el volumen exacto que levantó docker-compose
-docker run --rm -v trading_bot_bot_data:/app/data alpine rm -f /app/data/backtest_results.json /app/data/ml_dataset.csv /app/data/state.json /app/data/command.json
+docker run --rm -v trading_bot_bot_data:/app/data alpine rm -f /app/data/backtest_results.json /app/data/state.json /app/data/command.json
 
 echo "🔄 Reiniciando el simulador (Trading Bot & Dashboard) para aplicar los cambios y comenzar..."
 docker start hapi_bot_simulated hapi_dashboard >/dev/null 2>&1

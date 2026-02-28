@@ -14,14 +14,15 @@ services:
       - HAPI_IS_TEST_MODE=true
     command: [ "python", "main.py", "--mode", "SIMULATED" ]
     volumes:
-      - bot_data:/app/data # Estado compartido con el dashboard
-      - bot_logs:/app/logs
+      - ./data:/app/data # Estado compartido con el dashboard
+      - ./logs:/app/logs
       - ./main.py:/app/main.py
       - ./assets.json:/app/assets.json
       - ./broker:/app/broker
       - ./strategy:/app/strategy
       - ./utils:/app/utils
       - ./config.py:/app/config.py
+      - ./data/market_data.py:/app/data/market_data.py
     deploy:
       resources:
         limits:
@@ -41,13 +42,15 @@ services:
     image: hapi-dashboard:latest
     container_name: hapi_dashboard
     restart: unless-stopped
+    env_file: .env
     ports:
       - "8080:8080" # → Abrir http://localhost:8080
     volumes:
-      - bot_data:/app/data # Lee el state.json del bot
-      - bot_logs:/app/logs # Lee los logs del bot
+      - ./data:/app/data # Lee el state.json del bot
+      - ./logs:/app/logs # Lee los logs del bot
       - ./assets.json:/app/assets.json # Read and update symbols enabled state
       - ./dashboard:/app/dashboard # <--- MOUNT DASHBOARD FOR HOT-RELOAD
+      - ./config.py:/app/config.py
       - ./train_ai.py:/app/train_ai.py
     depends_on:
       - trading-bot-sim
@@ -72,8 +75,9 @@ services:
       - HAPI_IS_TEST_MODE=false
     command: [ "python", "main.py", "--mode", "LIVE" ]
     volumes:
-      - bot_data:/app/data
-      - bot_logs:/app/logs
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./data/market_data.py:/app/data/market_data.py
     deploy:
       resources:
         limits:
@@ -81,6 +85,4 @@ services:
           memory: "512M"
 
 # ─── Volúmenes compartidos ────────────────────────────────────────────────────
-volumes:
-  bot_data: # state.json compartido entre bot y dashboard
-  bot_logs: # logs compartidos
+# (Usando bind mounts directos para mayor transparencia)

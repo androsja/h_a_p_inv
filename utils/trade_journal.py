@@ -22,8 +22,9 @@ import json
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
+import config
 
-JOURNAL_PATH = Path("/app/data/trade_journal.csv")
+JOURNAL_PATH = config.TRADE_JOURNAL_FILE
 _journal_lock = threading.Lock()
 
 # Columnas completas — en este orden

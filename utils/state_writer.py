@@ -4,7 +4,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 
-STATE_PATH = Path("/app/data/state.json")
+import config
+STATE_PATH = config.STATE_FILE
 _state_lock = threading.Lock()
 
 @dataclass
@@ -61,10 +62,28 @@ class BotState:
     status: str = "running"
     next_scan_in: int = 0
     is_waiting: bool = False
+    mock_time_930: bool = False
+    blocks: list[str] = None
 
 # Almacenamiento global multinivel
 _symbol_states: dict[str, BotState] = {}
 _trades: list[TradeRecord] = []
+
+def clear_state() -> None:
+    """Borra todos los estados de símbolos y trades en memoria y en disco."""
+    global _symbol_states, _trades
+    with _state_lock:
+        _symbol_states.clear()
+        _trades.clear()
+        try:
+            if STATE_PATH.exists():
+                STATE_PATH.unlink()
+            # También borrar el .tmp si existe
+            tmp = STATE_PATH.with_suffix(".tmp")
+            if tmp.exists():
+                tmp.unlink()
+        except Exception:
+            pass
 
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float) -> None:
     with _state_lock:
@@ -73,33 +92,36 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float) -
             _trades.pop(0)
 
 def update_state(
-    mode: str,
     symbol: str,
-    session: int,
-    iteration: int,
-    bid: float,
-    ask: float,
-    signal: str,
-    rsi: float,
-    ema_fast: float,
-    ema_slow: float,
-    ema_200: float,
-    macd_hist: float,
-    vwap: float,
-    atr: float,
-    confirmations: list,
-    initial_cash: float,
-    available_cash: float,
-    settlement: float,
-    win_rate: float,
-    total_trades: int,
-    winning_trades: int,
-    gross_profit: float,
-    gross_loss: float,
+    mode: str = "SIMULATED",
+    session: int = 0,
+    iteration: int = 0,
+    bid: float = 0.0,
+    ask: float = 0.0,
+    signal: str = "HOLD",
+    rsi: float = 50.0,
+    ema_fast: float = 0.0,
+    ema_slow: float = 0.0,
+    ema_200: float = 0.0,
+    macd_hist: float = 0.0,
+    vwap: float = 0.0,
+    atr: float = 0.0,
+    confirmations: list = None,
+    initial_cash: float = 10000.0,
+    available_cash: float = 10000.0,
+    settlement: float = 0.0,
+    win_rate: float = 0.0,
+    total_trades: int = 0,
+    winning_trades: int = 0,
+    gross_profit: float = 0.0,
+    gross_loss: float = 0.0,
     position: dict | None = None,
     candles: list | None = None,
     timestamp: str | None = None,
     regime: str = "NEUTRAL",
+    mock_time_930: bool = False,
+    blocks: list[str] | None = None,
+    status: str = "running",
     **kwargs
 ) -> None:
     global _symbol_states
@@ -133,9 +155,11 @@ def update_state(
         position=position,
         trades=[asdict(t) for t in _trades],
         candles=candles or [],
-        status="running",
+        status=status,
         next_scan_in=kwargs.get("next_scan_in", 0),
         is_waiting=kwargs.get("is_waiting", False),
+        mock_time_930=mock_time_930,
+        blocks=blocks or []
     )
     
     with _state_lock:

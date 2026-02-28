@@ -1,17 +1,19 @@
 import pandas as pd
 import numpy as np
 import os
-from pathlib import Path
+import config
 from sklearn.ensemble import RandomForestClassifier
 from utils.logger import log
+import collections
 
-DATASET_PATH = Path("/app/data/ml_dataset.csv")
+DATASET_PATH = config.ML_DATASET_FILE
 
 class MLPredictor:
     def __init__(self):
         self.model = None
         self.is_trained = False
         self.min_samples = 20  # Requiere al menos 20 trades en el historial para entrenar
+        self.blocking_count = 0 # Contador de trades bloqueados por ML en la sesión actual
         self._load_and_train()
 
     def _load_and_train(self):
@@ -71,7 +73,11 @@ class MLPredictor:
             pred_class = self.model.predict(x_input)[0]
             prob_win = self.model.predict_proba(x_input)[0][1]
             
-            return bool(pred_class == 1), float(prob_win)
+            is_win = bool(pred_class == 1)
+            if not is_win:
+                self.blocking_count += 1
+            
+            return is_win, float(prob_win)
         except Exception as e:
             log.error(f"Error prediciendo trade con ML: {e}")
             return True, 0.5  # Si hay error, opera normal

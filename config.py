@@ -11,13 +11,13 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).parent
 load_dotenv(BASE_DIR / ".env")
 
-# ─── Credenciales Hapi ──────────────────────────────────────────────────────
-HAPI_API_KEY    = os.getenv("HAPI_API_KEY", "")
-HAPI_CLIENT_ID  = os.getenv("HAPI_CLIENT_ID", "")
-HAPI_USER_TOKEN = os.getenv("HAPI_USER_TOKEN", "")
-
 # URL base de la API de Hapi Trade
 HAPI_BASE_URL   = "https://api.hapitrade.com/v1"
+
+# ─── Credenciales Alpaca (para datos de mercado) ──────────────────────────
+ALPACA_API_KEY      = os.getenv("APCA_API_KEY_ID", "")
+ALPACA_SECRET_KEY   = os.getenv("APCA_API_SECRET_KEY", "")
+ALPACA_BASE_URL     = os.getenv("APCA_API_BASE_URL", "https://paper-api.alpaca.markets/v2")
 
 # ─── Modo de operación ──────────────────────────────────────────────────────
 TRADING_MODE    = os.getenv("TRADING_MODE", "SIMULATED").upper()   # LIVE | SIMULATED
@@ -59,7 +59,17 @@ TRADING_CLOSE_MIN   = 30
 
 # ─── Archivos de datos ──────────────────────────────────────────────────────
 ASSETS_FILE      = BASE_DIR / "assets.json"
-DATA_CACHE_DIR   = BASE_DIR / "data" / "cache"
+DATA_DIR         = BASE_DIR / "data"
+COMMAND_FILE     = DATA_DIR / "command.json"
+STATE_FILE       = DATA_DIR / "state.json"
+RESULTS_FILE     = DATA_DIR / "backtest_results.json"
+ML_DATASET_FILE  = DATA_DIR / "ml_dataset.csv"
+AI_MODEL_FILE    = DATA_DIR / "ai_model.joblib"
+NEURAL_MODEL_FILE = DATA_DIR / "neural_model.joblib"
+CHECKPOINT_DB    = DATA_DIR / "checkpoint.db"
+MOCK_ANCHOR_FILE = DATA_DIR / "mock_anchor.json"
+TRADE_JOURNAL_FILE = DATA_DIR / "trade_journal.csv"
+DATA_CACHE_DIR   = DATA_DIR / "cache"
 
 # ─── Timing del bot ─────────────────────────────────────────────────────────
 SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)

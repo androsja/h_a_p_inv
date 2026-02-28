@@ -11,6 +11,7 @@ La librería pytz maneja esto automáticamente.
 
 from datetime import datetime, time, timedelta
 import pytz
+import config
 
 # ─── Zonas horarias ─────────────────────────────────────────────────────────
 TZ_NYC      = pytz.timezone("America/New_York")
@@ -29,7 +30,7 @@ def _is_mock_time_active() -> bool:
     try:
         import os, json
         from pathlib import Path
-        cmd_file = Path("/app/data/command.json")
+        cmd_file = config.COMMAND_FILE
         if cmd_file.exists():
             with open(cmd_file, "r") as f:
                 c = json.load(f)
@@ -50,19 +51,47 @@ def now_nyc() -> datetime:
     
     # 2. Si NO está abierto pero el usuario activó Test Nocturno, engañamos al bot
     if not is_real_market_open and _is_mock_time_active():
-        # Retorna el mismo día (o el viernes/lunes previo si hoy no es laborable) a las 9:30 AM
+        import time, json
+        from pathlib import Path
+        
+        # Encontrar el día laborable más cercano para el Mock
         spoof_day = real_nyc_now
         if spoof_day.weekday() not in MARKET_WEEKDAYS:
-            # Retroceder hasta encontrar un día laborable
             while spoof_day.weekday() not in MARKET_WEEKDAYS:
                 spoof_day -= timedelta(days=1)
                 
-        return spoof_day.replace(
+        base_mock_time = spoof_day.replace(
             hour=MARKET_OPEN.hour,
             minute=MARKET_OPEN.minute,
             second=1,
             microsecond=0,
         )
+        
+        # ── ACELERACIÓN DE TIEMPO (1s real = 1m mock) ──
+        anchor_file = config.MOCK_ANCHOR_FILE
+        try:
+            current_real_timestamp = time.time()
+            if not anchor_file.exists():
+                with open(anchor_file, "w") as f:
+                    json.dump({"start_time": current_real_timestamp}, f)
+                elapsed_seconds = 0
+            else:
+                with open(anchor_file, "r") as f:
+                    data = json.load(f)
+                elapsed_seconds = max(0, current_real_timestamp - data.get("start_time", current_real_timestamp))
+                
+            # Por cada 1 segundo real que pasa, sumamos 60 segundos (1 minuto) al reloj Mock
+            simulated_offset_seconds = elapsed_seconds * 60
+            advanced_mock_time = base_mock_time + timedelta(seconds=simulated_offset_seconds)
+            
+            # Si se pasa del cierre (16:00), lo capamos en el cierre para que el bot termine el día gracefully
+            close_mock_time = spoof_day.replace(hour=MARKET_CLOSE.hour, minute=MARKET_CLOSE.minute, second=0, microsecond=0)
+            if advanced_mock_time > close_mock_time:
+                return close_mock_time
+                
+            return advanced_mock_time
+        except Exception:
+            return base_mock_time
         
     return real_nyc_now
 

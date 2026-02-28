@@ -11,12 +11,21 @@ como si fuera en vivo, vela a vela.
 import json
 import time
 import random
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterator
 
 import pandas as pd
 import pytz
-import yfinance as yf
+
+# Alpaca imports
+try:
+    from alpaca.data.historical import StockHistoricalDataClient
+    from alpaca.data.requests import StockBarsRequest
+    from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+except ImportError:
+    # Fallback si todavía no se ha reconstruido el contenedor
+    StockHistoricalDataClient = None
 
 import config
 from utils.logger import log
@@ -38,101 +47,154 @@ def _cache_path(symbol: str) -> Path:
 def _is_cache_valid(path: Path) -> bool:
     if not path.exists():
         return False
+    
     age = time.time() - path.stat().st_mtime
+    
+    from utils.market_hours import _is_mock_time_active
+    if _is_mock_time_active():
+        return age < CACHE_TTL_SECONDS
+        
     return age < CACHE_TTL_SECONDS
 
 
-# ─── Carga de activos ────────────────────────────────────────────────────────
-def load_assets() -> list[dict]:
-    """Lee el archivo assets.json y retorna la lista de activos."""
-    with open(config.ASSETS_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    # Filtrar solo los activos que están habilitados (o los que no tengan el flag, por defecto True)
-    return [a for a in data["assets"] if a.get("enabled", True)]
-
-
-def get_symbols() -> list[str]:
-    """Retorna solo la lista de símbolos del archivo assets.json."""
-    return [a["symbol"] for a in load_assets()]
-
-
-# ─── Descarga con yfinance ───────────────────────────────────────────────────
+# ─── Filtrado de Horas ──────────────────────────────────────────────────────
 def _filter_trading_hours(df: pd.DataFrame) -> pd.DataFrame:
     """
     Filtra el DataFrame para conservar solo velas dentro de la
-    ventana de trading intraday: 9:30 – 11:30 AM ET.
-    El 80% del volumen diario ocurre en las primeras 2 horas.
+    ventana de trading intraday: 9:30 – 16:00 ET.
     """
     if df.empty:
         return df
-    # Convertir índice a ET para poder filtrar por hora
+    # Asegurar que el índice tenga zona horaria (y que sea UTC para convertir a ET)
+    if df.index.tz is None:
+        df.index = df.index.tz_localize("UTC")
+        
     df_et = df.copy()
     df_et.index = df_et.index.tz_convert(ET)
+    
     open_t  = pd.Timestamp("09:30", tz=ET).time()
-    close_t = pd.Timestamp("11:30", tz=ET).time()
+    close_t = pd.Timestamp("16:00", tz=ET).time() 
     mask = (df_et.index.time >= open_t) & (df_et.index.time <= close_t)
     filtered = df_et[mask].copy()
+    
     # Volver a UTC para consistencia interna
     filtered.index = filtered.index.tz_convert("UTC")
     return filtered
 
 
+# ─── Descarga con Alpaca API ────────────────────────────────────────────────
+_alpaca_client = None
+
+def get_alpaca_client():
+    global _alpaca_client
+    if _alpaca_client is None:
+        if StockHistoricalDataClient is None:
+            raise ImportError("La librería 'alpaca-py' no está instalada. Ejecute 'pip install alpaca-py'.")
+        
+        if not config.ALPACA_API_KEY or not config.ALPACA_SECRET_KEY:
+             raise ValueError("Las llaves de Alpaca (APCA_API_KEY_ID/SECRET) no están configuradas en el .env.")
+             
+        _alpaca_client = StockHistoricalDataClient(
+            api_key=config.ALPACA_API_KEY,
+            secret_key=config.ALPACA_SECRET_KEY
+        )
+    return _alpaca_client
+
+
 def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
     """
-    Descarga datos OHLCV en el intervalo configurado (5 minutos, 60 días).
-    Filtra al horario de apertura NYSE 9:30–11:30 AM ET.
-    Usa caché local para evitar llamadas repetidas a Yahoo Finance.
+    Descarga datos OHLCV usando Alpaca API.
+    Filtra al horario de apertura NYSE 9:30–16:00 ET.
+    Usa caché local Parquet para evitar excesivas peticiones.
     """
     cache = _cache_path(symbol)
+    from utils.market_hours import _is_mock_time_active, now_nyc
 
+    # 1. Intentar cargar desde Caché
+    df = None
     if not force_refresh and _is_cache_valid(cache):
-        log.debug(f"data | {symbol} | Cargando desde caché: {cache.name}")
-        return pd.read_parquet(cache)
+        try:
+            df = pd.read_parquet(cache)
+        except Exception:
+            pass
 
-    log.info(
-        f"data | {symbol} | Descargando {config.DATA_INTERVAL} × "
-        f"{config.DATA_PERIOD} desde yfinance…"
-    )
-    try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(
-            period=config.DATA_PERIOD,
-            interval=config.DATA_INTERVAL,
-            auto_adjust=True,
-        )
+    if df is None or df.empty:
+        log.info(f"data | {symbol} | Descargando {config.DATA_INTERVAL} desde Alpaca API...")
+        try:
+            from utils.state_writer import update_state
+            update_state(symbol=symbol, status="downloading")
+            client = get_alpaca_client()
+            
+            # Calcular ventana de tiempo (60 días atrás)
+            end_time = datetime.now(pytz.UTC)
+            start_time = end_time - timedelta(days=60)
+            
+            # Configurar timeframe (5m -> TimeFrame(5, TimeFrameUnit.Minute))
+            val = int(config.DATA_INTERVAL.replace("m", ""))
+            tf = TimeFrame(val, TimeFrameUnit.Minute)
+            
+            request_params = StockBarsRequest(
+                symbol_or_symbols=symbol,
+                timeframe=tf,
+                start=start_time,
+                end=end_time,
+                feed="iex"  # "iex" es gratis, "sip" requiere suscripción
+            )
+            
+            bars = client.get_stock_bars(request_params)
+            
+            if bars.df.empty:
+                log.error(f"data | {symbol} | Alpaca devolvió un DataFrame vacío.")
+                raise ValueError(f"No hay datos disponibles para {symbol} en Alpaca.")
 
-        if df.empty:
-            log.error(f"data | {symbol} | yfinance devolvió un DataFrame vacío.")
-            if cache.exists():
-                log.warning(f"data | {symbol} | Usando caché antiguo como respaldo.")
-                return pd.read_parquet(cache)
-            raise ValueError(f"No hay datos disponibles para {symbol}")
-
-        # Normalizar y filtrar
-        df.index = pd.to_datetime(df.index, utc=True)
-        df = df[["Open", "High", "Low", "Close", "Volume"]].copy()
-        df.dropna(inplace=True)
-        df = _filter_trading_hours(df)   # Solo 9:30–11:30 AM ET
-        
-        # Test Nocturno (Mock Time): Recortar el DataFrame para no "ver el futuro"
-        from utils.market_hours import now_nyc
+            # Alpaca devuelve MultiIndex (symbol, timestamp). Aplanamos.
+            raw_df = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
+            
+            # Normalizar columnas a los nombres esperados por el bot (Open, High, Low, Close, Volume)
+            raw_df = raw_df.rename(columns={
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume"
+            })
+            
+            # Asegurar que el índice es datetime y UTC
+            raw_df.index = pd.to_datetime(raw_df.index, utc=True)
+            raw_df = raw_df[["Open", "High", "Low", "Close", "Volume"]].copy()
+            raw_df.dropna(inplace=True)
+            
+            # Filtrar y guardar
+            df = _filter_trading_hours(raw_df)
+            df.to_parquet(cache)
+            log.info(f"data | {symbol} | Caché Alpaca actualizada ({len(df)} velas).")
+            
+        except Exception as exc:
+            log.error(f"data | {symbol} | Error descargando desde Alpaca: {exc}")
+            raise
+            
+    # 2. Recorte Dinámico (Modo Mock Time)
+    if _is_mock_time_active():
         current_mock_time = now_nyc().astimezone(pytz.UTC)
         df = df[df.index <= current_mock_time].copy()
+        
+    return df
 
-        # Guardar caché
-        df.to_parquet(cache)
-        log.info(
-            f"data | {symbol} | {len(df)} velas de {config.DATA_INTERVAL} "
-            f"(horario 9:30-11:30 ET) descargadas y en caché."
-        )
-        return df
 
+def get_symbols() -> list[str]:
+    """Lee la lista de símbolos activos desde assets.json."""
+    try:
+        if not config.ASSETS_FILE.exists():
+            return ["AAPL"] # Minimal fallback
+        with open(config.ASSETS_FILE, "r") as f:
+            data = json.load(f)
+            assets_list = data.get("assets", [])
+            enabled_symbols = [a["symbol"] for a in assets_list if a.get("enabled", True)]
+            log.info(f"data | 🔄 Catálogo cargado: {len(enabled_symbols)} símbolos activos.")
+            return enabled_symbols
     except Exception as exc:
-        log.error(f"data | {symbol} | Error descargando datos: {exc}")
-        if cache.exists():
-            log.warning(f"data | {symbol} | Fallback a caché existente.")
-            return pd.read_parquet(cache)
-        raise
+        log.error(f"data | ❌ Error crítico leyendo assets.json: {exc}")
+        return ["AAPL"]
 
 
 # Alias para compatibilidad con imports existentes
@@ -212,24 +274,44 @@ class MarketReplay:
 
 class LivePaperReplay:
     """
-    Simula datos reales consultando yfinance cada 60 segundos en tiempo real.
-    Mantiene la historia para los indicadores usando una ventana móvil.
+    Simula datos reales consultando Alpaca API.
+    - En modo REAL: Consulta cada 60s (con throttle).
+    - En modo MOCK (Acelerado): Replay de la historia cacheada en memoria.
     """
     def __init__(self, symbol: str):
         self.symbol = symbol
         log.info(f"replay | 🚀 Iniciando Live Paper Trading (Broker Sombra) para {symbol}")
-        # Descarga historia base para contexto
-        self.df = download_bars(symbol, force_refresh=True)
+        # Descarga historia base para contexto inicial y la mantenemos en memoria para velocidad
+        self.full_df = download_bars(symbol, force_refresh=True)
+        self.df = self.full_df.copy() # Slice actual
         self.window = 220
+        self._last_download_time = time.time()
         
     def has_next(self) -> bool:
         return True # Siempre hay una siguiente vela en modo vivo
         
-    def next_bar(self) -> pd.Series:
-        """Descarga la última vela esperando si es necesario"""
-        import time
-        # En vez de bloquear aquí 60s, fetch data y return the last row
-        self.df = download_bars(self.symbol, force_refresh=True)
+    def next_bar(self) -> pd.Series | None:
+        """Devuelve la vela actual (real o simulada)"""
+        from utils.market_hours import _is_mock_time_active, now_nyc
+        import pytz
+        
+        is_mock = _is_mock_time_active()
+        
+        if not is_mock:
+            now = time.time()
+            # Refrescar solo cada 30s en modo real para ser amables con Alpaca
+            if (now - self._last_download_time) > 30:
+                self.full_df = download_bars(self.symbol, force_refresh=True)
+                self._last_download_time = now
+            self.df = self.full_df.copy()
+        else:
+            # En modo MOCK (Acelerado), recortamos la historia en memoria según el reloj simulado
+            current_mock_time = now_nyc().astimezone(pytz.UTC)
+            self.df = self.full_df[self.full_df.index <= current_mock_time].copy()
+            
+        if self.df is None or self.df.empty:
+            return None
+            
         return self.df.iloc[-1]
         
     def current_slice(self, window: int = 50) -> pd.DataFrame:

@@ -22,42 +22,8 @@ import pandas as pd
 
 import config
 from broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
-from data.market_data import MarketReplay
+from data.market_data import MarketReplay, LivePaperReplay
 from utils.logger import log, log_order_filled
-
-
-# ─── Live Paper Replay (datos en vivo vela a vela) ───────────────────────────
-class LivePaperReplay:
-    """
-    Simula datos reales consultando yfinance periódicamente.
-    Mantiene la historia para los indicadores usando una ventana móvil.
-    El bot leerá la vela más reciente disponible en Yahoo Finance.
-    """
-    def __init__(self, symbol: str):
-        self.symbol = symbol
-        log.info(f"replay | 🚀 Iniciando Live Paper Trading (Broker Sombra) para {symbol}")
-        from data.market_data import download_bars
-        self.df = download_bars(symbol, force_refresh=True)
-
-    def has_next(self) -> bool:
-        # En modo Live Paper regresamos False después de un tick para que main.py rote al siguiente símbolo
-        if not hasattr(self, '_tick_done'):
-            self._tick_done = False
-        return not self._tick_done
-
-    def next_bar(self) -> pd.Series:
-        """Refresca los datos y retorna la última vela disponible."""
-        from data.market_data import download_bars
-        try:
-            self.df = download_bars(self.symbol, force_refresh=True)
-        except Exception as e:
-            log.warning(f"LivePaper | Error refrescando datos: {e}. Usando última vela conocida.")
-        
-        self._tick_done = True
-        return self.df.iloc[-1]
-
-    def current_slice(self, window: int = 50) -> pd.DataFrame:
-        return self.df.tail(window).copy()
 
 
 # ─── Orden pendiente en el simulador ────────────────────────────────────────
@@ -226,10 +192,36 @@ class HapiMock(BrokerInterface):
         bid = Open de la vela (precio de venta más conservador)
         ask = Close de la vela (precio de compra más actualizado)
         """
+        from utils.market_hours import _is_mock_time_active
+        
         if not self._replay.has_next():
             raise StopIteration("No quedan más datos históricos para simular.")
 
-        self._current_bar = self._replay.next_bar()
+        try:
+            new_bar = self._replay.next_bar()
+            
+            # Si en Test Nocturno el reloj acelerado aún no ha revelado una nueva vela
+            if new_bar is None:
+                if self._current_bar is None:
+                    raise ConnectionError("Esperando la primera vela del día...")
+                # Retenemos la vela anterior si todavía no hay una nueva
+            elif _is_mock_time_active() and self._current_bar is not None:
+                if new_bar.name == self._current_bar.name:
+                    pass # Mantenemos el _current_bar anterior, no avanzamos "tiempo"
+                else:
+                    self._current_bar = new_bar
+            else:
+                self._current_bar = new_bar
+                
+        except Exception as e:
+            if _is_mock_time_active() and isinstance(e, ConnectionError):
+                 raise e # Dejar pasar el ConnectionError para que main.py duerma 5s
+            elif _is_mock_time_active() and self._current_bar is not None:
+                log.debug(f"MockTime: Alpaca rate limit o espera. Usando barra anterior. ({e})")
+            else:
+                log.error(f"HapiMock StopIteration originado por: {type(e).__name__} - {str(e)}")
+                raise StopIteration(f"No quedan más datos históricos para simular. ({e})")
+        
         bar = self._current_bar
 
         # Simular bid/ask razonable: bid ligeramente por debajo del close,
