@@ -3,7 +3,7 @@
  * Handles the generation and display of daily profit/loss calendars.
  */
 
-async function openCalendarModal(symbol) {
+window.openCalendarModal = async function (symbol) {
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
     overlay.style.top = '0'; overlay.style.left = '0';

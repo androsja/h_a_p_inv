@@ -334,7 +334,7 @@ async def get_daily_stats(symbol: str = None):
 async def get_trades_history(limit: int = 100):
     """Retorna los últimos trades cerrados desde trade_journal.csv."""
     import csv
-    from config import TRADE_JOURNAL_FILE
+    from shared.config import TRADE_JOURNAL_FILE
     trades = []
     try:
         if TRADE_JOURNAL_FILE.exists():
