@@ -1,1 +1,1 @@
-{"restart_sim": false, "reset_all": false, "force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO"}
+{"restart_sim": false, "reset_all": false, "force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO", "sim_start_date": "2026-02-25"}
