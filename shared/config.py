@@ -44,9 +44,8 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # ─── Estrategia Intraday (velas de 5 minutos) ────────────────────────────────
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
-# 🤖 Inteligencia Artificial
-# Hyper-Aggressive V3: Ajustado a 0.48 para filtro inteligente (Anti-Trampas).
-CONFIDENCE_THRESHOLD = 0.48
+# Hyper-Aggressive V3: Ajustado a 0.55 para mayor cautela (Anti-Trampas).
+CONFIDENCE_THRESHOLD = 0.55
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
 RSI_OVERBOUGHT = 75     # Más agresivo: permite tendencias fuertes (antes 70)
@@ -77,11 +76,13 @@ STATE_FILE_LIVE  = DATA_DIR / "state_live.json"
 RESULTS_FILE     = DATA_DIR / "backtest_results.json"
 ML_DATASET_FILE  = DATA_DIR / "ml_dataset.csv"
 AI_MODEL_FILE    = DATA_DIR / "ai_model.joblib"
+AI_MODEL_FILE    = DATA_DIR / "ai_model.joblib"
 NEURAL_MODEL_FILE = DATA_DIR / "neural_model.joblib"
 CHECKPOINT_DB    = DATA_DIR / "checkpoint.db"
 MOCK_ANCHOR_FILE = DATA_DIR / "mock_anchor.json"
 TRADE_JOURNAL_FILE = DATA_DIR / "trade_journal.csv"
 DATA_CACHE_DIR   = DATA_DIR / "cache"
+MODEL_SNAPSHOTS_DIR = DATA_DIR / "model_snapshots"   # ❄️ Versiones guardadas de la IA
 
 # ─── Timing del bot ─────────────────────────────────────────────────────────
 SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)

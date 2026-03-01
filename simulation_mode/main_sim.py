@@ -896,6 +896,27 @@ def main() -> None:
                     elif not _ai_frozen and _ml.is_frozen:
                         _ml.unfreeze()
                 except Exception: pass
+
+                # ── Recargar modelos si se restauró un snapshot ───────────────────
+                if cmds.get("reload_models"):
+                    log.info("📸 Recargando modelos de IA desde snapshot restaurado...")
+                    try:
+                        from shared.utils.neural_filter import get_neural_filter
+                        _nf = get_neural_filter()
+                        _nf._load()   # Fuerza recarga desde disco
+                        log.info("✅ NeuralFilter (MLP) recargado desde snapshot")
+                    except Exception as e_nf:
+                        log.warning(f"⚠️ No se pudo recargar NeuralFilter: {e_nf}")
+                    try:
+                        from shared.strategy.ml_predictor import ml_predictor as _ml
+                        _ml._load()   # Fuerza recarga desde disco
+                        log.info("✅ MLPredictor (RF) recargado desde snapshot")
+                    except Exception as e_ml:
+                        log.warning(f"⚠️ No se pudo recargar MLPredictor: {e_ml}")
+                    # Limpiar la señal
+                    cmds["reload_models"] = False
+                    with open(cmd_file, "w") as f:
+                        json.dump(cmds, f)
                 if cmds.get("reset_all") or cmds.get("restart_sim"):
                     is_purgue = cmds.get("reset_all", False)
                     log.info(f"🔄 {'PURGANDO MEMORIA TOTAL' if is_purgue else 'REINICIANDO SIMULACIÓN'} por orden del usuario...")

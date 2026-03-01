@@ -1380,6 +1380,11 @@
                     title="Congela la estrategia actual para que no sea borrada ni reiniciada">
                     ❄️ CONGELAR
                 </button>
+                <button onclick="openSnapshotPanel()"
+                    style="background:#1a1a2e;color:#ce93d8;border:1px solid #7b1fa2;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;gap:4px;"
+                    title="Guardar y restaurar versiones del modelo de IA">
+                    📸 VERSIONES
+                </button>
                 <div class="status-dot-wrap" style="margin-left: 10px;">
                     <div class="dot off" id="status-dot"></div>
                     <span id="status-text" style="color:var(--muted);">Conectando…</span>
@@ -3906,6 +3911,150 @@
             }
         `;
         document.head.appendChild(_freezeStyle);
+
+        // ── 📸 PANEL DE VERSIONES DE IA ──────────────────────────────────────────
+
+        async function openSnapshotPanel() {
+            const existing = document.getElementById('snapshot-panel-overlay');
+            if (existing) { existing.remove(); return; }
+
+            const overlay = document.createElement('div');
+            overlay.id = 'snapshot-panel-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:center;';
+
+            const panel = document.createElement('div');
+            panel.style.cssText = 'background:#0d1117;border:1px solid #30363d;border-radius:16px;padding:28px;width:90%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.8);position:relative;';
+            panel.innerHTML = `
+                <button onclick="document.getElementById('snapshot-panel-overlay').remove()"
+                    style="position:absolute;top:16px;right:16px;background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">&times;</button>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                    <span style="font-size:28px;">📸</span>
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#ce93d8;">Versiones de la IA</div>
+                        <div style="font-size:11px;color:#6e7681;">Guarda el estado de los 2 modelos. Restaura cualquier versión anterior.</div>
+                    </div>
+                </div>
+
+                <!-- Guardar nueva versión -->
+                <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:14px;margin-bottom:20px;">
+                    <div style="font-size:11px;color:#8b949e;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">💾 Guardar versión actual</div>
+                    <div style="display:flex;gap:8px;">
+                        <input id="snap-label-input" type="text"
+                            value="v${new Date().toLocaleDateString('es-CO')} — ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}"
+                            style="flex:1;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;font-size:13px;color:#e6edf3;outline:none;"
+                            placeholder="Nombre de la versión..." />
+                        <button onclick="saveSnapshot()" id="snap-save-btn"
+                            style="background:linear-gradient(135deg,#4a148c,#7b1fa2);border:none;color:#e1bee7;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                            📸 Guardar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de versiones -->
+                <div style="font-size:11px;color:#8b949e;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;">📁 Versiones guardadas</div>
+                <div id="snap-list-container" style="min-height:60px;">
+                    <div style="text-align:center;color:#6e7681;font-size:13px;padding:20px;">⏳ Cargando...</div>
+                </div>
+            `;
+
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+            overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+            await loadSnapshotList();
+        }
+
+        async function loadSnapshotList() {
+            const container = document.getElementById('snap-list-container');
+            if (!container) return;
+            try {
+                const res = await fetch('/api/model_snapshots');
+                const data = await res.json();
+                const snaps = data.snapshots || [];
+
+                if (snaps.length === 0) {
+                    container.innerHTML = `<div style="text-align:center;color:#6e7681;font-size:13px;padding:20px;">
+                        No hay versiones guardadas aún.<br>
+                        <span style="font-size:11px;opacity:0.6;">Guarda la primera usando el botón de arriba.</span>
+                    </div>`;
+                    return;
+                }
+
+                container.innerHTML = snaps.map(s => `
+                    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.label}">
+                                ${s.label}
+                            </div>
+                            <div style="font-size:10px;color:#6e7681;margin-top:3px;">
+                                🕒 ${new Date(s.created_at).toLocaleString('es-CO')}
+                                ${s.mlp_size_kb ? ` · MLP: ${s.mlp_size_kb}KB` : ''}
+                                ${s.files.includes('ml_dataset.csv') ? ' · RF: ✅' : ''}
+                            </div>
+                        </div>
+                        <button onclick="restoreSnapshot('${s.id}', '${s.label.replace(/'/g, '')}')"
+                            style="background:linear-gradient(135deg,#0d47a1,#1565c0);border:none;color:#90caf9;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                            ♻️ Restaurar
+                        </button>
+                        <button onclick="deleteSnapshot('${s.id}')"
+                            style="background:transparent;border:1px solid #3f1515;color:#f85149;padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer;"
+                            title="Eliminar esta versión">
+                            🗑️
+                        </button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = `<div style="color:#f85149;text-align:center;padding:20px;">Error cargando versiones: ${e.message}</div>`;
+            }
+        }
+
+        async function saveSnapshot() {
+            const label = (document.getElementById('snap-label-input')?.value || '').trim();
+            if (!label) return;
+            const btn = document.getElementById('snap-save-btn');
+            if (btn) { btn.textContent = '⏳ Guardando...'; btn.disabled = true; }
+            try {
+                const res = await fetch('/api/model_snapshot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ label })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    _showFreezeToast(`📸 Versión guardada<br><b>"${label}"</b>`, true);
+                    await loadSnapshotList();
+                } else {
+                    _showFreezeToast(`❌ ${data.message}`, false);
+                }
+            } catch (e) { _showFreezeToast('❌ Error: ' + e.message, false); }
+            if (btn) { btn.textContent = '📸 Guardar'; btn.disabled = false; }
+        }
+
+        async function restoreSnapshot(id, label) {
+            if (!confirm(`¿Restaurar la versión "${label}"?\n\nEsto reemplazará los modelos actuales de IA. El bot recargará automáticamente.`)) return;
+            try {
+                const res = await fetch('/api/restore_snapshot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ snapshot_id: id })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    document.getElementById('snapshot-panel-overlay')?.remove();
+                    _showFreezeToast(`♻️ IA restaurada<br><b>"${label}"</b><br><span style="font-size:11px;opacity:0.8;">El bot cargará la versión en el próximo ciclo.</span>`, true);
+                } else {
+                    _showFreezeToast(`❌ ${data.message}`, false);
+                }
+            } catch (e) { _showFreezeToast('❌ Error: ' + e.message, false); }
+        }
+
+        async function deleteSnapshot(id) {
+            if (!confirm('¿Eliminar esta versión? No se puede deshacer.')) return;
+            try {
+                await fetch(`/api/model_snapshot/${id}`, { method: 'DELETE' });
+                await loadSnapshotList();
+            } catch (e) { _showFreezeToast('❌ Error al eliminar: ' + e.message, false); }
+        }
 
         _preloadConfigAssets();
         checkFreezeStatus();  // Verificar estado de congelación al cargar

@@ -18,9 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from shared.config import (
-    STATE_FILE, LOG_FILE, ASSETS_FILE, COMMAND_FILE, RESULTS_FILE, 
+    STATE_FILE, LOG_FILE, ASSETS_FILE, COMMAND_FILE, RESULTS_FILE,
     ML_DATASET_FILE, CHECKPOINT_DB, DATA_DIR, NEURAL_MODEL_FILE,
-    STATE_FILE_SIM, STATE_FILE_LIVE
+    STATE_FILE_SIM, STATE_FILE_LIVE, MODEL_SNAPSHOTS_DIR
 )
 
 SIM_HTML_FILE  = Path(__file__).parent / "static" / "simulation" / "index.html"
@@ -722,3 +722,134 @@ async def paper_trade_stop():
         return {"status": "success", "message": "Live Paper Trading detenido. Volviendo a la Simulación Global."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+# ─── 📸 Model Snapshots (Versiones de IA) ─────────────────────────────────────
+
+class SnapshotRequest(BaseModel):
+    label: str  # Nombre descriptivo de la versión
+
+@app.post("/api/model_snapshot")
+async def save_model_snapshot(req: SnapshotRequest):
+    """Guarda una copia de los 2 modelos de IA como versión nombrada."""
+    import json, shutil
+    try:
+        MODEL_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Carpeta única por timestamp + label sanitizado
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        safe_label = "".join(c if c.isalnum() or c in "-_ " else "_" for c in req.label)[:40]
+        snap_dir = MODEL_SNAPSHOTS_DIR / f"{ts}_{safe_label}"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copiar modelos
+        files_saved = []
+        if NEURAL_MODEL_FILE.exists():
+            shutil.copy2(NEURAL_MODEL_FILE, snap_dir / "neural_model.joblib")
+            files_saved.append("neural_model.joblib")
+        if ML_DATASET_FILE.exists():
+            shutil.copy2(ML_DATASET_FILE, snap_dir / "ml_dataset.csv")
+            files_saved.append("ml_dataset.csv")
+
+        if not files_saved:
+            snap_dir.rmdir()
+            return {"status": "error", "message": "No hay modelos entrenados para guardar. Corre al menos una simulación primero."}
+
+        # Guardar metadata
+        meta = {
+            "id": f"{ts}_{safe_label}",
+            "label": req.label,
+            "created_at": datetime.utcnow().isoformat(),
+            "files": files_saved,
+        }
+        with open(snap_dir / "meta.json", "w") as f:
+            json.dump(meta, f, indent=2)
+
+        return {"status": "success", "message": f"✅ Versión '{req.label}' guardada", "snapshot_id": meta["id"]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/model_snapshots")
+async def list_model_snapshots():
+    """Lista todas las versiones de IA guardadas, de más reciente a más antigua."""
+    import json
+    try:
+        MODEL_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+        snapshots = []
+        for snap_dir in sorted(MODEL_SNAPSHOTS_DIR.iterdir(), reverse=True):
+            if not snap_dir.is_dir():
+                continue
+            meta_file = snap_dir / "meta.json"
+            if meta_file.exists():
+                with open(meta_file) as f:
+                    meta = json.load(f)
+                # Tamaño del modelo MLP si existe
+                mlp_path = snap_dir / "neural_model.joblib"
+                meta["mlp_size_kb"] = round(mlp_path.stat().st_size / 1024, 1) if mlp_path.exists() else 0
+                snapshots.append(meta)
+        return {"status": "success", "snapshots": snapshots}
+    except Exception as e:
+        return {"status": "error", "snapshots": [], "message": str(e)}
+
+
+class RestoreRequest(BaseModel):
+    snapshot_id: str
+
+@app.post("/api/restore_snapshot")
+async def restore_model_snapshot(req: RestoreRequest):
+    """Restaura una versión guardada de la IA, reemplazando los modelos actuales."""
+    import json, shutil
+    try:
+        snap_dir = MODEL_SNAPSHOTS_DIR / req.snapshot_id
+        if not snap_dir.exists():
+            return {"status": "error", "message": f"Versión '{req.snapshot_id}' no encontrada."}
+
+        restored = []
+
+        mlp_snap = snap_dir / "neural_model.joblib"
+        if mlp_snap.exists():
+            shutil.copy2(mlp_snap, NEURAL_MODEL_FILE)
+            restored.append("neural_model.joblib")
+
+        csv_snap = snap_dir / "ml_dataset.csv"
+        if csv_snap.exists():
+            shutil.copy2(csv_snap, ML_DATASET_FILE)
+            restored.append("ml_dataset.csv")
+
+        if not restored:
+            return {"status": "error", "message": "La versión seleccionada no tiene archivos de modelo."}
+
+        # Señalizar al bot que recargue los modelos
+        data = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                data = json.load(f)
+        data["reload_models"] = True
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(data, f)
+
+        meta_file = snap_dir / "meta.json"
+        label = req.snapshot_id
+        if meta_file.exists():
+            with open(meta_file) as f:
+                label = json.load(f).get("label", req.snapshot_id)
+
+        return {"status": "success", "message": f"✅ Versión '{label}' restaurada. El bot recargará la IA en el próximo ciclo.", "restored": restored}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.delete("/api/model_snapshot/{snapshot_id}")
+async def delete_model_snapshot(snapshot_id: str):
+    """Elimina una versión guardada de la IA."""
+    import shutil
+    try:
+        snap_dir = MODEL_SNAPSHOTS_DIR / snapshot_id
+        if not snap_dir.exists():
+            return {"status": "error", "message": "Versión no encontrada."}
+        shutil.rmtree(snap_dir)
+        return {"status": "success", "message": f"Versión '{snapshot_id}' eliminada."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
