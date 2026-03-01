@@ -46,7 +46,8 @@ live-paper: build ## Inicia el bot en modo LIVE PAPER (datos reales, dinero fict
 
 sim-detached: build ## Inicia el modo SIMULADO en segundo plano
 	@echo "$(GREEN)🔵 Iniciando modo SIMULADO en background...$(RESET)"
-	docker compose up -d trading-bot-sim
+	docker compose up -d trading-bot-sim dashboard trading-bot-live-alpaca
+	@echo "$(GREEN)✅ Dashboard: http://localhost:8080 | Live: http://localhost:8080/live$(RESET)"
 
 	@echo "$(YELLOW)⚠️  ADVERTENCIA: Modo LIVE usa DINERO REAL.$(RESET)"
 	@read -p "¿Estás seguro? (escribe 'SI' para continuar): " confirm; \

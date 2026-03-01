@@ -20,7 +20,14 @@ class TradeRecord:
     price: float
     qty:   float
     pnl:   float
-    time:  str = "" # Se poblará en el constructor o record_trade
+    time:  str = ""
+    reason: str = ""
+    confirmations: list = field(default_factory=list)
+    ml_prob: float = 0.0
+    conf_mult: float = 1.0
+    entry_reason: str = ""
+    entry_price: float = 0.0
+    date: str = ""
 
 @dataclass
 class BotState:
@@ -86,8 +93,8 @@ _global_sim_wins:   int = 0
 _global_sim_pnl:    float = 0.0
 
 def load_global_stats_from_journal() -> None:
-    """Carga los totales acumulados desde el archivo CSV de la bitácora."""
-    global _global_sim_trades, _global_sim_wins, _global_sim_pnl
+    """Carga los totales acumulados y los últimos trades desde el archivo CSV de la bitácora."""
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _trades
     try:
         journal_path = config.TRADE_JOURNAL_FILE
         if not journal_path.exists():
@@ -97,6 +104,7 @@ def load_global_stats_from_journal() -> None:
         trades_count = 0
         wins_count = 0
         total_pnl = 0.0
+        loaded_trades = []
         
         with open(journal_path, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
@@ -105,14 +113,34 @@ def load_global_stats_from_journal() -> None:
                     trades_count += 1
                     pnl = float(row.get("gross_pnl", 0))
                     total_pnl += pnl
-                    if int(row.get("is_win", 0)) == 1:
+                    is_win = int(row.get("is_win", 0))
+                    if is_win == 1:
                         wins_count += 1
+                    
+                    # Cargar también al historial visual (limitado a los últimos 100)
+                    ts = row.get("timestamp_close", "")
+                    t_str = ts.split('T')[1][:8] if 'T' in ts else ""
+                    d_str = ts.split('T')[0] if 'T' in ts else ""
+                    
+                    # Reconstruir TradeRecord (simplificado para UI)
+                    loaded_trades.append(TradeRecord(
+                        symbol=row.get("symbol", ""),
+                        side="SELL",
+                        price=float(row.get("exit_price", 0)),
+                        qty=float(row.get("qty", 0)),
+                        pnl=pnl,
+                        time=t_str,
+                        date=d_str,
+                        reason=row.get("exit_reason", ""),
+                        entry_price=float(row.get("entry_price", 0))
+                    ))
                 except: continue
         
         with _state_lock:
             _global_sim_trades = trades_count
             _global_sim_wins = wins_count
             _global_sim_pnl = total_pnl
+            _trades = loaded_trades[-100:] # Mantener últimos 100 para el dashboard
     except Exception:
         pass
 
@@ -147,12 +175,42 @@ def clear_symbol_states() -> None:
     with _state_lock:
         _symbol_states.clear()
 
-def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, timestamp: str | None = None) -> None:
+def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, 
+                 timestamp: str | None = None, reason: str = "", metadata: dict = None) -> None:
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl
     with _state_lock:
         # Usar timestamp proporcionado o el actual (formato HH:MM:SS para el historial rápido)
         t_str = timestamp.split('T')[1][:8] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%H:%M:%S")
-        _trades.append(TradeRecord(symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, time=t_str))
+        
+        # Extraer campos detallados del metadata si existen
+        confirmations = []
+        ml_prob = 0.0
+        conf_mult = 1.0
+        entry_reason = ""
+        entry_price = 0.0
+        
+        if metadata:
+            confirmations = metadata.get("confirmations", [])
+            ml_prob = metadata.get("ml_prob", 0.0)
+            conf_mult = metadata.get("conf_mult", 1.0)
+            entry_reason = metadata.get("entry_reason", "")
+            entry_price = metadata.get("entry_price", 0.0)
+
+        if side == "BUY" and not entry_reason:
+            entry_reason = reason
+        
+        if side == "BUY" and entry_price == 0:
+            entry_price = price
+
+        # Fecha completa
+        d_str = timestamp.split('T')[0] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%Y-%m-%d")
+
+        _trades.append(TradeRecord(
+            symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, 
+            time=t_str, date=d_str, reason=reason, confirmations=confirmations, 
+            ml_prob=ml_prob, conf_mult=conf_mult, entry_reason=entry_reason,
+            entry_price=entry_price
+        ))
         if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
         
@@ -237,7 +295,7 @@ def update_state(
         total_sim_wins=ts_wins,
         total_sim_pnl=ts_pnl,
         position=position,
-        trades=[asdict(t) for t in _trades],
+        trades=[asdict(t) for t in _trades if t.symbol == symbol],
         candles=candles or [],
         status=status,
         next_scan_in=kwargs.get("next_scan_in", 0),

@@ -362,15 +362,20 @@ async def get_trades_history(limit: int = 100):
                 rows = list(reader)
                 # Tomar los últimos 'limit' registros
                 for r in rows[-limit:]:
-                    # Adaptar nombres de campos si es necesario para el frontend
-                    # El frontend espera: { side, price, qty, pnl, symbol }
+                    ts = r.get("timestamp_close", "")
+                    date = ts.split("T")[0] if "T" in ts else ts.split(" ")[0] if ts else ""
+                    time = ts.split("T")[1][:8] if "T" in ts else (ts.split(" ")[1][:8] if " " in ts else "")
                     trades.append({
-                        "timestamp": r.get("timestamp_close"),
-                        "symbol":    r.get("symbol"),
-                        "side":      "SELL", # En el journal son cierres (ventas)
-                        "price":     float(r.get("exit_price", 0)),
-                        "qty":       float(r.get("qty", 0)),
-                        "pnl":       float(r.get("gross_pnl", 0))
+                        "timestamp":   ts,
+                        "symbol":      r.get("symbol"),
+                        "side":        "SELL",
+                        "price":       float(r.get("exit_price", 0)),
+                        "entry_price": float(r.get("entry_price", 0)),
+                        "qty":         float(r.get("qty", 0)),
+                        "pnl":         float(r.get("gross_pnl", 0)),
+                        "date":        date,
+                        "time":        time,
+                        "reason":      r.get("exit_reason", "")[:50] or "S/E",
                     })
         return trades
     except Exception as e:
@@ -602,6 +607,82 @@ async def bank_withdraw(req: DepositRequest):
 class PaperTradeRequest(BaseModel):
     symbols: str  # Comma separated list like "TSLA,AAPL,NVDA"
     mockTime: bool = False  # Para testing nocturno a las 9:30 AM
+
+# ─── Live Alpaca Paper (localhost:8080/live) ───────────────────────────────────
+# Endpoints exclusivos para /live: compras falsas con Alpaca Paper, hilos paralelos.
+# NO tocan la simulación (main_sim.py). Usan run_live_bot + AlpacaPaperBroker.
+
+class LiveAlpacaStartRequest(BaseModel):
+    symbols: str  # Comma separated: "AAPL,TSLA,NVDA"
+
+@app.post("/api/live_alpaca_start")
+async def live_alpaca_start(req: LiveAlpacaStartRequest):
+    """Inicia Live Paper con Alpaca (compras falsas, datos reales). Solo para /live."""
+    import json
+    try:
+        # Validar credenciales Alpaca
+        if not (config.ALPACA_API_KEY and config.ALPACA_SECRET_KEY):
+            return {"status": "error", "message": "Configura APCA_API_KEY_ID y APCA_API_SECRET_KEY en .env para Alpaca Paper."}
+
+        symbol_list = [s.strip().upper() for s in req.symbols.split(",") if s.strip()]
+        if not symbol_list:
+            return {"status": "error", "message": "No se proporcionaron símbolos válidos."}
+
+        # Actualizar assets_live.json: habilitar solo los seleccionados
+        path = config.ASSETS_FILE_LIVE
+        if path.exists():
+            with open(path, "r") as f:
+                data = json.load(f)
+            for asset in data.get("assets", []):
+                asset["enabled"] = asset.get("symbol", "").upper() in symbol_list
+            with open(path, "w") as f:
+                json.dump(data, f, indent=4)
+
+        # Enviar comando live_start al watcher (trading-bot-live-alpaca)
+        data_cmd = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                data_cmd = json.load(f)
+        data_cmd["live_start"] = True
+        data_cmd["live_stop"] = False
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(data_cmd, f)
+
+        return {"status": "success", "message": f"Alpaca Paper iniciado con: {', '.join(symbol_list)}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/live_alpaca_stop")
+async def live_alpaca_stop():
+    """Detiene Live Alpaca Paper. Solo para /live."""
+    import json
+    try:
+        data = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                data = json.load(f)
+        data["live_stop"] = True
+        data["live_start"] = False
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(data, f)
+        return {"status": "success", "message": "Alpaca Paper detenido."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/live_alpaca_status")
+async def live_alpaca_status():
+    """Retorna si los hilos de Alpaca Paper están corriendo (requiere watcher en mismo proceso o API)."""
+    # El watcher corre en otro contenedor; no podemos consultar directamente.
+    # Por ahora retornamos basado en state_live.json existente y reciente.
+    try:
+        if config.STATE_FILE_LIVE.exists():
+            mtime = config.STATE_FILE_LIVE.stat().st_mtime
+            import time
+            if (time.time() - mtime) < 120:  # Actualizado en últimos 2 min
+                return {"status": "success", "running": True}
+        return {"status": "success", "running": False}
+    except Exception:
+        return {"status": "success", "running": False}
 
 @app.post("/api/paper_trade_start")
 async def paper_trade_start(req: PaperTradeRequest):

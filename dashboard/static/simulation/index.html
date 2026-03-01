@@ -1297,6 +1297,18 @@
             }
         }
 
+        @keyframes slideInRight {
+            from {
+                transform: translateX(120%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         @keyframes fadeOut {
             from {
                 transform: translateX(0);
@@ -1857,7 +1869,11 @@
                                         <th style="padding:10px;">Gross PnL</th>
                                         <th style="padding:10px;">Fees</th>
                                         <th style="padding:10px;">Slippage</th>
-                                        <th style="padding:10px;">Net PnL</th>
+                                        <th id="th-netpnl" onclick="toggleNetPnlSort()"
+                                            style="padding:10px; cursor:pointer; user-select:none; white-space:nowrap; transition:color 0.2s;"
+                                            onmouseover="this.style.color='var(--accent)'"
+                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL"> Net PnL <span
+                                                id="netpnl-sort-icon">&#x21D5;</span></th>
                                         <th style="padding:10px;">Saldo Final</th>
                                         <th style="padding:10px;">Drawdown</th>
                                         <th style="padding:10px;">🛡️ Filtros Activos</th>
@@ -2397,6 +2413,7 @@
 
                 if (data && data.length > 0) {
                     lastResultCount = data.length;
+                    window._lastResultsData = data;  // Cache para el recomendador
 
                     const totalGross = data.reduce((sum, item) => sum + (item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0), 0);
                     const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
@@ -2460,28 +2477,104 @@
                             summaryDiv.style.display = 'none';
                         } else {
                             summaryDiv.style.display = 'block';
-                            summaryDiv.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px; align-items:center;">
-            <span>Progreso del Explorador (Símbolos únicos evaluados): <b>${uniqueSymbolsCount} /
-                    ${TOTAL_SYMBOLS}</b></span>
-            <div>
-                <button onclick="runAITraining()"
-                    style="padding: 4px 10px; font-size: 11px; background: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: 600;">🧠
-                    Analizar mis Errores con IA (Live)</button>
-                <span style="color:var(--green); font-weight:bold;">${completionPercent.toFixed(1)}%</span>
-            </div>
-        </div>
-        <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:6px; overflow:hidden;">
-            <div style="width: ${completionPercent}%; background: var(--green); height:100%; transition: width 0.3s;">
-            </div>
-        </div>
-        `;
+
+                            if (completionPercent >= 100) {
+                                // ── SIMULACIÓN COMPLETA ──
+                                const totalNet = data.reduce((s, r) => s + ((r.gross_pnl || r.pnl || 0) - (r.total_fees || 0) - (r.slippage_est || 0)), 0);
+                                const totalWins = data.reduce((s, r) => s + (parseInt(r.winning_trades) || 0), 0);
+                                const totalTrades = data.reduce((s, r) => s + (parseInt(r.total_trades) || 0), 0);
+                                const globalWR = totalTrades > 0 ? (totalWins / totalTrades * 100).toFixed(1) : 0;
+                                const nowStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+                                summaryDiv.innerHTML = `
+                                <div style="background:linear-gradient(135deg,rgba(0,199,129,0.12),rgba(0,199,129,0.04));
+                                    border:1.5px solid rgba(0,199,129,0.4); border-radius:12px; padding:14px 18px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                                        <div style="display:flex; align-items:center; gap:12px;">
+                                            <span style="font-size:28px; animation: pulse-check 1.5s ease-in-out;">✅</span>
+                                            <div>
+                                                <div style="font-size:15px; font-weight:800; color:#00c781; letter-spacing:0.3px;">
+                                                    Simulación Completada
+                                                </div>
+                                                <div style="font-size:11px; color:#6e7681; margin-top:2px;">
+                                                    ${uniqueSymbolsCount} empresas analizadas &nbsp;·&nbsp; Finalizó a las ${nowStr}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
+                                                <div style="font-size:10px; color:#6e7681;">Net PnL total</div>
+                                                <div style="font-size:14px; font-weight:800; color:${totalNet >= 0 ? '#00c781' : '#ef4444'};">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</div>
+                                            </div>
+                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
+                                                <div style="font-size:10px; color:#6e7681;">Win Rate global</div>
+                                                <div style="font-size:14px; font-weight:800; color:white;">${globalWR}%</div>
+                                            </div>
+                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
+                                                <div style="font-size:10px; color:#6e7681;">Trades</div>
+                                                <div style="font-size:14px; font-weight:800; color:white;">${totalTrades}</div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button onclick="openNextDayRecommender(window._lastResultsData || [])"
+                                                style="padding:8px 14px; font-size:12px; background:linear-gradient(135deg,#7c3aed,#4f46e5);
+                                                       color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700;">
+                                                📅 Ver Recomendaciones
+                                            </button>
+                                            <button onclick="runAITraining()"
+                                                style="padding:8px 14px; font-size:12px; background:var(--accent);
+                                                       color:black; border:none; border-radius:8px; cursor:pointer; font-weight:700;">
+                                                🧠 Analizar Errores
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>`;
+
+                                // Toast de finalización (aparece solo una vez)
+                                if (!window._completionToastShown) {
+                                    window._completionToastShown = true;
+                                    _showCompletionToast(uniqueSymbolsCount, totalNet, globalWR);
+                                }
+
+                            } else {
+                                // ── EN PROGRESO ──
+                                const dots = ['.', '..', '...'][Math.floor(Date.now() / 600) % 3];
+                                summaryDiv.innerHTML = `
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
+                                    <span style="font-size:12px; color:var(--muted);">
+                                        <span style="color:var(--green);">&#9679;</span>
+                                        Analizando empresas${dots} &nbsp;
+                                        <b style="color:white;">${uniqueSymbolsCount} / ${TOTAL_SYMBOLS}</b>
+                                    </span>
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <button onclick="runAITraining()"
+                                            style="padding: 4px 10px; font-size: 11px; background: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">🧠
+                                            Analizar Errores</button>
+                                        <span style="color:var(--green); font-weight:bold;">${completionPercent.toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:8px; overflow:hidden; position:relative;">
+                                    <div style="width:${completionPercent}%; background:linear-gradient(90deg,#00c781,#00e676); height:100%; transition:width 0.3s; border-radius:4px;"></div>
+                                </div>`;
+                            }
                         }
                     }
 
                     tbody.innerHTML = '';
 
-                    [...data].reverse().forEach(row => {
+                    // ── Ordenar por Net PnL si está activo ────────────────
+                    let rowsToRender = [...data];
+                    if (window._sortByNetPnl !== undefined) {
+                        rowsToRender.sort((a, b) => {
+                            const netA = (a.gross_pnl || a.pnl || 0) - (a.total_fees || 0) - (a.slippage_est || 0);
+                            const netB = (b.gross_pnl || b.pnl || 0) - (b.total_fees || 0) - (b.slippage_est || 0);
+                            return window._sortByNetPnl === 'desc' ? netB - netA : netA - netB;
+                        });
+                    } else {
+                        rowsToRender.reverse(); // orden original (más reciente primero)
+                    }
+
+                    rowsToRender.forEach(row => {
                         // Ya NO ocultamos sesiones sin trades para evitar confusión de "símbolos borrados"
 
                         const tr = document.createElement('tr');
@@ -3416,8 +3509,19 @@
             // Posición
             renderPosition(state);
 
-            // Trades
-            renderTrades(state.trades);
+            // Reset flag cuando inicia nueva simulación
+            if (state.status && state.status !== 'completed') window._tradesReloadedOnComplete = false;
+            // Trades: state.trades solo tiene el símbolo actual; si está vacío no sobrescribir
+            // (evita borrar los 349+ trades cargados desde /api/trades_history)
+            if (state.trades && state.trades.length > 0) {
+                renderTrades(state.trades);
+            } else if (state.status === 'completed' && !window._tradesReloadedOnComplete) {
+                // Al terminar simulación, recargar historial completo desde API (solo una vez)
+                window._tradesReloadedOnComplete = true;
+                fetch('/api/trades_history').then(r => r.json()).then(data => {
+                    if (data && data.length > 0) renderTrades(data);
+                });
+            }
 
             // Log - Leer de la raíz del mensaje (fullState), no del sub-estado
             if (fullState && fullState.logs) appendLog(fullState.logs);
@@ -3659,6 +3763,8 @@
                     .then(data => {
                         showToast(data.message || 'Reinicio solicitado');
                         overlay.remove();
+                        window._completionToastShown = false;
+                        document.getElementById('completion-toast')?.remove();
                     });
             };
         }
@@ -3866,6 +3972,61 @@
             setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 4500);
         }
 
+        function _showCompletionToast(symbols, totalNet, wr) {
+            // Si ya existe un toast de completado anterior, lo quitamos
+            document.getElementById('completion-toast')?.remove();
+
+            const t = document.createElement('div');
+            t.id = 'completion-toast';
+            t.style.cssText = `
+                position:fixed; bottom:24px; right:24px; z-index:9999999;
+                background:linear-gradient(135deg,#052e16,#14532d);
+                border:1.5px solid rgba(0,199,129,0.5);
+                color:white; padding:18px 22px; border-radius:14px;
+                font-size:13px; max-width:340px;
+                box-shadow:0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,199,129,0.1);
+                line-height:1.5; animation: slideInRight 0.4s ease;
+            `;
+            const netColor = totalNet >= 0 ? '#00c781' : '#ef4444';
+            const netTxt = totalNet >= 0 ? `+$${totalNet.toFixed(2)}` : `-$${Math.abs(totalNet).toFixed(2)}`;
+            t.innerHTML = `
+                <div style="display:flex;align-items:flex-start;gap:12px;">
+                    <span style="font-size:26px;margin-top:2px;">✅</span>
+                    <div style="flex:1;">
+                        <div style="font-size:14px;font-weight:800;color:#00c781;margin-bottom:4px;">
+                            ¡Simulación completada!
+                        </div>
+                        <div style="font-size:11px;color:#86efac;margin-bottom:10px;">
+                            ${symbols} empresas analizadas
+                        </div>
+                        <div style="display:flex;gap:8px;margin-bottom:12px;">
+                            <div style="background:rgba(0,199,129,0.15);border-radius:6px;padding:5px 10px;flex:1;text-align:center;">
+                                <div style="font-size:9px;color:#86efac;">Net PnL</div>
+                                <div style="font-size:13px;font-weight:700;color:${netColor};">${netTxt}</div>
+                            </div>
+                            <div style="background:rgba(0,199,129,0.15);border-radius:6px;padding:5px 10px;flex:1;text-align:center;">
+                                <div style="font-size:9px;color:#86efac;">Win Rate</div>
+                                <div style="font-size:13px;font-weight:700;color:white;">${wr}%</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button onclick="openNextDayRecommender(window._lastResultsData||[]);document.getElementById('completion-toast').remove();"
+                                style="flex:1;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;color:white;
+                                       padding:7px 8px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;">
+                                📅 Ver Recomendadas
+                            </button>
+                            <button onclick="document.getElementById('completion-toast').remove();"
+                                style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa;
+                                       padding:7px 10px;border-radius:7px;font-size:11px;cursor:pointer;">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(t);
+            // No se auto-cierra — el usuario debe cerrarlo manualmente o ir a recomendadas
+        }
+
         async function toggleFreeze() {
             const newState = !_isFrozen;
 
@@ -4056,6 +4217,298 @@
             } catch (e) { _showFreezeToast('❌ Error al eliminar: ' + e.message, false); }
         }
 
+        // ── 📊 Ordenar tabla por Net PnL ──────────────────────────────────────
+        function toggleNetPnlSort() {
+            const icon = document.getElementById('netpnl-sort-icon');
+            const th = document.getElementById('th-netpnl');
+            // Ciclo: sin orden → desc (mayor primero) → asc (menor primero) → sin orden
+            if (window._sortByNetPnl === undefined) {
+                window._sortByNetPnl = 'desc';
+                if (icon) icon.textContent = '⬇️';
+                if (th) th.style.color = 'var(--accent)';
+            } else if (window._sortByNetPnl === 'desc') {
+                window._sortByNetPnl = 'asc';
+                if (icon) icon.textContent = '⬆️';
+            } else {
+                window._sortByNetPnl = undefined;
+                if (icon) icon.textContent = '⇕';
+                if (th) th.style.color = '';
+            }
+            // Re-renderizar la tabla con el nuevo orden
+            loadResults();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // 📅 RECOMENDADOR PARA EL DÍA SIGUIENTE
+        // ═══════════════════════════════════════════════════════════════════
+        //
+        // Bases de la investigación (ver web search):
+        //  1. Momentum persistence: acciones con tendencia y alto volumen tienden
+        //     a continuar al día siguiente (Jegadeesh & Titman, IBD RS Rating).
+        //  2. Win Rate > 50% = señal de que la estrategia FUNCIONA en ese activo.
+        //  3. Profit Factor > 1.5 = las ganancias superan las pérdidas por 50%.
+        //  4. Drawdown bajo = la gestión de riesgo está controlada.
+        //  5. Régimen TREND_UP > NEUTRAL > LATERAL (momentum técnico confirmado).
+        //  6. Muestra mínima ≥ 2 trades para que sea estadísticamente válido.
+        //
+        function openNextDayRecommender(data) {
+            if (!data || data.length === 0) {
+                alert('No hay datos de simulación todavía. Corre al menos un ciclo completo primero.');
+                return;
+            }
+
+            const existing = document.getElementById('ndr-overlay');
+            if (existing) { existing.remove(); return; }
+
+            // ── 1. Scoring de cada empresa ────────────────────────────────────
+            const scored = data.map(row => {
+                const gross = row.gross_pnl !== undefined ? row.gross_pnl : (row.pnl || 0);
+                const fees = row.total_fees || 0;
+                const slip = row.slippage_est || 0;
+                const net = gross - fees - slip;
+                const wr = parseFloat(row.win_rate) || 0;
+                const trades = parseInt(row.total_trades) || 0;
+                const wins = parseInt(row.winning_trades) || 0;
+                const losses = trades - wins;
+                const gp = parseFloat(row.gross_profit) || 0;
+                const gl = Math.abs(parseFloat(row.gross_loss) || 0.01);
+                const pf = gp / gl;  // Profit Factor
+                const dd = parseFloat(row.drawdown) || 0;
+                const regime = (row.regime || 'NEUTRAL').toUpperCase();
+
+                // ── Puntuación compuesta (0–100) ──────────────────────────
+                // Cada criterio aporta hasta ~20 pts
+
+                // A) Win Rate (0–30 pts): ≥60% = 30, ≥50% = 20, ≥40% = 10, <40% = 0
+                let scoreWR = wr >= 60 ? 30 : wr >= 50 ? 20 : wr >= 40 ? 10 : 0;
+
+                // B) Profit Factor (0–25 pts): >2 = 25, >1.5 = 20, >1.0 = 12, <1 = 0
+                let scorePF = pf > 2 ? 25 : pf > 1.5 ? 20 : pf > 1.0 ? 12 : 0;
+
+                // C) Net PnL (0–20 pts): proporcional, normalizado por trades
+                //    (evita premiar acciones con muchos trades vs pocos)
+                let netPerTrade = trades > 0 ? net / trades : 0;
+                let scoreNet = netPerTrade > 5 ? 20 : netPerTrade > 2 ? 15 : netPerTrade > 0 ? 10 : netPerTrade > -1 ? 3 : 0;
+
+                // D) Muestra válida (0–10 pts): más trades = más confiable
+                let scoreSample = trades >= 5 ? 10 : trades >= 3 ? 7 : trades >= 2 ? 4 : trades >= 1 ? 2 : 0;
+
+                // E) Drawdown (0–10 pts): inversamente proporcional
+                let scoreDD = dd < 0.01 ? 10 : dd < 0.05 ? 8 : dd < 0.1 ? 5 : dd < 0.2 ? 2 : 0;
+
+                // F) Régimen de mercado (0–5 pts): favorece tendencias alcistas
+                let scoreRegime = regime === 'TREND_UP' ? 5 :
+                    regime === 'MOMENTUM_UP' ? 5 :
+                        regime === 'NEUTRAL' ? 3 :
+                            regime === 'TREND_DOWN' ? 1 : 2;
+
+                const score = scoreWR + scorePF + scoreNet + scoreSample + scoreDD + scoreRegime;
+
+                return {
+                    symbol: row.symbol, net, wr, trades, wins, pf: Math.round(pf * 100) / 100,
+                    dd, regime, gp, gl, gross, score: Math.round(score),
+                    scoreBreakdown: { wr: scoreWR, pf: scorePF, net: scoreNet, sample: scoreSample, dd: scoreDD, regime: scoreRegime }
+                };
+            }).sort((a, b) => b.score - a.score);
+
+            // ── 2. Clasificación ──────────────────────────────────────────────
+            const top = scored.filter(s => s.score >= 60);   // ✅ Recomendados
+            const mid = scored.filter(s => s.score >= 35 && s.score < 60);  // 🟡 Revisar
+            const bad = scored.filter(s => s.score < 35);    // ❌ Evitar
+
+            // Guardar para que el Gestor pueda mostrar estrellas y botón rápido
+            window._recommendedTop = top.map(s => s.symbol);
+            window._recommendedMid = mid.map(s => s.symbol);
+
+            // ── 3. UI ─────────────────────────────────────────────────────────
+            const overlay = document.createElement('div');
+            overlay.id = 'ndr-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);display:flex;justify-content:center;align-items:center;';
+
+            // helpers legibles
+            const regimeLabel = r => ({
+                'TREND_UP': '📈 Tendencia alcista', 'MOMENTUM_UP': '🚀 Momentum fuerte',
+                'NEUTRAL': '➡️ Sin tendencia clara', 'TREND_DOWN': '📉 Tendencia bajista',
+                'LATERAL': '↔️ Mercado lateral', 'RANGE': '🔄 Oscilando',
+            }[r] || '➡️ Sin tendencia');
+
+            const stars = score => {
+                const filled = Math.round(score / 20); // 0-5 estrellas
+                return '★'.repeat(filled) + '☆'.repeat(5 - filled);
+            };
+
+            const scoreRow = s => {
+                const winsOf10 = Math.round(s.wr / 10);
+                const ganoPor1 = s.pf.toFixed(1);
+                const netColor = s.net >= 0 ? '#00c781' : '#ef4444';
+                const netTxt = s.net >= 0 ? `ganó +$${s.net.toFixed(2)}` : `perdió -$${Math.abs(s.net).toFixed(2)}`;
+                const starColor = s.score >= 60 ? '#00c781' : s.score >= 35 ? '#fbbf24' : '#ef4444';
+                return `
+                <div style="border-radius:10px; padding:12px 14px; margin-bottom:8px;
+                    background:${s.score >= 60 ? 'rgba(0,199,129,0.07)' : s.score >= 35 ? 'rgba(251,191,36,0.07)' : 'rgba(239,68,68,0.05)'};
+                    border:1px solid ${s.score >= 60 ? 'rgba(0,199,129,0.2)' : s.score >= 35 ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.15)'};">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-weight:800;font-size:15px;color:white;">${s.symbol}</span>
+                        <span style="font-size:16px;color:${starColor};letter-spacing:2px;" title="Puntuación: ${s.score}/100">${stars(s.score)}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+                        <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Ganó de cada 10 intentos</div>
+                            <div style="color:white;font-weight:600;">${winsOf10} de 10 veces ✓&nbsp;&nbsp;<span style="color:#6e7681;font-size:10px;">(${s.wr}%)</span></div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Por cada $1 que perdió, ganó</div>
+                            <div style="color:${s.pf >= 1.5 ? '#00c781' : s.pf >= 1 ? '#fbbf24' : '#ef4444'};font-weight:600;">$${ganoPor1}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Ganancia real (descontando costos)</div>
+                            <div style="color:${netColor};font-weight:600;">${netTxt}</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Cómo estaba el mercado</div>
+                            <div style="color:white;font-weight:600;font-size:10px;">${regimeLabel(s.regime)}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:6px;font-size:10px;color:#6e7681;">
+                        Analizó ${s.trades} operacion${s.trades === 1 ? '' : 'es'} en la simulación de hoy
+                    </div>
+                </div>`;
+            };
+
+            overlay.innerHTML = `
+            <div style="background:#0d1117;border:1px solid #30363d;border-radius:16px;
+                padding:24px;width:92%;max-width:680px;max-height:88vh;overflow-y:auto;
+                box-shadow:0 24px 80px rgba(0,0,0,0.9);position:relative;">
+
+                <button onclick="document.getElementById('ndr-overlay').remove()"
+                    style="position:absolute;top:14px;right:16px;background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">&times;</button>
+
+                <!-- Encabezado -->
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <span style="font-size:32px;">📅</span>
+                    <div>
+                        <div style="font-size:18px;font-weight:800;color:white;">¿Cuáles empresas correr mañana?</div>
+                        <div style="font-size:12px;color:#6e7681;margin-top:3px;">
+                            El bot analizó <b style="color:#c084fc;">${scored.length} empresas</b> en la simulación de hoy y te da su recomendación.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instrucción central -->
+                <div style="background:rgba(192,132,252,0.08);border:1px solid rgba(192,132,252,0.25);border-radius:10px;
+                     padding:12px 16px;margin-bottom:18px;font-size:12px;color:#c9d1d9;line-height:1.7;">
+                    💡 <b>¿Qué hacer aquí?</b> Mira la lista de abajo. Elige qué empresas quieres activar para mañana y haz clic en uno de los botones al final.
+                    El bot solo operará las empresas que actives — las demás las ignorará.
+                </div>
+
+                <!-- SECCIÓN VERDE: Mejores -->
+                <div style="margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                        <span style="font-size:18px;">✅</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#00c781;">Para correr mañana — ${top.length} empresa${top.length === 1 ? '' : 's'}</div>
+                            <div style="font-size:10px;color:#6e7681;">Les fue bien hoy. Ganaron más de lo que perdieron y la estrategia funcionó.</div>
+                        </div>
+                    </div>
+                    ${top.length > 0 ? top.map(scoreRow).join('') :
+                    '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:14px;color:#6e7681;font-size:12px;">Ninguna empresa fue lo suficientemente consistente hoy como para recomendarla.</div>'}
+                </div>
+
+                <!-- SECCIÓN AMARILLA: Puede funcionar -->
+                ${mid.length > 0 ? `
+                <div style="margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="font-size:18px;">🟡</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#fbbf24;">Podrían funcionar — ${mid.length} empresa${mid.length === 1 ? '' : 's'}</div>
+                            <div style="font-size:10px;color:#6e7681;">Resultados mixtos. Pueden incluirse si quieres más opciones, pero con más riesgo.</div>
+                        </div>
+                    </div>
+                    <div id="ndr-mid-list" style="display:none;">${mid.map(scoreRow).join('')}</div>
+                    <button onclick="const m=document.getElementById('ndr-mid-list');const show=m.style.display==='none';m.style.display=show?'block':'none';this.textContent=show?'▲ Ocultar':'▼ Ver las ${mid.length} empresas intermedias';"
+                        style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;
+                               padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;width:100%;">
+                        ▼ Ver las ${mid.length} empresas intermedias
+                    </button>
+                </div>` : ''}
+
+                <!-- SECCIÓN ROJA: No usar -->
+                ${bad.length > 0 ? `
+                <div style="margin-bottom:22px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <span style="font-size:18px;">❌</span>
+                        <div>
+                            <div style="font-size:13px;font-weight:700;color:#ef4444;">Mejor no incluir — ${bad.length} empresa${bad.length === 1 ? '' : 's'}</div>
+                            <div style="font-size:10px;color:#6e7681;">Hoy la estrategia no funcionó bien en estas. El bot las dejará pausadas.</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                        ${bad.map(s => `<span style="background:#1c2128;border:1px solid #30363d;color:#6e7681;padding:3px 8px;border-radius:4px;font-size:11px;">${s.symbol}</span>`).join('')}
+                    </div>
+                </div>` : ''}
+
+                <!-- Botones de acción -->
+                <div style="border-top:1px solid #21262d;padding-top:16px;">
+                    <div style="font-size:11px;color:#6e7681;margin-bottom:10px;text-align:center;">
+                        👇 Elige una opción — el bot se actualizará automáticamente
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button onclick="applyNDRSelection(${JSON.stringify(top.map(s => s.symbol))})"
+                            style="flex:1;background:linear-gradient(135deg,#166534,#15803d);border:none;color:#bbf7d0;
+                                   padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1.4;">
+                            ✅ Usar solo las mejores<br>
+                            <span style="font-size:10px;opacity:0.8;">${top.length} empresa${top.length === 1 ? '' : 's'} con buen historial hoy</span>
+                        </button>
+                        ${mid.length > 0 ? `<button onclick="applyNDRSelection(${JSON.stringify(top.concat(mid).map(s => s.symbol))})"
+                            style="flex:1;background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;color:#ede9fe;
+                                   padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;line-height:1.4;">
+                            🟡 Usar todas las buenas + intermedias<br>
+                            <span style="font-size:10px;opacity:0.8;">${top.length + mid.length} empresas en total</span>
+                        </button>` : ''}
+                        <button onclick="document.getElementById('ndr-overlay').remove()"
+                            style="background:#1c2128;border:1px solid #30363d;color:#8b949e;padding:12px 14px;
+                                   border-radius:10px;font-size:12px;cursor:pointer;min-width:80px;">
+                            No cambiar nada
+                        </button>
+                    </div>
+                    <div style="font-size:10px;color:#4d5566;margin-top:10px;text-align:center;">
+                        ⚠️ El rendimiento pasado no garantiza resultados futuros. Úsalo como guía, no como certeza.
+                    </div>
+                </div>
+            </div>`;
+
+            document.body.appendChild(overlay);
+            overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+        }
+
+        async function applyNDRSelection(symbols) {
+            if (!symbols || symbols.length === 0) {
+                alert('No hay empresas seleccionadas para aplicar.');
+                return;
+            }
+            if (!confirm(`¿Aplicar selección de ${symbols.length} empresa(s) para el próximo ciclo?\n\n${symbols.join(', ')}\n\nEsto deshabilitará el resto.`)) return;
+
+            document.getElementById('ndr-overlay')?.remove();
+
+            // Esperar que configAssets esté cargado
+            if (!window.configAssets || !window.configAssets.assets) {
+                await _preloadConfigAssets();
+            }
+
+            const all = (window.configAssets?.assets || []).map(a => a.symbol);
+            const enableSet = new Set(symbols);
+            const toEnable = all.filter(s => enableSet.has(s));
+            const toDisable = all.filter(s => !enableSet.has(s));
+
+            // Deshabilitar todos primero, luego habilitar los seleccionados
+            await applyMassSymbolToggle(toDisable, false);
+            await applyMassSymbolToggle(toEnable, true);
+
+            _showFreezeToast(`📅 Selección aplicada<br><b>${symbols.length} empresas</b> habilitadas para mañana`, true);
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+
         _preloadConfigAssets();
         checkFreezeStatus();  // Verificar estado de congelación al cargar
         connectWS();
@@ -4070,8 +4523,13 @@
             style="position:relative; background:var(--bg-card); border:1px solid #3c404b; border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,0.8);">
             <div
                 style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
-                <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:10px;">
                     🎛️ Gestor Maestro de Símbolos
+                    <span id="sym-counter-badge" style="background:rgba(0,199,129,0.15); border:1px solid rgba(0,199,129,0.35); color:#00c781;
+                               padding:3px 11px; border-radius:20px; font-size:12px; font-weight:700;
+                               font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">
+                        ─ / ─
+                    </span>
                 </h3>
                 <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
             </div>
@@ -4094,6 +4552,18 @@
                     <button onclick="toggleAllSymbols(false)"
                         style="flex:1; background:#3a3f4b; color:white; border:none; padding:7px 4px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap;">❌
                         Ninguno</button>
+                </div>
+                <!-- Fila 1.5: Si hay recomendadas, botón rápido -->
+                <div id="rec-preset-row"
+                    style="display:none; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+                    <button onclick="applyRecommendedPreset()"
+                        style="width:100%; background:linear-gradient(135deg,#166534,#15803d); color:#bbf7d0;
+                               border:none; padding:8px 10px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"
+                        title="Activa en el gestor las empresas que el bot recomendó al terminar la simulación">
+                        🏆 Usar las Recomendadas de Hoy
+                        <span id="rec-preset-count"
+                            style="background:rgba(255,255,255,0.15); padding:1px 7px; border-radius:10px; margin-left:6px; font-size:10px;"></span>
+                    </button>
                 </div>
                 <!-- Fila 2: Packs de Entrenamiento IA -->
                 <div
@@ -4231,11 +4701,14 @@
                 if (data.status === 'success') {
                     let html = '';
                     const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
+                    const recSet = new Set(window._recommendedTop || []);
                     sortedAssets.forEach(item => {
                         const isEn = item.enabled !== false;
-                        // Damos ID únicoa cada tarjeta para actualizarlas sin redibujar todo
+                        const isRec = recSet.has(item.symbol);
+                        // Damos ID única cada tarjeta para actualizarlas sin redibujar todo
                         html += `
-                        <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}">
+                        <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}" style="position:relative;">
+                            ${isRec ? `<span style="position:absolute;top:3px;right:3px;font-size:9px;color:#fbbf24;line-height:1;" title="Recomendada para mañana">★</span>` : ''}
                             <div id="sms-${item.symbol}" class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
                             <label class="switch" style="transform: scale(0.85); margin-bottom: 2px;">
                                 <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
@@ -4245,9 +4718,58 @@
                     `;
                     });
                     listContainer.innerHTML = html;
+                    updateSymbolCounter();
+                    showRecPresetRow();
                 }
             } catch (e) {
                 listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1;">Error de conexión.</div>';
+            }
+        }
+
+        // ── Muestra/oculta el botón de recomendadas en el Gestor ─────────────
+        function showRecPresetRow() {
+            const row = document.getElementById('rec-preset-row');
+            const count = document.getElementById('rec-preset-count');
+            const recs = window._recommendedTop || [];
+            if (!row) return;
+            if (recs.length > 0) {
+                row.style.display = 'block';
+                if (count) count.textContent = `${recs.length} empresa${recs.length === 1 ? '' : 's'}`;
+            } else {
+                row.style.display = 'none';
+            }
+        }
+
+        // ── Aplica las recomendadas directamente desde el Gestor ─────────────
+        async function applyRecommendedPreset() {
+            const recs = window._recommendedTop || [];
+            if (recs.length === 0) {
+                alert('No hay recomendaciones todavía. Corre una simulación primero.');
+                return;
+            }
+            await applyNDRSelection(recs);
+        }
+
+        function updateSymbolCounter() {
+            const badge = document.getElementById('sym-counter-badge');
+            if (!badge || !window.configAssets || !window.configAssets.assets) return;
+            const total = window.configAssets.assets.length;
+            const enabled = window.configAssets.assets.filter(a => a.enabled !== false).length;
+            const pct = total > 0 ? Math.round(enabled / total * 100) : 0;
+            badge.textContent = `${enabled} / ${total}`;
+            // Color dinámico según cuántos están activos
+            if (enabled === 0) {
+                badge.style.background = 'rgba(239,68,68,0.15)';
+                badge.style.borderColor = 'rgba(239,68,68,0.4)';
+                badge.style.color = '#ef4444';
+            } else if (enabled === total) {
+                badge.style.background = 'rgba(0,199,129,0.15)';
+                badge.style.borderColor = 'rgba(0,199,129,0.35)';
+                badge.style.color = '#00c781';
+            } else {
+                badge.style.background = 'rgba(251,191,36,0.12)';
+                badge.style.borderColor = 'rgba(251,191,36,0.35)';
+                badge.style.color = '#fbbf24';
             }
         }
 
@@ -4285,6 +4807,7 @@
                             symDiv.classList.add('disabled');
                         }
                     }
+                    updateSymbolCounter();
                 } else {
                     alert("Error guardando el símbolo en el servidor: " + (data.message || "Desconocido"));
                     // Revert the toggle visually
@@ -4406,6 +4929,7 @@
                 }
             } finally {
                 document.body.removeChild(overlay);
+                updateSymbolCounter();
             }
         }
 
@@ -4427,156 +4951,185 @@
         }
 
         window.openWithdrawalBreakdown = function (totalNet, netToBank) {
-            const trm = 3766.30; // TRM Real del 28 de Febrero 2026
-            const spread = 80;    // Spread estimado de Hapi/Bancos (~2%)
+            const trm = 3766.30;
+            const spread = 80;
             const finalRate = trm - spread;
             const hapiFee = 1.99;
+            const capitalUSD = 10000; // capital simulado
 
             const netAfterHapi = totalNet - hapiFee;
             const copProfitOnly = netAfterHapi * finalRate;
-            const totalBalanceCOP = (10000 + netAfterHapi) * finalRate;
+            const totalBalanceCOP = (capitalUSD + netAfterHapi) * finalRate;
 
-            // ── Cálculo de Impuestos Colombianos ────────────────────────────
-            // Ganancias Ocasionales (retención > 2 años): 15%
-            // Renta ordinaria (trading frecuente < 2 años): ~28% (rango medio)
-            const TAX_GANANCIA_OCASIONAL = 0.15;   // Artículo 303 E.T.
-            const TAX_RENTA_ORDINARIA = 0.28;   // Tarifa efectiva estimada persona natural
-
-            const taxGO_USD = netAfterHapi * TAX_GANANCIA_OCASIONAL;
-            const taxRO_USD = netAfterHapi * TAX_RENTA_ORDINARIA;
-            const netAfterGO = netAfterHapi - taxGO_USD;
-            const netAfterRO = netAfterHapi - taxRO_USD;
-
-            const copAfterGO = netAfterGO * finalRate;
-            const copAfterRO = netAfterRO * finalRate;
-
-            // Calcular días totales basándonos en la UI
-            let daysText = "esta simulación";
+            // ── Rendimiento del capital ──────────────────────────────────────
+            const roiPct = (netAfterHapi / capitalUSD) * 100;   // retorno sobre capital
+            let diffDays = 25; // default
             try {
                 const s1 = document.getElementById('sim-start')?.textContent;
                 const s2 = document.getElementById('sim-end')?.textContent;
                 if (s1 && s1 !== '─') {
                     const d1 = new Date(s1);
                     const d2 = (s2 && s2 !== '─') ? new Date(s2) : new Date();
-                    const diffTime = Math.abs(d2 - d1);
-                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diffDays <= 0) diffDays = 1;
-                    daysText = `tan solo ${diffDays} días`;
+                    const diff = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+                    if (diff > 0) diffDays = diff;
                 }
             } catch (e) { }
 
+            const daysText = `${diffDays} días`;
+            const roiAnual = ((Math.pow(1 + roiPct / 100, 365 / diffDays) - 1) * 100);
+            const cdtAnual = 12.5;  // CDT promedio Colombia ~2026 (%)
+            const beatsCDT = roiAnual > cdtAnual;
+            const daysToDouble = roiPct > 0 ? Math.ceil(70 / (roiPct / diffDays)) : null; // regla del 70
+
+            // ── Impuestos ────────────────────────────────────────────────────
+            const TAX_GO = 0.15;
+            const TAX_RO = 0.28;
+            const taxGO_USD = netAfterHapi * TAX_GO;
+            const taxRO_USD = netAfterHapi * TAX_RO;
+            const copAfterGO = (netAfterHapi - taxGO_USD) * finalRate;
+            const copAfterRO = (netAfterHapi - taxRO_USD) * finalRate;
+
+            const fmtCOP = n => n.toLocaleString('es-CO', { maximumFractionDigits: 0 });
+            const roiColor = roiPct >= 0 ? '#00c781' : '#ef4444';
+
             const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(6px);';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);z-index:9999999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(10px);';
+            overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
 
             const modal = document.createElement('div');
-            modal.style.cssText = 'background:#1e212b; padding:30px; border-radius:16px; border:1px solid #3c404b; width:90%; max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative; max-height:90vh; overflow-y:auto;';
+            modal.style.cssText = `
+                background: linear-gradient(160deg, #0d1117 0%, #161b22 100%);
+                border: 1px solid #30363d;
+                border-radius: 20px;
+                width: 92%; max-width: 530px;
+                box-shadow: 0 30px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+                position: relative;
+                max-height: 92vh; overflow-y: auto;
+                font-family: 'Inter', sans-serif;
+            `;
 
             modal.innerHTML = `
-                <button onclick="this.parentElement.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
-                <h2 style="margin-top:0; color:#4caf50; display:flex; align-items:center; gap:10px;">
-                    🇨🇴 Retiro Estimado a Pesos
-                </h2>
+                <!-- Header -->
+                <div style="background:linear-gradient(135deg,#052e16,#0a3622);border-radius:20px 20px 0 0;padding:22px 24px 18px;border-bottom:1px solid rgba(0,199,129,0.2);">
+                    <button onclick="this.closest('.wd-overlay').remove()"
+                        class="wd-close"
+                        style="position:absolute;top:16px;right:18px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#aaa;font-size:16px;cursor:pointer;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;">&times;</button>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:30px;">🇨🇴</span>
+                        <div>
+                            <div style="font-size:17px;font-weight:800;color:#00c781;">¿Cómo va mi capital?</div>
+                            <div style="font-size:11px;color:#86efac;margin-top:2px;">Simulación de ${daysText} · Capital inicial $${capitalUSD.toLocaleString()} USD</div>
+                        </div>
+                    </div>
+                </div>
 
-                <div style="text-align:center; margin:15px 0 25px 0; padding:15px; background:rgba(0,188,212,0.1); border-radius:12px; border:1px dashed #00bcd4;">
-                    <p style="margin:0; color:#e0e0e0; font-size:14px; line-height:1.4;">
-                        Si esta fuera tu cuenta real, habrías ganado <b style="color:var(--green);">$${totalNet.toFixed(2)} USD</b> 
-                        en <span style="color:#00bcd4; font-weight:bold;">${daysText}</span>.
+                <div style="padding:22px 24px;display:flex;flex-direction:column;gap:18px;">
+
+                    <!-- ── BLOQUE 1: Rendimiento del capital ── -->
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">📈 Rendimiento del Capital</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+                            <div style="background:rgba(0,199,129,0.08);border:1px solid rgba(0,199,129,0.2);border-radius:12px;padding:12px;text-align:center;">
+                                <div style="font-size:10px;color:#86efac;margin-bottom:4px;">Retorno en ${daysText}</div>
+                                <div style="font-size:20px;font-weight:900;color:${roiColor};">${roiPct >= 0 ? '+' : ''}${roiPct.toFixed(2)}%</div>
+                            </div>
+                            <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:12px;text-align:center;">
+                                <div style="font-size:10px;color:#a5b4fc;margin-bottom:4px;">Rendimiento anual</div>
+                                <div style="font-size:20px;font-weight:900;color:${roiAnual >= 0 ? '#818cf8' : '#ef4444'};">${roiAnual >= 0 ? '+' : ''}${roiAnual.toFixed(1)}%</div>
+                            </div>
+                            <div style="background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:12px;text-align:center;">
+                                <div style="font-size:10px;color:#fde68a;margin-bottom:4px;">CDT Colombia</div>
+                                <div style="font-size:20px;font-weight:900;color:#fbbf24;">${cdtAnual}%</div>
+                            </div>
+                        </div>
+
+                        <!-- Comparativo vs CDT -->
+                        <div style="background:${beatsCDT ? 'rgba(0,199,129,0.06)' : 'rgba(239,68,68,0.06)'};border:1px solid ${beatsCDT ? 'rgba(0,199,129,0.25)' : 'rgba(239,68,68,0.25)'};border-radius:10px;padding:10px 14px;font-size:12px;color:${beatsCDT ? '#86efac' : '#fca5a5'};">
+                            ${beatsCDT
+                    ? `✅ Este rendimiento <b>supera al CDT</b> por <b>${(roiAnual - cdtAnual).toFixed(1)}%</b> anualizado — mejor que tener el dinero en un banco.`
+                    : `⚠️ Este rendimiento está <b>por debajo del CDT</b> (${cdtAnual}%). El capital en un CDT hubiera dado más en este período.`}
+                        </div>
+
+                        ${daysToDouble ? `
+                        <div style="font-size:11px;color:#6e7681;margin-top:8px;text-align:center;">
+                            📊 Con este ritmo, tu capital se duplicaría en aproximadamente <b style="color:#c9d1d9;">~${daysToDouble} días</b>
+                        </div>` : ''}
+                    </div>
+
+                    <!-- ── BLOQUE 2: Lo que recibirías en COP ── -->
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">💵 Lo que recibirías si retiras</div>
+                        <div style="background:rgba(255,255,255,0.03);border:1px solid #30363d;border-radius:12px;overflow:hidden;">
+                            <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #21262d;">
+                                <span style="color:#8b949e;font-size:12px;">Ganancia en USD (antes de fees)</span>
+                                <span style="font-weight:700;color:#00c781;">+$${totalNet.toFixed(2)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #21262d;">
+                                <span style="color:#8b949e;font-size:12px;">Fee de retiro Hapi</span>
+                                <span style="font-weight:700;color:#f97316;">-$${hapiFee.toFixed(2)}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #21262d;">
+                                <span style="color:#8b949e;font-size:12px;">TRM · Tasa Hapi (spread incl.)</span>
+                                <span style="color:#60a5fa;font-size:12px;">$${trm.toLocaleString('es-CO')} · $${finalRate.toLocaleString('es-CO')}</span>
+                            </div>
+                            <!-- Ganancia bruta COP -->
+                            <div style="background:linear-gradient(135deg,rgba(0,199,129,0.12),rgba(0,199,129,0.05));padding:16px 14px;text-align:center;">
+                                <div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Solo tu ganancia (sin impuestos)</div>
+                                <div style="font-size:28px;font-weight:900;color:#00c781;font-family:'JetBrains Mono',monospace;letter-spacing:-1px;">
+                                    $${fmtCOP(copProfitOnly)} COP
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── BLOQUE 3: Impuestos DIAN ── -->
+                    <div>
+                        <div style="font-size:10px;font-weight:700;color:#6e7681;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">🏛️ Impuestos en Colombia (DIAN)</div>
+                        <div style="font-size:11px;color:#f97316;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;">
+                            ⚠️ Hapi NO declara por ti. Eres responsable ante la DIAN cada año.
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div style="border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:12px;background:rgba(251,191,36,0.04);">
+                                <div style="font-size:10px;color:#fbbf24;font-weight:700;margin-bottom:3px;">OPCIÓN A — 15%</div>
+                                <div style="font-size:9px;color:#6e7681;margin-bottom:8px;">Acciones &gt; 2 años · Art. 303 E.T.</div>
+                                <div style="font-size:10px;color:#8b949e;">Impuesto: <span style="color:#f97316;">-$${taxGO_USD.toFixed(2)} USD</span></div>
+                                <div style="font-size:14px;font-weight:800;color:#fde68a;margin-top:4px;">$${fmtCOP(copAfterGO)} COP</div>
+                            </div>
+                            <div style="border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;background:rgba(239,68,68,0.04);">
+                                <div style="font-size:10px;color:#f87171;font-weight:700;margin-bottom:3px;">OPCIÓN B — 28%</div>
+                                <div style="font-size:9px;color:#6e7681;margin-bottom:8px;">Trading frecuente · Renta ordinaria</div>
+                                <div style="font-size:10px;color:#8b949e;">Impuesto: <span style="color:#ef4444;">-$${taxRO_USD.toFixed(2)} USD</span></div>
+                                <div style="font-size:14px;font-weight:800;color:#fca5a5;margin-top:4px;">$${fmtCOP(copAfterRO)} COP</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── BLOQUE 4: Balance total si retira todo ── -->
+                    <div style="background:linear-gradient(135deg,rgba(3,169,244,0.1),rgba(3,169,244,0.04));border:1px solid rgba(3,169,244,0.25);border-radius:12px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <div style="font-size:10px;color:#7dd3fc;text-transform:uppercase;letter-spacing:1px;">Balance total si retiras TODO</div>
+                            <div style="font-size:10px;color:#6e7681;margin-top:2px;">(capital + ganancia · sin impuestos)</div>
+                        </div>
+                        <div style="font-size:22px;font-weight:900;color:#38bdf8;font-family:'JetBrains Mono',monospace;letter-spacing:-1px;">
+                            $${fmtCOP(totalBalanceCOP)} COP
+                        </div>
+                    </div>
+
+                    <p style="font-size:10px;color:#4d5566;text-align:center;margin:0;">
+                        * TRM y tasas pueden variar. Consulta un contador para declaración exacta.
                     </p>
+
                 </div>
-                
-                <!-- Desglose base -->
-                <div style="margin:20px 0; background:rgba(255,255,255,0.03); border-radius:12px; padding:15px; border:1px solid rgba(255,255,255,0.05);">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span style="color:#888;">Utilidad Neta (USD):</span>
-                        <span style="font-weight:bold; color:var(--green);">$${totalNet.toFixed(2)}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span style="color:#888;">Costo de Retiro (Hapi):</span>
-                        <span style="font-weight:bold; color:#ff9800;">-$${hapiFee.toFixed(2)}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-                        <span style="color:#888;">TRM Actual:</span>
-                        <span style="font-weight:bold; color:#03a9f4;">$${trm.toLocaleString('es-CO')} COP</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.85em;">
-                        <span style="color:#666;">Tasa Hapi (Spread incl.):</span>
-                        <span style="color:#666;">$${finalRate.toLocaleString('es-CO')} COP</span>
-                    </div>
-                </div>
-
-                <!-- Ganancia bruta en COP -->
-                <div style="text-align:center; padding:16px; background:rgba(76, 175, 80, 0.1); border-radius:12px; border:1px solid rgba(76, 175, 80, 0.2); margin-bottom:20px;">
-                    <div style="font-size:11px; color:#81c784; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Ganancia Bruta en Pesos (sin impuestos)</div>
-                    <div style="font-size:26px; font-weight:bold; color:#4caf50; font-family:'JetBrains Mono', monospace;">
-                        $${copProfitOnly.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP
-                    </div>
-                </div>
-
-                <!-- ⚠️ Sección de Impuestos Colombianos -->
-                <div style="background:rgba(255,152,0,0.07); border:1px solid rgba(255,152,0,0.3); border-radius:12px; padding:16px; margin-bottom:20px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-                        <span style="font-size:16px;">🏛️</span>
-                        <span style="font-weight:bold; color:#ffb74d; font-size:13px;">Impuestos en Colombia (DIAN)</span>
-                    </div>
-                    <div style="font-size:11px; color:#ff9800; background:rgba(255,152,0,0.1); padding:8px 10px; border-radius:8px; margin-bottom:12px; line-height:1.5;">
-                        ⚠️ <b>Hapi NO paga impuestos colombianos por ti.</b> Eres responsable de declarar estas ganancias ante la DIAN cada año.
-                    </div>
-
-                    <!-- Opción 1: Ganancias Ocasionales -->
-                    <div style="margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #ff9800;">
-                        <div style="font-size:11px; color:#aaa; margin-bottom:6px; font-weight:bold;">
-                            OPCIÓN A — Ganancias Ocasionales (Art. 303 E.T.)
-                        </div>
-                        <div style="font-size:10px; color:#666; margin-bottom:8px;">
-                            Si mantuviste las acciones <b style="color:#aaa;">más de 2 años</b> → aplica tarifa fija del 15%.
-                            (Este bot hace trading frecuente, así que probablemente NO aplica)
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                            <span style="color:#888;">Impuesto 15% sobre $${netAfterHapi.toFixed(2)} USD:</span>
-                            <span style="color:#ff9800;">-$${taxGO_USD.toFixed(2)} USD</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; padding-top:6px; border-top:1px solid rgba(255,255,255,0.05);">
-                            <span style="color:#ccc;">Neto después de impuesto:</span>
-                            <span style="color:#ffd54f;">$${copAfterGO.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP</span>
-                        </div>
-                    </div>
-
-                    <!-- Opción 2: Renta Ordinaria -->
-                    <div style="padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #ef5350;">
-                        <div style="font-size:11px; color:#aaa; margin-bottom:6px; font-weight:bold;">
-                            OPCIÓN B — Renta Ordinaria (trading frecuente)
-                        </div>
-                        <div style="font-size:10px; color:#666; margin-bottom:8px;">
-                            Si las posiciones se mantuvieron <b style="color:#aaa;">menos de 2 años</b> → se suma a tu renta ordinaria.
-                            Tarifa estimada ~28% (varía según ingresos totales anuales).
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-                            <span style="color:#888;">Impuesto ~28% sobre $${netAfterHapi.toFixed(2)} USD:</span>
-                            <span style="color:#ef5350;">-$${taxRO_USD.toFixed(2)} USD</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; padding-top:6px; border-top:1px solid rgba(255,255,255,0.05);">
-                            <span style="color:#ccc;">Neto después de impuesto:</span>
-                            <span style="color:#ff8a65;">$${copAfterRO.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Balance total -->
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:rgba(3, 169, 244, 0.1); border-radius:12px; border:1px solid rgba(3, 169, 244, 0.2);">
-                    <span style="font-size:12px; color:#4fc3f7;">BALANCE TOTAL SI RETIRAS TODO:</span>
-                    <span style="font-size:18px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono', monospace;">
-                        $${totalBalanceCOP.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP
-                    </span>
-                </div>
-
-                <p style="font-size:10px; color:#555; margin-top:15px; text-align:center; line-height:1.4;">
-                    * Valores aproximados. TRM y tasas impositivas pueden variar. Consulta un contador para declaración exacta.
-                </p>
             `;
+
+            // El botón de cerrar necesita acceso al overlay
+            overlay.classList.add('wd-overlay');
+            modal.querySelector('.wd-close').onclick = () => overlay.remove();
 
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
         }
+
     </script>
 
     <!-- Symbol Selection Modal (Para Live Paper) -->

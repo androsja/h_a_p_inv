@@ -607,6 +607,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia C: Reversión de Bandas de Bollinger (Toque Inferior).")
 
+        # ── ESTRATEGIA D: Cruce de Medias Móviles (Clásica) ────────────────────
+        ema_crossover = (ema_f_prev < ema_s_prev) and (ema_f_now > ema_s_now)
+        # Filtro adicional: Solo si precio > EMA 200 y RSI saludable
+        if signal != SIGNAL_BUY and ema_crossover and macro_bullish and (35 < rsi_now < 70):
+            signal = SIGNAL_BUY
+            prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
+            confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia D: Cruce EMA Clásico ({config.EMA_FAST}/{config.EMA_SLOW}).")
+
     if effective_regime in ("TREND_DOWN", "CHAOS"):
         # AGRESIVO V3: Permitimos compras en tendencia bajista SOLO SI es un "Flash Crash"
         # detectado por un Z-Score extremo o una desviación gigante de BB.

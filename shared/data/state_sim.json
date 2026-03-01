@@ -1,2506 +1,327 @@
 {
-  "NKE": {
+  "ZM": {
     "mode": "SIMULATED",
-    "symbol": "NKE",
-    "session": 17,
-    "iteration": 2832,
-    "timestamp": "2026-02-23T20:00:00+00:00",
-    "bid": 62.92,
-    "ask": 62.93,
+    "symbol": "ZM",
+    "session": 31,
+    "iteration": 0,
+    "timestamp": "2026-03-01T22:38:39.168371+00:00",
+    "bid": 73.935,
+    "ask": 73.945,
     "signal": "HOLD",
     "regime": "NEUTRAL",
-    "rsi": 53.71115363309602,
-    "ema_fast": 62.91141483146433,
-    "ema_slow": 62.8540340686213,
-    "ema_200": 63.827418072958686,
-    "macd_hist": -0.009403681498832028,
-    "vwap": 64.48561012214238,
-    "atr": 0.1162559636505136,
+    "rsi": 50,
+    "ema_fast": 0,
+    "ema_slow": 0,
+    "ema_200": 0,
+    "macd_hist": 0,
+    "vwap": 0,
+    "atr": 0,
     "confirmations": [],
-    "initial_cash": 10000.0,
-    "available_cash": 9989.078186,
+    "initial_cash": 10020.355837,
+    "available_cash": 10020.355837,
     "settlement": 0,
-    "win_rate": 0.0,
-    "total_trades": 1,
-    "winning_trades": 0,
-    "gross_profit": 0.0,
-    "gross_loss": -10.921813999999905,
-    "total_sim_trades": 91,
-    "total_sim_wins": 36,
-    "total_sim_pnl": 393.586261,
+    "win_rate": 50.0,
+    "total_trades": 4,
+    "winning_trades": 2,
+    "gross_profit": 38.38200999999992,
+    "gross_loss": -18.026173000000007,
+    "total_sim_trades": 236,
+    "total_sim_wins": 116,
+    "total_sim_pnl": 1570.603530999999,
     "position": null,
     "trades": [
       {
-        "symbol": "AAPL",
+        "symbol": "ZM",
         "side": "BUY",
-        "price": 256.7,
-        "qty": 1.9487,
+        "price": 89.29,
+        "qty": 5.6022,
         "pnl": 0.0,
-        "time": "18:43:51"
+        "time": "22:38:24",
+        "reason": "BUY: 2 confluencias",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-9.55 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=78%)"
+        ],
+        "ml_prob": 0.5332384003957453,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.29,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "AAPL",
-        "side": "SELL",
-        "price": 257.24,
-        "qty": 1.9487,
-        "pnl": 0.8822980000000399,
-        "time": "18:43:55"
-      },
-      {
-        "symbol": "AAPL",
+        "symbol": "ZM",
         "side": "BUY/SELL",
-        "price": 257.37,
-        "qty": 1.9487,
-        "pnl": 1.549216500000031,
-        "time": "18:43:55"
+        "price": 92.185,
+        "qty": 5.6022,
+        "pnl": 16.44245700000001,
+        "time": "22:38:24",
+        "reason": "",
+        "confirmations": [],
+        "ml_prob": 0.0,
+        "conf_mult": 1.0,
+        "entry_reason": "",
+        "entry_price": 0.0,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "AAPL",
-        "side": "BUY",
-        "price": 271.07,
-        "qty": 1.8455,
-        "pnl": 0.0,
-        "time": "18:44:09"
-      },
-      {
-        "symbol": "AAPL",
+        "symbol": "ZM",
         "side": "SELL",
-        "price": 273.74,
-        "qty": 1.8455,
-        "pnl": 4.757485000000029,
-        "time": "18:44:10"
+        "price": 92.14,
+        "qty": 5.6022,
+        "pnl": 15.796269999999968,
+        "time": "22:38:25",
+        "reason": "\ud83c\udfaf TAKE_PROFIT alcanzado ($92.20 \u2265 $91.93) PnL=+16.55",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-9.55 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=78%)"
+        ],
+        "ml_prob": 0.5332384003957453,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.25,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "AAPL",
-        "side": "BUY/SELL",
-        "price": 273.88,
-        "qty": 1.8455,
-        "pnl": 5.434997499999987,
-        "time": "18:44:10"
-      },
-      {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY",
-        "price": 480.08,
-        "qty": 1.042,
+        "price": 89.8,
+        "qty": 5.5707,
         "pnl": 0.0,
-        "time": "18:44:49"
+        "time": "22:38:27",
+        "reason": "BUY: 2 confluencias",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-2.70 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=61%)"
+        ],
+        "ml_prob": 0.4826849548340947,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.8,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "SELL",
-        "price": 471.54,
-        "qty": 1.042,
-        "pnl": -9.068679999999963,
-        "time": "18:44:50"
+        "price": 88.3,
+        "qty": 5.5707,
+        "pnl": -8.52605,
+        "time": "22:38:27",
+        "reason": "\ud83d\uded1 STOP_LOSS alcanzado ($88.39 \u2264 $88.41) PnL=-7.63",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-2.70 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=61%)"
+        ],
+        "ml_prob": 0.4826849548340947,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.755,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY/SELL",
-        "price": 471.78,
-        "qty": 1.042,
-        "pnl": -8.403730000000056,
-        "time": "18:44:50"
+        "price": 88.34,
+        "qty": 5.5707,
+        "pnl": -7.882540499999957,
+        "time": "22:38:27",
+        "reason": "",
+        "confirmations": [],
+        "ml_prob": 0.0,
+        "conf_mult": 1.0,
+        "entry_reason": "",
+        "entry_price": 0.0,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY",
-        "price": 468.62,
-        "qty": 1.0675,
+        "price": 83.98,
+        "qty": 5.957,
         "pnl": 0.0,
-        "time": "18:45:00"
+        "time": "22:38:32",
+        "reason": "BUY: 2 confluencias",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-2.63 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=75%)"
+        ],
+        "ml_prob": 0.519604639103314,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 83.98,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY/SELL",
-        "price": 482.755,
-        "qty": 1.0675,
-        "pnl": 15.339975000000003,
-        "time": "18:45:03"
+        "price": 87.845,
+        "qty": 5.957,
+        "pnl": 23.291869999999978,
+        "time": "22:38:33",
+        "reason": "",
+        "confirmations": [],
+        "ml_prob": 0.0,
+        "conf_mult": 1.0,
+        "entry_reason": "",
+        "entry_price": 0.0,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "SELL",
-        "price": 482.51,
-        "qty": 1.0675,
-        "pnl": 14.657574999999984,
-        "time": "18:45:04"
+        "price": 87.8,
+        "qty": 5.957,
+        "pnl": 22.58573999999996,
+        "time": "22:38:33",
+        "reason": "\ud83c\udfaf TAKE_PROFIT alcanzado ($87.86 \u2265 $86.45) PnL=+23.41",
+        "confirmations": [
+          "\ud83d\udd25 [\ud83d\udcc9 Tendencia Bajista] COMPRA DE CAPITULACI\u00d3N: Z-Score=-2.63 con patr\u00f3n de reversi\u00f3n.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=75%)"
+        ],
+        "ml_prob": 0.519604639103314,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 83.935,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY",
-        "price": 416.41,
-        "qty": 1.2013,
+        "price": 89.54,
+        "qty": 5.5869,
         "pnl": 0.0,
-        "time": "18:45:10"
+        "time": "22:38:33",
+        "reason": "BUY: 2 confluencias",
+        "confirmations": [
+          "\ud83c\udfaf [\ud83d\ude80 Tendencia Alcista] Estrategia A: Rebote Oliver V\u00e9lez en la EMA 20.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=85%)"
+        ],
+        "ml_prob": 0.5021514497408002,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.54,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "SELL",
-        "price": 409.51,
-        "qty": 1.2013,
-        "pnl": -8.458970000000042,
-        "time": "18:45:10"
+        "price": 87.87,
+        "qty": 5.5869,
+        "pnl": -9.50012300000001,
+        "time": "22:38:34",
+        "reason": "\ud83d\uded1 STOP_LOSS alcanzado ($87.95 \u2264 $88.15) PnL=-8.60",
+        "confirmations": [
+          "\ud83c\udfaf [\ud83d\ude80 Tendencia Alcista] Estrategia A: Rebote Oliver V\u00e9lez en la EMA 20.",
+          "\ud83e\udde0 Red Neuronal: aprobado (P=85%)"
+        ],
+        "ml_prob": 0.5021514497408002,
+        "conf_mult": 1.0,
+        "entry_reason": "BUY: 2 confluencias",
+        "entry_price": 89.495,
+        "date": "2026-03-01"
       },
       {
-        "symbol": "MSFT",
+        "symbol": "ZM",
         "side": "BUY/SELL",
-        "price": 409.71,
-        "qty": 1.2013,
-        "pnl": -7.802443500000006,
-        "time": "18:45:10"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 388.45,
-        "qty": 1.2878,
-        "pnl": 0.0,
-        "time": "18:45:30"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY/SELL",
-        "price": 400.885,
-        "qty": 1.2878,
-        "pnl": 16.264913999999994,
-        "time": "18:45:33"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "SELL",
-        "price": 400.68,
-        "qty": 1.2878,
-        "pnl": 15.579794000000025,
-        "time": "18:45:33"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 393.37,
-        "qty": 1.2717,
-        "pnl": 0.0,
-        "time": "18:45:34"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "BUY",
-        "price": 316.23,
-        "qty": 1.5819,
-        "pnl": 0.0,
-        "time": "18:47:09"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "SELL",
-        "price": 315.05,
-        "qty": 1.5819,
-        "pnl": -2.0366420000000107,
-        "time": "18:47:11"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "BUY/SELL",
-        "price": 315.21,
-        "qty": 1.5819,
-        "pnl": -1.3604340000000217,
-        "time": "18:47:11"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "BUY",
-        "price": 183.47,
-        "qty": 2.7267,
-        "pnl": 0.0,
-        "time": "18:48:05"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "BUY/SELL",
-        "price": 189.48,
-        "qty": 2.7267,
-        "pnl": 16.646503499999973,
-        "time": "18:48:06"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "SELL",
-        "price": 189.39,
-        "qty": 2.7267,
-        "pnl": 15.972063999999966,
-        "time": "18:48:06"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 429.91,
-        "qty": 1.1636,
-        "pnl": 0.0,
-        "time": "18:48:36"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 443.585,
-        "qty": 1.1636,
-        "pnl": 16.162403999999984,
-        "time": "18:48:37"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 443.36,
-        "qty": 1.1636,
-        "pnl": 15.480419999999986,
-        "time": "18:48:37"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 424.57,
-        "qty": 1.1783,
-        "pnl": 0.0,
-        "time": "18:48:47"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 437.24,
-        "qty": 1.1783,
-        "pnl": 15.182395499999988,
-        "time": "18:48:48"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 437.02,
-        "qty": 1.1783,
-        "pnl": 14.499834999999985,
-        "time": "18:48:48"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 396.32,
-        "qty": 1.2622,
-        "pnl": 0.0,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 410.105,
-        "qty": 1.2622,
-        "pnl": 17.645556000000024,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 409.9,
-        "qty": 1.2622,
-        "pnl": 16.97067599999998,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 406.21,
-        "qty": 1.2315,
-        "pnl": 0.0,
-        "time": "18:49:16"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 407.77,
-        "qty": 1.2315,
-        "pnl": 1.751140000000003,
-        "time": "18:49:17"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 407.97,
-        "qty": 1.2315,
-        "pnl": 2.413740000000045,
-        "time": "18:49:17"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 646.3,
-        "qty": 0.774,
-        "pnl": 0.0,
-        "time": "18:49:53"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 665.53,
-        "qty": 0.774,
-        "pnl": 15.135569999999962,
-        "time": "18:49:55"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 665.2,
-        "qty": 0.774,
-        "pnl": 14.458600000000072,
-        "time": "18:49:55"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 730.765,
-        "qty": 0.7618,
-        "pnl": 56.71600999999995,
-        "time": "18:50:00"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 730.4,
-        "qty": 0.7618,
-        "pnl": 63.887380000000014,
-        "time": "18:50:00"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 710.26,
-        "qty": 0.7043,
-        "pnl": 0.0,
-        "time": "18:50:03"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 696.06,
-        "qty": 0.7043,
-        "pnl": -10.171060000000033,
-        "time": "18:50:04"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 696.41,
-        "qty": 0.7043,
-        "pnl": -9.504528500000003,
-        "time": "18:50:04"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 656.64,
-        "qty": 0.7618,
-        "pnl": 0.0,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 669.3,
-        "qty": 0.7474,
-        "pnl": 0.0,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 657.37,
-        "qty": 0.7474,
-        "pnl": -9.086481999999963,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 657.7,
-        "qty": 0.7474,
-        "pnl": -8.41946099999999,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 675.8,
-        "qty": 0.7402,
-        "pnl": 0.0,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 662.48,
-        "qty": 0.7402,
-        "pnl": -10.029463999999953,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 662.81,
-        "qty": 0.7402,
-        "pnl": -9.363530000000067,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 666.08,
-        "qty": 0.751,
-        "pnl": 0.0,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 654.58,
-        "qty": 0.751,
-        "pnl": -8.8065,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 654.91,
-        "qty": 0.751,
-        "pnl": -8.137085000000027,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 634.15,
-        "qty": 0.7888,
-        "pnl": 0.0,
-        "time": "18:50:17"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 654.055,
-        "qty": 0.7888,
-        "pnl": 15.94953599999993,
-        "time": "18:50:20"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 653.73,
-        "qty": 0.7888,
-        "pnl": 15.274704000000032,
-        "time": "18:50:20"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "BUY",
-        "price": 84.65,
-        "qty": 5.9095,
-        "pnl": 0.0,
-        "time": "18:51:20"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "BUY/SELL",
-        "price": 90.735,
-        "qty": 5.9095,
-        "pnl": 36.195687500000005,
-        "time": "18:51:21"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "SELL",
-        "price": 90.69,
-        "qty": 5.9095,
-        "pnl": 35.52337999999995,
-        "time": "18:51:21"
-      },
-      {
-        "symbol": "AMD",
-        "side": "BUY",
-        "price": 210.55,
-        "qty": 2.3759,
-        "pnl": 0.0,
-        "time": "18:52:16"
-      },
-      {
-        "symbol": "AMD",
-        "side": "SELL",
-        "price": 213.07,
-        "qty": 2.3759,
-        "pnl": 5.817267999999957,
-        "time": "18:52:17"
-      },
-      {
-        "symbol": "AMD",
-        "side": "BUY/SELL",
-        "price": 213.18,
-        "qty": 2.3759,
-        "pnl": 6.498086500000033,
-        "time": "18:52:17"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 335.41,
-        "qty": 1.4914,
-        "pnl": 0.0,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 329.21,
-        "qty": 1.4914,
-        "pnl": -9.416680000000069,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 329.37,
-        "qty": 1.4914,
-        "pnl": -8.761975,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 300.31,
-        "qty": 1.6658,
-        "pnl": 0.0,
-        "time": "18:55:04"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 302.62,
-        "qty": 1.6658,
-        "pnl": 3.6779980000000037,
-        "time": "18:55:15"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 302.77,
-        "qty": 1.6658,
-        "pnl": 4.3560670000000155,
-        "time": "18:55:15"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 321.85,
-        "qty": 1.5543,
-        "pnl": 0.0,
-        "time": "18:55:26"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 320.62,
-        "qty": 1.5543,
-        "pnl": -2.0817890000000285,
-        "time": "18:55:30"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 320.78,
-        "qty": 1.5543,
-        "pnl": -1.406641500000046,
-        "time": "18:55:30"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 303.65,
-        "qty": 1.6475,
-        "pnl": 0.0,
-        "time": "18:55:45"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 300.92,
-        "qty": 1.6475,
-        "pnl": -4.667674999999936,
-        "time": "18:55:46"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 301.07,
-        "qty": 1.6475,
-        "pnl": -3.9951875000000188,
-        "time": "18:55:46"
-      },
-      {
-        "symbol": "WMT",
-        "side": "BUY",
-        "price": 125.06,
-        "qty": 4.0002,
-        "pnl": 0.0,
-        "time": "18:57:42"
-      },
-      {
-        "symbol": "WMT",
-        "side": "BUY/SELL",
-        "price": 128.945,
-        "qty": 4.0002,
-        "pnl": 15.800789999999957,
-        "time": "18:57:43"
-      },
-      {
-        "symbol": "WMT",
-        "side": "SELL",
-        "price": 128.88,
-        "qty": 4.0002,
-        "pnl": 15.110763999999975,
-        "time": "18:57:43"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY",
-        "price": 67.96,
-        "qty": 7.3605,
-        "pnl": 0.0,
-        "time": "18:58:21"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY/SELL",
-        "price": 70.05,
-        "qty": 7.3605,
-        "pnl": 15.604259999999929,
-        "time": "18:58:24"
-      },
-      {
-        "symbol": "KO",
-        "side": "SELL",
-        "price": 70.01,
-        "qty": 7.3605,
-        "pnl": 14.919025000000083,
-        "time": "18:58:24"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY",
-        "price": 72.53,
-        "qty": 6.8975,
-        "pnl": 0.0,
-        "time": "18:58:36"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY/SELL",
-        "price": 74.715,
-        "qty": 6.8975,
-        "pnl": 15.346937500000058,
-        "time": "18:58:43"
-      },
-      {
-        "symbol": "KO",
-        "side": "SELL",
-        "price": 74.68,
-        "qty": 6.8975,
-        "pnl": 14.65962500000004,
-        "time": "18:58:43"
-      },
-      {
-        "symbol": "PEP",
-        "side": "BUY",
-        "price": 146.78,
-        "qty": 3.4082,
-        "pnl": 0.0,
-        "time": "18:59:43"
-      },
-      {
-        "symbol": "PEP",
-        "side": "SELL",
-        "price": 144.33,
-        "qty": 3.4082,
-        "pnl": -8.52008999999996,
-        "time": "18:59:51"
-      },
-      {
-        "symbol": "PEP",
-        "side": "BUY/SELL",
-        "price": 144.4,
-        "qty": 3.4082,
-        "pnl": -7.855901000000023,
-        "time": "18:59:51"
-      },
-      {
-        "symbol": "NKE",
-        "side": "BUY",
-        "price": 66.07,
-        "qty": 7.5717,
-        "pnl": 0.0,
-        "time": "19:01:32"
-      },
-      {
-        "symbol": "NKE",
-        "side": "SELL",
-        "price": 64.65,
-        "qty": 7.5717,
-        "pnl": -10.921813999999905,
-        "time": "19:01:33"
-      },
-      {
-        "symbol": "NKE",
-        "side": "BUY/SELL",
-        "price": 64.68,
-        "qty": 7.5717,
-        "pnl": -10.259653499999922,
-        "time": "19:01:33"
+        "price": 87.91,
+        "qty": 5.5869,
+        "pnl": -8.855236500000045,
+        "time": "22:38:34",
+        "reason": "",
+        "confirmations": [],
+        "ml_prob": 0.0,
+        "conf_mult": 1.0,
+        "entry_reason": "",
+        "entry_price": 0.0,
+        "date": "2026-03-01"
       }
     ],
-    "candles": [
-      {
-        "time": 1771859100,
-        "open": 62.67,
-        "high": 62.855,
-        "low": 62.66,
-        "close": 62.69,
-        "volume": 10237
-      },
-      {
-        "time": 1771859400,
-        "open": 62.69,
-        "high": 62.7,
-        "low": 62.39,
-        "close": 62.43,
-        "volume": 16589
-      },
-      {
-        "time": 1771859700,
-        "open": 62.41,
-        "high": 62.44,
-        "low": 62.21,
-        "close": 62.245,
-        "volume": 13167
-      },
-      {
-        "time": 1771860000,
-        "open": 62.32,
-        "high": 62.4,
-        "low": 62.18,
-        "close": 62.23,
-        "volume": 11543
-      },
-      {
-        "time": 1771860300,
-        "open": 62.22,
-        "high": 62.22,
-        "low": 62.055,
-        "close": 62.16,
-        "volume": 8424
-      },
-      {
-        "time": 1771860600,
-        "open": 62.16,
-        "high": 62.34,
-        "low": 62.1,
-        "close": 62.2,
-        "volume": 7230
-      },
-      {
-        "time": 1771860900,
-        "open": 62.18,
-        "high": 62.27,
-        "low": 62.08,
-        "close": 62.27,
-        "volume": 11915
-      },
-      {
-        "time": 1771861200,
-        "open": 62.28,
-        "high": 62.29,
-        "low": 62.15,
-        "close": 62.175,
-        "volume": 13791
-      },
-      {
-        "time": 1771861500,
-        "open": 62.18,
-        "high": 62.34,
-        "low": 62.115,
-        "close": 62.34,
-        "volume": 17116
-      },
-      {
-        "time": 1771861800,
-        "open": 62.33,
-        "high": 62.57,
-        "low": 62.33,
-        "close": 62.5,
-        "volume": 14145
-      },
-      {
-        "time": 1771862100,
-        "open": 62.51,
-        "high": 62.61,
-        "low": 62.45,
-        "close": 62.54,
-        "volume": 9619
-      },
-      {
-        "time": 1771862400,
-        "open": 62.55,
-        "high": 62.57,
-        "low": 62.39,
-        "close": 62.455,
-        "volume": 10684
-      },
-      {
-        "time": 1771862700,
-        "open": 62.465,
-        "high": 62.47,
-        "low": 62.27,
-        "close": 62.315,
-        "volume": 14123
-      },
-      {
-        "time": 1771863000,
-        "open": 62.31,
-        "high": 62.39,
-        "low": 62.31,
-        "close": 62.335,
-        "volume": 12728
-      },
-      {
-        "time": 1771863300,
-        "open": 62.325,
-        "high": 62.395,
-        "low": 62.26,
-        "close": 62.385,
-        "volume": 14585
-      },
-      {
-        "time": 1771863600,
-        "open": 62.38,
-        "high": 62.49,
-        "low": 62.37,
-        "close": 62.4,
-        "volume": 18190
-      },
-      {
-        "time": 1771863900,
-        "open": 62.4,
-        "high": 62.495,
-        "low": 62.31,
-        "close": 62.42,
-        "volume": 25137
-      },
-      {
-        "time": 1771864200,
-        "open": 62.38,
-        "high": 62.4,
-        "low": 62.26,
-        "close": 62.275,
-        "volume": 16972
-      },
-      {
-        "time": 1771864500,
-        "open": 62.28,
-        "high": 62.34,
-        "low": 62.22,
-        "close": 62.33,
-        "volume": 17772
-      },
-      {
-        "time": 1771864800,
-        "open": 62.35,
-        "high": 62.4,
-        "low": 62.295,
-        "close": 62.34,
-        "volume": 11080
-      },
-      {
-        "time": 1771865100,
-        "open": 62.345,
-        "high": 62.425,
-        "low": 62.275,
-        "close": 62.41,
-        "volume": 10539
-      },
-      {
-        "time": 1771865400,
-        "open": 62.4,
-        "high": 62.52,
-        "low": 62.38,
-        "close": 62.475,
-        "volume": 11073
-      },
-      {
-        "time": 1771865700,
-        "open": 62.465,
-        "high": 62.465,
-        "low": 62.36,
-        "close": 62.365,
-        "volume": 5480
-      },
-      {
-        "time": 1771866000,
-        "open": 62.35,
-        "high": 62.455,
-        "low": 62.35,
-        "close": 62.455,
-        "volume": 8152
-      },
-      {
-        "time": 1771866300,
-        "open": 62.475,
-        "high": 62.475,
-        "low": 62.28,
-        "close": 62.3,
-        "volume": 8781
-      },
-      {
-        "time": 1771866600,
-        "open": 62.27,
-        "high": 62.27,
-        "low": 62.135,
-        "close": 62.135,
-        "volume": 6412
-      },
-      {
-        "time": 1771866900,
-        "open": 62.135,
-        "high": 62.22,
-        "low": 62.115,
-        "close": 62.155,
-        "volume": 23927
-      },
-      {
-        "time": 1771867200,
-        "open": 62.145,
-        "high": 62.185,
-        "low": 62.115,
-        "close": 62.125,
-        "volume": 25839
-      },
-      {
-        "time": 1771867500,
-        "open": 62.12,
-        "high": 62.22,
-        "low": 62.12,
-        "close": 62.17,
-        "volume": 5273
-      },
-      {
-        "time": 1771867800,
-        "open": 62.16,
-        "high": 62.16,
-        "low": 62.1,
-        "close": 62.105,
-        "volume": 6031
-      },
-      {
-        "time": 1771868100,
-        "open": 62.125,
-        "high": 62.175,
-        "low": 62.12,
-        "close": 62.16,
-        "volume": 4860
-      },
-      {
-        "time": 1771868400,
-        "open": 62.16,
-        "high": 62.33,
-        "low": 62.16,
-        "close": 62.28,
-        "volume": 9750
-      },
-      {
-        "time": 1771868700,
-        "open": 62.28,
-        "high": 62.31,
-        "low": 62.25,
-        "close": 62.28,
-        "volume": 5756
-      },
-      {
-        "time": 1771869000,
-        "open": 62.23,
-        "high": 62.44,
-        "low": 62.225,
-        "close": 62.43,
-        "volume": 11278
-      },
-      {
-        "time": 1771869300,
-        "open": 62.435,
-        "high": 62.54,
-        "low": 62.4,
-        "close": 62.53,
-        "volume": 11397
-      },
-      {
-        "time": 1771869600,
-        "open": 62.545,
-        "high": 62.615,
-        "low": 62.515,
-        "close": 62.54,
-        "volume": 9878
-      },
-      {
-        "time": 1771869900,
-        "open": 62.53,
-        "high": 62.665,
-        "low": 62.53,
-        "close": 62.655,
-        "volume": 6447
-      },
-      {
-        "time": 1771870200,
-        "open": 62.66,
-        "high": 62.72,
-        "low": 62.66,
-        "close": 62.715,
-        "volume": 8106
-      },
-      {
-        "time": 1771870500,
-        "open": 62.7,
-        "high": 62.93,
-        "low": 62.7,
-        "close": 62.93,
-        "volume": 13339
-      },
-      {
-        "time": 1771870800,
-        "open": 62.92,
-        "high": 63.065,
-        "low": 62.89,
-        "close": 63.03,
-        "volume": 12226
-      },
-      {
-        "time": 1771871100,
-        "open": 63.025,
-        "high": 63.2,
-        "low": 63.01,
-        "close": 63.19,
-        "volume": 9712
-      },
-      {
-        "time": 1771871400,
-        "open": 63.16,
-        "high": 63.195,
-        "low": 63.09,
-        "close": 63.17,
-        "volume": 10686
-      },
-      {
-        "time": 1771871700,
-        "open": 63.195,
-        "high": 63.26,
-        "low": 63.08,
-        "close": 63.09,
-        "volume": 9781
-      },
-      {
-        "time": 1771872000,
-        "open": 63.095,
-        "high": 63.125,
-        "low": 63.02,
-        "close": 63.05,
-        "volume": 10657
-      },
-      {
-        "time": 1771872300,
-        "open": 63.08,
-        "high": 63.23,
-        "low": 63.045,
-        "close": 63.225,
-        "volume": 4979
-      },
-      {
-        "time": 1771872600,
-        "open": 63.23,
-        "high": 63.23,
-        "low": 63.07,
-        "close": 63.07,
-        "volume": 10113
-      },
-      {
-        "time": 1771872900,
-        "open": 63.07,
-        "high": 63.085,
-        "low": 62.915,
-        "close": 62.915,
-        "volume": 5204
-      },
-      {
-        "time": 1771873200,
-        "open": 62.92,
-        "high": 62.92,
-        "low": 62.81,
-        "close": 62.81,
-        "volume": 6694
-      },
-      {
-        "time": 1771873500,
-        "open": 62.815,
-        "high": 62.91,
-        "low": 62.79,
-        "close": 62.87,
-        "volume": 8360
-      },
-      {
-        "time": 1771873800,
-        "open": 62.88,
-        "high": 62.92,
-        "low": 62.765,
-        "close": 62.9,
-        "volume": 10947
-      },
-      {
-        "time": 1771874100,
-        "open": 62.9,
-        "high": 62.98,
-        "low": 62.89,
-        "close": 62.95,
-        "volume": 13114
-      },
-      {
-        "time": 1771874400,
-        "open": 62.935,
-        "high": 62.945,
-        "low": 62.88,
-        "close": 62.89,
-        "volume": 7268
-      },
-      {
-        "time": 1771874700,
-        "open": 62.89,
-        "high": 62.895,
-        "low": 62.81,
-        "close": 62.81,
-        "volume": 5281
-      },
-      {
-        "time": 1771875000,
-        "open": 62.82,
-        "high": 62.84,
-        "low": 62.78,
-        "close": 62.78,
-        "volume": 5455
-      },
-      {
-        "time": 1771875300,
-        "open": 62.765,
-        "high": 62.82,
-        "low": 62.76,
-        "close": 62.77,
-        "volume": 5418
-      },
-      {
-        "time": 1771875600,
-        "open": 62.77,
-        "high": 62.87,
-        "low": 62.77,
-        "close": 62.87,
-        "volume": 5021
-      },
-      {
-        "time": 1771875900,
-        "open": 62.88,
-        "high": 63.025,
-        "low": 62.88,
-        "close": 63.02,
-        "volume": 8336
-      },
-      {
-        "time": 1771876200,
-        "open": 63.03,
-        "high": 63.07,
-        "low": 63.01,
-        "close": 63.025,
-        "volume": 5473
-      },
-      {
-        "time": 1771876500,
-        "open": 63.0,
-        "high": 63.03,
-        "low": 62.92,
-        "close": 62.92,
-        "volume": 9946
-      },
-      {
-        "time": 1771876800,
-        "open": 62.94,
-        "high": 62.96,
-        "low": 62.88,
-        "close": 62.925,
-        "volume": 4765
-      }
-    ],
-    "status": "running",
+    "candles": [],
+    "status": "completed",
     "next_scan_in": 0,
     "is_waiting": false,
     "mock_time_930": false,
-    "blocks": [
-      "Sin se\u00f1al clara (Wait)"
-    ],
-    "sim_start": "2025-12-30",
+    "blocks": [],
+    "sim_start": "2026-02-02",
     "sim_end": "2026-02-27"
+  },
+  "\u2500": {
+    "mode": "SIMULATED",
+    "symbol": "\u2500",
+    "session": 31,
+    "iteration": 0,
+    "timestamp": "2026-03-01T22:43:47.609617+00:00",
+    "bid": 0.0,
+    "ask": 0.0,
+    "signal": "HOLD",
+    "regime": "NEUTRAL",
+    "rsi": 50.0,
+    "ema_fast": 0.0,
+    "ema_slow": 0.0,
+    "ema_200": 0.0,
+    "macd_hist": 0.0,
+    "vwap": 0.0,
+    "atr": 0.0,
+    "confirmations": null,
+    "initial_cash": 10000.0,
+    "available_cash": 10000.0,
+    "settlement": 0.0,
+    "win_rate": 0.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "gross_profit": 0.0,
+    "gross_loss": 0.0,
+    "total_sim_trades": 236,
+    "total_sim_wins": 116,
+    "total_sim_pnl": 1570.603530999999,
+    "position": null,
+    "trades": [],
+    "candles": [],
+    "status": "completed",
+    "next_scan_in": 0,
+    "is_waiting": false,
+    "mock_time_930": false,
+    "blocks": [],
+    "sim_start": "",
+    "sim_end": ""
   },
   "_main": {
     "mode": "SIMULATED",
-    "symbol": "NKE",
-    "session": 17,
-    "iteration": 2832,
-    "timestamp": "2026-02-23T20:00:00+00:00",
-    "bid": 62.92,
-    "ask": 62.93,
+    "symbol": "\u2500",
+    "session": 31,
+    "iteration": 0,
+    "timestamp": "2026-03-01T22:43:47.609617+00:00",
+    "bid": 0.0,
+    "ask": 0.0,
     "signal": "HOLD",
     "regime": "NEUTRAL",
-    "rsi": 53.71115363309602,
-    "ema_fast": 62.91141483146433,
-    "ema_slow": 62.8540340686213,
-    "ema_200": 63.827418072958686,
-    "macd_hist": -0.009403681498832028,
-    "vwap": 64.48561012214238,
-    "atr": 0.1162559636505136,
-    "confirmations": [],
+    "rsi": 50.0,
+    "ema_fast": 0.0,
+    "ema_slow": 0.0,
+    "ema_200": 0.0,
+    "macd_hist": 0.0,
+    "vwap": 0.0,
+    "atr": 0.0,
+    "confirmations": null,
     "initial_cash": 10000.0,
-    "available_cash": 9989.078186,
-    "settlement": 0,
+    "available_cash": 10000.0,
+    "settlement": 0.0,
     "win_rate": 0.0,
-    "total_trades": 1,
+    "total_trades": 0,
     "winning_trades": 0,
     "gross_profit": 0.0,
-    "gross_loss": -10.921813999999905,
-    "total_sim_trades": 91,
-    "total_sim_wins": 36,
-    "total_sim_pnl": 393.586261,
+    "gross_loss": 0.0,
+    "total_sim_trades": 236,
+    "total_sim_wins": 116,
+    "total_sim_pnl": 1570.603530999999,
     "position": null,
-    "trades": [
-      {
-        "symbol": "AAPL",
-        "side": "BUY",
-        "price": 256.7,
-        "qty": 1.9487,
-        "pnl": 0.0,
-        "time": "18:43:51"
-      },
-      {
-        "symbol": "AAPL",
-        "side": "SELL",
-        "price": 257.24,
-        "qty": 1.9487,
-        "pnl": 0.8822980000000399,
-        "time": "18:43:55"
-      },
-      {
-        "symbol": "AAPL",
-        "side": "BUY/SELL",
-        "price": 257.37,
-        "qty": 1.9487,
-        "pnl": 1.549216500000031,
-        "time": "18:43:55"
-      },
-      {
-        "symbol": "AAPL",
-        "side": "BUY",
-        "price": 271.07,
-        "qty": 1.8455,
-        "pnl": 0.0,
-        "time": "18:44:09"
-      },
-      {
-        "symbol": "AAPL",
-        "side": "SELL",
-        "price": 273.74,
-        "qty": 1.8455,
-        "pnl": 4.757485000000029,
-        "time": "18:44:10"
-      },
-      {
-        "symbol": "AAPL",
-        "side": "BUY/SELL",
-        "price": 273.88,
-        "qty": 1.8455,
-        "pnl": 5.434997499999987,
-        "time": "18:44:10"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 480.08,
-        "qty": 1.042,
-        "pnl": 0.0,
-        "time": "18:44:49"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "SELL",
-        "price": 471.54,
-        "qty": 1.042,
-        "pnl": -9.068679999999963,
-        "time": "18:44:50"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY/SELL",
-        "price": 471.78,
-        "qty": 1.042,
-        "pnl": -8.403730000000056,
-        "time": "18:44:50"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 468.62,
-        "qty": 1.0675,
-        "pnl": 0.0,
-        "time": "18:45:00"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY/SELL",
-        "price": 482.755,
-        "qty": 1.0675,
-        "pnl": 15.339975000000003,
-        "time": "18:45:03"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "SELL",
-        "price": 482.51,
-        "qty": 1.0675,
-        "pnl": 14.657574999999984,
-        "time": "18:45:04"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 416.41,
-        "qty": 1.2013,
-        "pnl": 0.0,
-        "time": "18:45:10"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "SELL",
-        "price": 409.51,
-        "qty": 1.2013,
-        "pnl": -8.458970000000042,
-        "time": "18:45:10"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY/SELL",
-        "price": 409.71,
-        "qty": 1.2013,
-        "pnl": -7.802443500000006,
-        "time": "18:45:10"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 388.45,
-        "qty": 1.2878,
-        "pnl": 0.0,
-        "time": "18:45:30"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY/SELL",
-        "price": 400.885,
-        "qty": 1.2878,
-        "pnl": 16.264913999999994,
-        "time": "18:45:33"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "SELL",
-        "price": 400.68,
-        "qty": 1.2878,
-        "pnl": 15.579794000000025,
-        "time": "18:45:33"
-      },
-      {
-        "symbol": "MSFT",
-        "side": "BUY",
-        "price": 393.37,
-        "qty": 1.2717,
-        "pnl": 0.0,
-        "time": "18:45:34"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "BUY",
-        "price": 316.23,
-        "qty": 1.5819,
-        "pnl": 0.0,
-        "time": "18:47:09"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "SELL",
-        "price": 315.05,
-        "qty": 1.5819,
-        "pnl": -2.0366420000000107,
-        "time": "18:47:11"
-      },
-      {
-        "symbol": "GOOGL",
-        "side": "BUY/SELL",
-        "price": 315.21,
-        "qty": 1.5819,
-        "pnl": -1.3604340000000217,
-        "time": "18:47:11"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "BUY",
-        "price": 183.47,
-        "qty": 2.7267,
-        "pnl": 0.0,
-        "time": "18:48:05"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "BUY/SELL",
-        "price": 189.48,
-        "qty": 2.7267,
-        "pnl": 16.646503499999973,
-        "time": "18:48:06"
-      },
-      {
-        "symbol": "NVDA",
-        "side": "SELL",
-        "price": 189.39,
-        "qty": 2.7267,
-        "pnl": 15.972063999999966,
-        "time": "18:48:06"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 429.91,
-        "qty": 1.1636,
-        "pnl": 0.0,
-        "time": "18:48:36"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 443.585,
-        "qty": 1.1636,
-        "pnl": 16.162403999999984,
-        "time": "18:48:37"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 443.36,
-        "qty": 1.1636,
-        "pnl": 15.480419999999986,
-        "time": "18:48:37"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 424.57,
-        "qty": 1.1783,
-        "pnl": 0.0,
-        "time": "18:48:47"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 437.24,
-        "qty": 1.1783,
-        "pnl": 15.182395499999988,
-        "time": "18:48:48"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 437.02,
-        "qty": 1.1783,
-        "pnl": 14.499834999999985,
-        "time": "18:48:48"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 396.32,
-        "qty": 1.2622,
-        "pnl": 0.0,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 410.105,
-        "qty": 1.2622,
-        "pnl": 17.645556000000024,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 409.9,
-        "qty": 1.2622,
-        "pnl": 16.97067599999998,
-        "time": "18:49:04"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY",
-        "price": 406.21,
-        "qty": 1.2315,
-        "pnl": 0.0,
-        "time": "18:49:16"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "SELL",
-        "price": 407.77,
-        "qty": 1.2315,
-        "pnl": 1.751140000000003,
-        "time": "18:49:17"
-      },
-      {
-        "symbol": "TSLA",
-        "side": "BUY/SELL",
-        "price": 407.97,
-        "qty": 1.2315,
-        "pnl": 2.413740000000045,
-        "time": "18:49:17"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 646.3,
-        "qty": 0.774,
-        "pnl": 0.0,
-        "time": "18:49:53"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 665.53,
-        "qty": 0.774,
-        "pnl": 15.135569999999962,
-        "time": "18:49:55"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 665.2,
-        "qty": 0.774,
-        "pnl": 14.458600000000072,
-        "time": "18:49:55"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 730.765,
-        "qty": 0.7618,
-        "pnl": 56.71600999999995,
-        "time": "18:50:00"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 730.4,
-        "qty": 0.7618,
-        "pnl": 63.887380000000014,
-        "time": "18:50:00"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 710.26,
-        "qty": 0.7043,
-        "pnl": 0.0,
-        "time": "18:50:03"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 696.06,
-        "qty": 0.7043,
-        "pnl": -10.171060000000033,
-        "time": "18:50:04"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 696.41,
-        "qty": 0.7043,
-        "pnl": -9.504528500000003,
-        "time": "18:50:04"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 656.64,
-        "qty": 0.7618,
-        "pnl": 0.0,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 669.3,
-        "qty": 0.7474,
-        "pnl": 0.0,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 657.37,
-        "qty": 0.7474,
-        "pnl": -9.086481999999963,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 657.7,
-        "qty": 0.7474,
-        "pnl": -8.41946099999999,
-        "time": "18:50:07"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 675.8,
-        "qty": 0.7402,
-        "pnl": 0.0,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 662.48,
-        "qty": 0.7402,
-        "pnl": -10.029463999999953,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 662.81,
-        "qty": 0.7402,
-        "pnl": -9.363530000000067,
-        "time": "18:50:08"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 666.08,
-        "qty": 0.751,
-        "pnl": 0.0,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 654.58,
-        "qty": 0.751,
-        "pnl": -8.8065,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 654.91,
-        "qty": 0.751,
-        "pnl": -8.137085000000027,
-        "time": "18:50:13"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY",
-        "price": 634.15,
-        "qty": 0.7888,
-        "pnl": 0.0,
-        "time": "18:50:17"
-      },
-      {
-        "symbol": "META",
-        "side": "BUY/SELL",
-        "price": 654.055,
-        "qty": 0.7888,
-        "pnl": 15.94953599999993,
-        "time": "18:50:20"
-      },
-      {
-        "symbol": "META",
-        "side": "SELL",
-        "price": 653.73,
-        "qty": 0.7888,
-        "pnl": 15.274704000000032,
-        "time": "18:50:20"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "BUY",
-        "price": 84.65,
-        "qty": 5.9095,
-        "pnl": 0.0,
-        "time": "18:51:20"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "BUY/SELL",
-        "price": 90.735,
-        "qty": 5.9095,
-        "pnl": 36.195687500000005,
-        "time": "18:51:21"
-      },
-      {
-        "symbol": "NFLX",
-        "side": "SELL",
-        "price": 90.69,
-        "qty": 5.9095,
-        "pnl": 35.52337999999995,
-        "time": "18:51:21"
-      },
-      {
-        "symbol": "AMD",
-        "side": "BUY",
-        "price": 210.55,
-        "qty": 2.3759,
-        "pnl": 0.0,
-        "time": "18:52:16"
-      },
-      {
-        "symbol": "AMD",
-        "side": "SELL",
-        "price": 213.07,
-        "qty": 2.3759,
-        "pnl": 5.817267999999957,
-        "time": "18:52:17"
-      },
-      {
-        "symbol": "AMD",
-        "side": "BUY/SELL",
-        "price": 213.18,
-        "qty": 2.3759,
-        "pnl": 6.498086500000033,
-        "time": "18:52:17"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 335.41,
-        "qty": 1.4914,
-        "pnl": 0.0,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 329.21,
-        "qty": 1.4914,
-        "pnl": -9.416680000000069,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 329.37,
-        "qty": 1.4914,
-        "pnl": -8.761975,
-        "time": "18:54:39"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 300.31,
-        "qty": 1.6658,
-        "pnl": 0.0,
-        "time": "18:55:04"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 302.62,
-        "qty": 1.6658,
-        "pnl": 3.6779980000000037,
-        "time": "18:55:15"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 302.77,
-        "qty": 1.6658,
-        "pnl": 4.3560670000000155,
-        "time": "18:55:15"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 321.85,
-        "qty": 1.5543,
-        "pnl": 0.0,
-        "time": "18:55:26"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 320.62,
-        "qty": 1.5543,
-        "pnl": -2.0817890000000285,
-        "time": "18:55:30"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 320.78,
-        "qty": 1.5543,
-        "pnl": -1.406641500000046,
-        "time": "18:55:30"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY",
-        "price": 303.65,
-        "qty": 1.6475,
-        "pnl": 0.0,
-        "time": "18:55:45"
-      },
-      {
-        "symbol": "JPM",
-        "side": "SELL",
-        "price": 300.92,
-        "qty": 1.6475,
-        "pnl": -4.667674999999936,
-        "time": "18:55:46"
-      },
-      {
-        "symbol": "JPM",
-        "side": "BUY/SELL",
-        "price": 301.07,
-        "qty": 1.6475,
-        "pnl": -3.9951875000000188,
-        "time": "18:55:46"
-      },
-      {
-        "symbol": "WMT",
-        "side": "BUY",
-        "price": 125.06,
-        "qty": 4.0002,
-        "pnl": 0.0,
-        "time": "18:57:42"
-      },
-      {
-        "symbol": "WMT",
-        "side": "BUY/SELL",
-        "price": 128.945,
-        "qty": 4.0002,
-        "pnl": 15.800789999999957,
-        "time": "18:57:43"
-      },
-      {
-        "symbol": "WMT",
-        "side": "SELL",
-        "price": 128.88,
-        "qty": 4.0002,
-        "pnl": 15.110763999999975,
-        "time": "18:57:43"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY",
-        "price": 67.96,
-        "qty": 7.3605,
-        "pnl": 0.0,
-        "time": "18:58:21"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY/SELL",
-        "price": 70.05,
-        "qty": 7.3605,
-        "pnl": 15.604259999999929,
-        "time": "18:58:24"
-      },
-      {
-        "symbol": "KO",
-        "side": "SELL",
-        "price": 70.01,
-        "qty": 7.3605,
-        "pnl": 14.919025000000083,
-        "time": "18:58:24"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY",
-        "price": 72.53,
-        "qty": 6.8975,
-        "pnl": 0.0,
-        "time": "18:58:36"
-      },
-      {
-        "symbol": "KO",
-        "side": "BUY/SELL",
-        "price": 74.715,
-        "qty": 6.8975,
-        "pnl": 15.346937500000058,
-        "time": "18:58:43"
-      },
-      {
-        "symbol": "KO",
-        "side": "SELL",
-        "price": 74.68,
-        "qty": 6.8975,
-        "pnl": 14.65962500000004,
-        "time": "18:58:43"
-      },
-      {
-        "symbol": "PEP",
-        "side": "BUY",
-        "price": 146.78,
-        "qty": 3.4082,
-        "pnl": 0.0,
-        "time": "18:59:43"
-      },
-      {
-        "symbol": "PEP",
-        "side": "SELL",
-        "price": 144.33,
-        "qty": 3.4082,
-        "pnl": -8.52008999999996,
-        "time": "18:59:51"
-      },
-      {
-        "symbol": "PEP",
-        "side": "BUY/SELL",
-        "price": 144.4,
-        "qty": 3.4082,
-        "pnl": -7.855901000000023,
-        "time": "18:59:51"
-      },
-      {
-        "symbol": "NKE",
-        "side": "BUY",
-        "price": 66.07,
-        "qty": 7.5717,
-        "pnl": 0.0,
-        "time": "19:01:32"
-      },
-      {
-        "symbol": "NKE",
-        "side": "SELL",
-        "price": 64.65,
-        "qty": 7.5717,
-        "pnl": -10.921813999999905,
-        "time": "19:01:33"
-      },
-      {
-        "symbol": "NKE",
-        "side": "BUY/SELL",
-        "price": 64.68,
-        "qty": 7.5717,
-        "pnl": -10.259653499999922,
-        "time": "19:01:33"
-      }
-    ],
-    "candles": [
-      {
-        "time": 1771859100,
-        "open": 62.67,
-        "high": 62.855,
-        "low": 62.66,
-        "close": 62.69,
-        "volume": 10237
-      },
-      {
-        "time": 1771859400,
-        "open": 62.69,
-        "high": 62.7,
-        "low": 62.39,
-        "close": 62.43,
-        "volume": 16589
-      },
-      {
-        "time": 1771859700,
-        "open": 62.41,
-        "high": 62.44,
-        "low": 62.21,
-        "close": 62.245,
-        "volume": 13167
-      },
-      {
-        "time": 1771860000,
-        "open": 62.32,
-        "high": 62.4,
-        "low": 62.18,
-        "close": 62.23,
-        "volume": 11543
-      },
-      {
-        "time": 1771860300,
-        "open": 62.22,
-        "high": 62.22,
-        "low": 62.055,
-        "close": 62.16,
-        "volume": 8424
-      },
-      {
-        "time": 1771860600,
-        "open": 62.16,
-        "high": 62.34,
-        "low": 62.1,
-        "close": 62.2,
-        "volume": 7230
-      },
-      {
-        "time": 1771860900,
-        "open": 62.18,
-        "high": 62.27,
-        "low": 62.08,
-        "close": 62.27,
-        "volume": 11915
-      },
-      {
-        "time": 1771861200,
-        "open": 62.28,
-        "high": 62.29,
-        "low": 62.15,
-        "close": 62.175,
-        "volume": 13791
-      },
-      {
-        "time": 1771861500,
-        "open": 62.18,
-        "high": 62.34,
-        "low": 62.115,
-        "close": 62.34,
-        "volume": 17116
-      },
-      {
-        "time": 1771861800,
-        "open": 62.33,
-        "high": 62.57,
-        "low": 62.33,
-        "close": 62.5,
-        "volume": 14145
-      },
-      {
-        "time": 1771862100,
-        "open": 62.51,
-        "high": 62.61,
-        "low": 62.45,
-        "close": 62.54,
-        "volume": 9619
-      },
-      {
-        "time": 1771862400,
-        "open": 62.55,
-        "high": 62.57,
-        "low": 62.39,
-        "close": 62.455,
-        "volume": 10684
-      },
-      {
-        "time": 1771862700,
-        "open": 62.465,
-        "high": 62.47,
-        "low": 62.27,
-        "close": 62.315,
-        "volume": 14123
-      },
-      {
-        "time": 1771863000,
-        "open": 62.31,
-        "high": 62.39,
-        "low": 62.31,
-        "close": 62.335,
-        "volume": 12728
-      },
-      {
-        "time": 1771863300,
-        "open": 62.325,
-        "high": 62.395,
-        "low": 62.26,
-        "close": 62.385,
-        "volume": 14585
-      },
-      {
-        "time": 1771863600,
-        "open": 62.38,
-        "high": 62.49,
-        "low": 62.37,
-        "close": 62.4,
-        "volume": 18190
-      },
-      {
-        "time": 1771863900,
-        "open": 62.4,
-        "high": 62.495,
-        "low": 62.31,
-        "close": 62.42,
-        "volume": 25137
-      },
-      {
-        "time": 1771864200,
-        "open": 62.38,
-        "high": 62.4,
-        "low": 62.26,
-        "close": 62.275,
-        "volume": 16972
-      },
-      {
-        "time": 1771864500,
-        "open": 62.28,
-        "high": 62.34,
-        "low": 62.22,
-        "close": 62.33,
-        "volume": 17772
-      },
-      {
-        "time": 1771864800,
-        "open": 62.35,
-        "high": 62.4,
-        "low": 62.295,
-        "close": 62.34,
-        "volume": 11080
-      },
-      {
-        "time": 1771865100,
-        "open": 62.345,
-        "high": 62.425,
-        "low": 62.275,
-        "close": 62.41,
-        "volume": 10539
-      },
-      {
-        "time": 1771865400,
-        "open": 62.4,
-        "high": 62.52,
-        "low": 62.38,
-        "close": 62.475,
-        "volume": 11073
-      },
-      {
-        "time": 1771865700,
-        "open": 62.465,
-        "high": 62.465,
-        "low": 62.36,
-        "close": 62.365,
-        "volume": 5480
-      },
-      {
-        "time": 1771866000,
-        "open": 62.35,
-        "high": 62.455,
-        "low": 62.35,
-        "close": 62.455,
-        "volume": 8152
-      },
-      {
-        "time": 1771866300,
-        "open": 62.475,
-        "high": 62.475,
-        "low": 62.28,
-        "close": 62.3,
-        "volume": 8781
-      },
-      {
-        "time": 1771866600,
-        "open": 62.27,
-        "high": 62.27,
-        "low": 62.135,
-        "close": 62.135,
-        "volume": 6412
-      },
-      {
-        "time": 1771866900,
-        "open": 62.135,
-        "high": 62.22,
-        "low": 62.115,
-        "close": 62.155,
-        "volume": 23927
-      },
-      {
-        "time": 1771867200,
-        "open": 62.145,
-        "high": 62.185,
-        "low": 62.115,
-        "close": 62.125,
-        "volume": 25839
-      },
-      {
-        "time": 1771867500,
-        "open": 62.12,
-        "high": 62.22,
-        "low": 62.12,
-        "close": 62.17,
-        "volume": 5273
-      },
-      {
-        "time": 1771867800,
-        "open": 62.16,
-        "high": 62.16,
-        "low": 62.1,
-        "close": 62.105,
-        "volume": 6031
-      },
-      {
-        "time": 1771868100,
-        "open": 62.125,
-        "high": 62.175,
-        "low": 62.12,
-        "close": 62.16,
-        "volume": 4860
-      },
-      {
-        "time": 1771868400,
-        "open": 62.16,
-        "high": 62.33,
-        "low": 62.16,
-        "close": 62.28,
-        "volume": 9750
-      },
-      {
-        "time": 1771868700,
-        "open": 62.28,
-        "high": 62.31,
-        "low": 62.25,
-        "close": 62.28,
-        "volume": 5756
-      },
-      {
-        "time": 1771869000,
-        "open": 62.23,
-        "high": 62.44,
-        "low": 62.225,
-        "close": 62.43,
-        "volume": 11278
-      },
-      {
-        "time": 1771869300,
-        "open": 62.435,
-        "high": 62.54,
-        "low": 62.4,
-        "close": 62.53,
-        "volume": 11397
-      },
-      {
-        "time": 1771869600,
-        "open": 62.545,
-        "high": 62.615,
-        "low": 62.515,
-        "close": 62.54,
-        "volume": 9878
-      },
-      {
-        "time": 1771869900,
-        "open": 62.53,
-        "high": 62.665,
-        "low": 62.53,
-        "close": 62.655,
-        "volume": 6447
-      },
-      {
-        "time": 1771870200,
-        "open": 62.66,
-        "high": 62.72,
-        "low": 62.66,
-        "close": 62.715,
-        "volume": 8106
-      },
-      {
-        "time": 1771870500,
-        "open": 62.7,
-        "high": 62.93,
-        "low": 62.7,
-        "close": 62.93,
-        "volume": 13339
-      },
-      {
-        "time": 1771870800,
-        "open": 62.92,
-        "high": 63.065,
-        "low": 62.89,
-        "close": 63.03,
-        "volume": 12226
-      },
-      {
-        "time": 1771871100,
-        "open": 63.025,
-        "high": 63.2,
-        "low": 63.01,
-        "close": 63.19,
-        "volume": 9712
-      },
-      {
-        "time": 1771871400,
-        "open": 63.16,
-        "high": 63.195,
-        "low": 63.09,
-        "close": 63.17,
-        "volume": 10686
-      },
-      {
-        "time": 1771871700,
-        "open": 63.195,
-        "high": 63.26,
-        "low": 63.08,
-        "close": 63.09,
-        "volume": 9781
-      },
-      {
-        "time": 1771872000,
-        "open": 63.095,
-        "high": 63.125,
-        "low": 63.02,
-        "close": 63.05,
-        "volume": 10657
-      },
-      {
-        "time": 1771872300,
-        "open": 63.08,
-        "high": 63.23,
-        "low": 63.045,
-        "close": 63.225,
-        "volume": 4979
-      },
-      {
-        "time": 1771872600,
-        "open": 63.23,
-        "high": 63.23,
-        "low": 63.07,
-        "close": 63.07,
-        "volume": 10113
-      },
-      {
-        "time": 1771872900,
-        "open": 63.07,
-        "high": 63.085,
-        "low": 62.915,
-        "close": 62.915,
-        "volume": 5204
-      },
-      {
-        "time": 1771873200,
-        "open": 62.92,
-        "high": 62.92,
-        "low": 62.81,
-        "close": 62.81,
-        "volume": 6694
-      },
-      {
-        "time": 1771873500,
-        "open": 62.815,
-        "high": 62.91,
-        "low": 62.79,
-        "close": 62.87,
-        "volume": 8360
-      },
-      {
-        "time": 1771873800,
-        "open": 62.88,
-        "high": 62.92,
-        "low": 62.765,
-        "close": 62.9,
-        "volume": 10947
-      },
-      {
-        "time": 1771874100,
-        "open": 62.9,
-        "high": 62.98,
-        "low": 62.89,
-        "close": 62.95,
-        "volume": 13114
-      },
-      {
-        "time": 1771874400,
-        "open": 62.935,
-        "high": 62.945,
-        "low": 62.88,
-        "close": 62.89,
-        "volume": 7268
-      },
-      {
-        "time": 1771874700,
-        "open": 62.89,
-        "high": 62.895,
-        "low": 62.81,
-        "close": 62.81,
-        "volume": 5281
-      },
-      {
-        "time": 1771875000,
-        "open": 62.82,
-        "high": 62.84,
-        "low": 62.78,
-        "close": 62.78,
-        "volume": 5455
-      },
-      {
-        "time": 1771875300,
-        "open": 62.765,
-        "high": 62.82,
-        "low": 62.76,
-        "close": 62.77,
-        "volume": 5418
-      },
-      {
-        "time": 1771875600,
-        "open": 62.77,
-        "high": 62.87,
-        "low": 62.77,
-        "close": 62.87,
-        "volume": 5021
-      },
-      {
-        "time": 1771875900,
-        "open": 62.88,
-        "high": 63.025,
-        "low": 62.88,
-        "close": 63.02,
-        "volume": 8336
-      },
-      {
-        "time": 1771876200,
-        "open": 63.03,
-        "high": 63.07,
-        "low": 63.01,
-        "close": 63.025,
-        "volume": 5473
-      },
-      {
-        "time": 1771876500,
-        "open": 63.0,
-        "high": 63.03,
-        "low": 62.92,
-        "close": 62.92,
-        "volume": 9946
-      },
-      {
-        "time": 1771876800,
-        "open": 62.94,
-        "high": 62.96,
-        "low": 62.88,
-        "close": 62.925,
-        "volume": 4765
-      }
-    ],
-    "status": "running",
+    "trades": [],
+    "candles": [],
+    "status": "completed",
     "next_scan_in": 0,
     "is_waiting": false,
     "mock_time_930": false,
-    "blocks": [
-      "Sin se\u00f1al clara (Wait)"
-    ],
-    "sim_start": "2025-12-30",
-    "sim_end": "2026-02-27"
+    "blocks": [],
+    "sim_start": "",
+    "sim_end": ""
   }
 }

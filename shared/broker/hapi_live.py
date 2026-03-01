@@ -161,6 +161,8 @@ class HapiLive(BrokerInterface):
         side: str,
         limit_price: float,
         qty: float,
+        reason: str = "",
+        metadata: dict = None,
     ) -> OrderResponse:
         """
         Envía una orden límite a Hapi Trade.
@@ -213,6 +215,7 @@ class HapiLive(BrokerInterface):
             buying_power=float(data.get("buyingPower", 0)),
             portfolio_value=float(data.get("portfolioValue", 0)),
             day_traded_count=int(data.get("dayTradedCount", 0)),
+            last_price=0.0
         )
 
     def cancel_all_orders(self, symbol: str) -> bool:

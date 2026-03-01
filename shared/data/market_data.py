@@ -247,18 +247,27 @@ class MarketReplay:
         self.df: pd.DataFrame = download_bars(symbol)   # 5min × 60d
 
         # Aplicar filtro de fecha de inicio si se proporciona
+        min_bars = max(config.EMA_SLOW, config.RSI_PERIOD) + 5
         if start_date:
             try:
                 # Convertir start_date a datetime UTC para comparar con el índice
                 start_dt = pd.to_datetime(start_date).tz_localize(ET).tz_convert("UTC")
-                self.df = self.df[self.df.index >= start_dt].copy()
-                log.info(f"replay | {symbol} | Filtro de fecha aplicado: desde {start_date}")
+                df_filtered = self.df[self.df.index >= start_dt].copy()
+                # Si la fecha está en el futuro o no hay datos suficientes, usar todos los datos
+                if len(df_filtered) < min_bars:
+                    last_available = self.df.index[-1].strftime("%Y-%m-%d") if len(self.df) > 0 else "N/A"
+                    log.warning(
+                        f"replay | {symbol} | Fecha {start_date} fuera de rango o sin datos suficientes "
+                        f"(último dato: {last_available}). Usando todos los datos disponibles."
+                    )
+                else:
+                    self.df = df_filtered
+                    log.info(f"replay | {symbol} | Filtro de fecha aplicado: desde {start_date}")
             except Exception as e:
                 log.error(f"replay | {symbol} | Error al aplicar filtro de fecha {start_date}: {e}")
 
         self._index: int = 0
 
-        min_bars = max(config.EMA_SLOW, config.RSI_PERIOD) + 5
         if len(self.df) < min_bars:
             raise ValueError(
                 f"No hay suficientes datos para {symbol}: "

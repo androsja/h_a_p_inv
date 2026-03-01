@@ -87,6 +87,35 @@ services:
           cpus: "1.0"
           memory: "512M"
 
+  # ─── Live Alpaca Paper Watcher (para /live) ─────────────────────────────────
+  # Monitorea command.json y lanza run_live_bot con Alpaca Paper (compras falsas).
+  # NO toca la simulación. Usa estrategia/IA como insumos de solo lectura.
+  trading-bot-live-alpaca:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hapi-scalping-bot:latest
+    container_name: hapi_bot_live_alpaca
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TRADING_MODE=LIVE
+      - HAPI_IS_TEST_MODE=true
+    command: [ "python", "live_mode/live_alpaca_watcher.py" ]
+    volumes:
+      - ./live_mode:/app/live_mode
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./shared:/app/shared
+      - ./shared/assets_live.json:/app/assets_live.json
+    depends_on:
+      - dashboard
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"
+
   # ─── Bot LIVE PAPER (datos reales, dinero ficticio) ─────────────────────────
   trading-bot-paper:
     build:

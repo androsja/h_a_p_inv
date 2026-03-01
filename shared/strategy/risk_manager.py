@@ -37,6 +37,8 @@ class OpenPosition:
     initial_stop:  float = 0.0  # SL original (para referencia)
     ml_features:   dict  = field(default_factory=dict) # Features al momento de abrir la posición
     hold_bars:     int   = 0    # Iteraciones que lleva abierta la posición
+    entry_reason:  str   = ""   # Razón de la entrada
+    entry_metadata: dict = field(default_factory=dict) # Metadata de la entrada
 
     def __post_init__(self):
         if self.highest_price == 0.0:
@@ -157,6 +159,7 @@ class RiskManager:
         symbol:    str,
         ask_price: float,
         atr_value: float = 0.0,
+        confidence_multiplier: float = 1.0,
     ) -> OrderPlan:
         """
         Calcula parámetros de BUY con SL dinámico basado en ATR.
@@ -201,7 +204,9 @@ class RiskManager:
         qty_by_cash  = max_notional / limit_price if limit_price > 0 else 0
         
         # El tamaño final es el MÍNIMO entre lo que nos dicta el Riesgo, y lo que nos da el Cash en el bolsillo
-        qty = round(min(qty_by_risk, qty_by_cash), 4)
+        # APLICAMOS EL FACTOR DE CONFIANZA: Si es una inversión segura, aumentamos un poco el tamaño
+        base_qty = min(qty_by_risk, qty_by_cash)
+        qty = round(base_qty * confidence_multiplier, 4)
 
         if qty <= 0:
             return OrderPlan(

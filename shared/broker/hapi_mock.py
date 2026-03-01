@@ -35,6 +35,8 @@ class PendingOrder:
     limit_price: float
     qty:         float
     created_at:  datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    reason:      str = ""
+    metadata:    dict = field(default_factory=dict)
 
 
 # ─── Estadísticas de la sesión simulada ─────────────────────────────────────
@@ -247,6 +249,8 @@ class HapiMock(BrokerInterface):
         side: str,
         limit_price: float,
         qty: float,
+        reason: str = "",
+        metadata: dict = None,
     ) -> OrderResponse:
         """
         Registra una orden límite pendiente.
@@ -266,6 +270,8 @@ class HapiMock(BrokerInterface):
             order_id=str(uuid.uuid4())[:8],
             symbol=symbol, side=side,
             limit_price=limit_price, qty=qty,
+            reason=reason,
+            metadata=metadata or {},
         )
         self._pending_orders.append(order)
         log.debug(
@@ -280,10 +286,13 @@ class HapiMock(BrokerInterface):
         )
 
     def get_account_info(self) -> AccountInfo:
+        last_p = float(self._current_bar['Close']) if self._current_bar is not None else 0.0
         return AccountInfo(
             total_cash=self._cash,
             buying_power=self.available_cash,
             portfolio_value=self._cash,
+            day_traded_count=0,
+            last_price=last_p
         )
 
     def cancel_all_orders(self, symbol: str) -> bool:
@@ -294,7 +303,7 @@ class HapiMock(BrokerInterface):
             log.info(f"HapiMock | {cancelled} orden(es) de {symbol} canceladas.")
         return True
 
-    def immediate_market_sell(self, symbol: str, qty: float, bid_price: float) -> float:
+    def immediate_market_sell(self, symbol: str, qty: float, bid_price: float, reason: str = "", metadata: dict = None) -> float:
         """
         Venta de mercado INMEDIATA — se ejecuta al bid_price actual.
         SOLO para Stop Loss, Trailing Stop y Time Exit.
@@ -307,6 +316,8 @@ class HapiMock(BrokerInterface):
             order_id=str(uuid.uuid4())[:8],
             symbol=symbol, side="SELL",
             limit_price=fill_price, qty=qty,
+            reason=reason,
+            metadata=metadata or {},
         )
         self._execute_sell(fake_order, fill_price=fill_price)
         log.info(
@@ -360,7 +371,10 @@ class HapiMock(BrokerInterface):
         self._cash -= cost
         self._last_buy_price = actual_fill_price
         self._last_buy_qty   = order.qty
-        log_order_filled(order.symbol, "BUY", actual_fill_price, order.qty, timestamp=timestamp)
+        log_order_filled(
+            order.symbol, "BUY", actual_fill_price, order.qty, 
+            timestamp=timestamp, reason=order.reason, metadata=order.metadata
+        )
         # Update global state for UI tracking
         try:
             from shared.utils.state_writer import _state
@@ -397,7 +411,10 @@ class HapiMock(BrokerInterface):
         raw_pnl = (actual_fill_price - getattr(self, '_last_buy_price', actual_fill_price)) * order.qty
         net_pnl = raw_pnl - total_fees
         
-        log_order_filled(order.symbol, "SELL", actual_fill_price, order.qty, net_pnl, timestamp=timestamp)
+        log_order_filled(
+            order.symbol, "SELL", actual_fill_price, order.qty, net_pnl, 
+            timestamp=timestamp, reason=order.reason, metadata=order.metadata
+        )
         log.info(f"🏦 HAPI FEES COBRADOS: Cierre=${closing_fee:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
         
         self._stats.record_trade(net_pnl, current_balance=self._cash)

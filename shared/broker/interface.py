@@ -59,6 +59,7 @@ class AccountInfo:
     buying_power:        float     # Capital disponible para nuevas órdenes
     portfolio_value:     float
     day_traded_count:    int = 0   # Número de operaciones en el día
+    last_price:          float = 0.0 # Último precio conocido del símbolo
 
 
 # ─── Interfaz abstracta ──────────────────────────────────────────────────────
@@ -103,6 +104,8 @@ class BrokerInterface(ABC):
         side: str,
         limit_price: float,
         qty: float,
+        reason: str = "",
+        metadata: dict = None,
     ) -> OrderResponse:
         """
         Coloca una orden límite en el bróker.
