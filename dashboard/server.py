@@ -246,6 +246,16 @@ async def reset_all(req: ResetRequest = None):
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         
+        # ── LIMPIEZA INMEDIATA DE ARCHIVOS DE DATOS (Fix Bug Dashboard Stale) ──
+        # Borramos los archivos desde la API para que el Dashboard refleje el reset 
+        # al instante, sin esperar a que el bot despierte.
+        from shared.config import RESULTS_FILE, TRADE_JOURNAL_FILE
+        try:
+            if RESULTS_FILE.exists(): RESULTS_FILE.unlink()
+            if TRADE_JOURNAL_FILE.exists(): TRADE_JOURNAL_FILE.unlink()
+        except Exception as e_files:
+            print(f"Error borrando archivos en reset_all: {e_files}")
+
         # Limpiar logs
         try:
             if LOG_FILE.exists():
@@ -253,7 +263,7 @@ async def reset_all(req: ResetRequest = None):
                     pass # Truncate to 0 bytes
         except: pass
             
-        return {"status": "success", "message": "Reseteando bot..."}
+        return {"status": "success", "message": "Reseteando bot y limpiando datos..."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -278,7 +288,15 @@ async def restart_sim(req: ResetRequest = None):
         
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
-        return {"status": "success", "message": "Reinicio de simulación en cola"}
+
+        # ── LIMPIEZA INMEDIATA (Fix Bug Dashboard Stale) ──
+        from shared.config import RESULTS_FILE, TRADE_JOURNAL_FILE
+        try:
+            if RESULTS_FILE.exists(): RESULTS_FILE.unlink()
+            if TRADE_JOURNAL_FILE.exists(): TRADE_JOURNAL_FILE.unlink()
+        except: pass
+
+        return {"status": "success", "message": "Reinicio de simulación en cola y datos limpiados"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -308,10 +326,10 @@ async def get_daily_stats(symbol: str = None):
                     if symbol and s != symbol:
                         continue
                     
-                    # Parsear fecha "2026-02-28T18:11:51..." -> "2026-02-28"
+                    # Parsear fecha "2026-02-28T18:11:51..." o "2026-02-28 09:30:00" -> "2026-02-28"
                     ts = r.get("timestamp_close", "")
                     if not ts: continue
-                    date_key = ts.split("T")[0]
+                    date_key = ts.split("T")[0].split(" ")[0]
                     
                     if s not in stats: stats[s] = {}
                     if date_key not in stats[s]:

@@ -20,7 +20,7 @@ class TradeRecord:
     price: float
     qty:   float
     pnl:   float
-    time:  str = field(default_factory=lambda: datetime.now().strftime("%H:%M:%S"))
+    time:  str = "" # Se poblará en el constructor o record_trade
 
 @dataclass
 class BotState:
@@ -147,10 +147,12 @@ def clear_symbol_states() -> None:
     with _state_lock:
         _symbol_states.clear()
 
-def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float) -> None:
+def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, timestamp: str | None = None) -> None:
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl
     with _state_lock:
-        _trades.append(TradeRecord(symbol=symbol, side=side, price=price, qty=qty, pnl=pnl))
+        # Usar timestamp proporcionado o el actual (formato HH:MM:SS para el historial rápido)
+        t_str = timestamp.split('T')[1][:8] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%H:%M:%S")
+        _trades.append(TradeRecord(symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, time=t_str))
         if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
         

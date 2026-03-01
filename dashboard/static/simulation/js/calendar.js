@@ -33,8 +33,24 @@ window.openCalendarModal = async function (symbol) {
             📅 Calendario de Trades: <span style="color:white;">${symbol}</span>
         </h2>
         <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Visualización de ganancias y pérdidas diarias para este símbolo.</p>
+        
         <div id="calendar-grid-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px;">
             <div style="color:var(--muted); text-align:center; padding:40px; grid-column: 1/-1;">Cargando historial de días...</div>
+        </div>
+
+        <!-- Leyenda -->
+        <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05); display:flex; gap:20px; font-size:11px; color:var(--muted);">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div style="width:12px; height:12px; border-radius:3px; background:rgba(0,255,127,0.2); border:1px solid rgba(0,255,127,0.4);"></div>
+                Día con Ganancia
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <div style="width:12px; height:12px; border-radius:3px; background:rgba(255,61,90,0.2); border:1px solid rgba(255,61,90,0.4);"></div>
+                Día con Pérdida
+            </div>
+            <div style="margin-left:auto; font-style:italic;">
+                * Valores en verde/rojo son PnL diario acumulado.
+            </div>
         </div>
     `;
 
@@ -58,7 +74,9 @@ window.openCalendarModal = async function (symbol) {
         // Agrupar por Mes-Año para mostrar meses separados
         const months = {};
         Object.keys(stats).sort().forEach(dateStr => {
-            const date = new Date(dateStr + 'T12:00:00'); // Evitar timezone issues
+            // Asegurar que solo tomamos la parte YYYY-MM-DD para el agrupamiento
+            const cleanDateStr = dateStr.includes(' ') ? dateStr.split(' ')[0] : (dateStr.includes('T') ? dateStr.split('T')[0] : dateStr);
+            const date = new Date(cleanDateStr + 'T12:00:00'); // Evitar timezone issues
             const monthKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
             if (!months[monthKey]) months[monthKey] = [];
             months[monthKey].push(dateStr);
@@ -79,7 +97,7 @@ window.openCalendarModal = async function (symbol) {
             grid.style.gap = '5px';
 
             // Dias de la semana headers
-            const days = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+            const days = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             days.forEach(d => {
                 const dEl = document.createElement('div');
                 dEl.style.fontSize = '9px';
@@ -121,13 +139,15 @@ window.openCalendarModal = async function (symbol) {
                     dayEl.style.background = isWin ? 'rgba(0,255,127,0.15)' : 'rgba(255,61,90,0.15)';
                     dayEl.style.border = `1px solid ${isWin ? 'rgba(0,255,127,0.3)' : 'rgba(255,61,90,0.3)'}`;
 
-                    dayEl.title = `Trades: ${dayStat.trades} (${dayStat.wins}W / ${dayStat.losses}L)\nPnL Diario: ${dayStat.pnl >= 0 ? '+' : ''}${dayStat.pnl.toFixed(2)}`;
+                    const winRate = dayStat.trades > 0 ? ((dayStat.wins / dayStat.trades) * 100).toFixed(0) : 0;
+                    dayEl.title = `Fecha: ${currentStr}\nTrades: ${dayStat.trades}\nWins: ${dayStat.wins} | Losses: ${dayStat.losses}\nWin Rate: ${winRate}%\nPnL Diario: ${dayStat.pnl >= 0 ? '+' : ''}$${dayStat.pnl.toFixed(2)}`;
 
                     dayEl.innerHTML = `
                         <span style="font-weight:bold; color:var(--text);">${day}</span>
-                        <span style="font-size:8px; color:${isWin ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
-                            ${dayStat.pnl >= 0 ? '+' : ''}${Math.abs(dayStat.pnl).toFixed(0)}
+                        <span style="font-size:9px; color:${isWin ? 'var(--green)' : 'var(--red)'}; font-weight:bold;">
+                            ${dayStat.pnl >= 0 ? '+' : ''}$${Math.abs(dayStat.pnl).toFixed(0)}
                         </span>
+                        <span style="font-size:7px; color:#555; position:absolute; bottom:2px;">${dayStat.trades}T</span>
                     `;
 
                     dayEl.onmouseover = () => {
@@ -140,8 +160,8 @@ window.openCalendarModal = async function (symbol) {
                         dayEl.style.background = isWin ? 'rgba(0,255,127,0.15)' : 'rgba(255,61,90,0.15)';
                     };
                 } else {
-                    dayEl.style.background = 'rgba(255,255,255,0.03)';
-                    dayEl.style.color = 'rgba(255,255,255,0.1)';
+                    dayEl.style.background = 'rgba(255,255,255,0.02)';
+                    dayEl.style.color = 'rgba(255,255,255,0.05)';
                     dayEl.textContent = day;
                 }
 

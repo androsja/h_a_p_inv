@@ -110,7 +110,7 @@ def log_order_attempt(symbol: str, side: str, price: float, qty: float, reason: 
     )
 
 
-def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl: float | None = None) -> None:
+def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl: float | None = None, timestamp: str | None = None) -> None:
     """Registra la confirmación de ejecución de una orden."""
     pnl_str = f"| PnL=${pnl:+.2f}" if pnl is not None else ""
     log.info(
@@ -119,7 +119,7 @@ def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl:
     )
     try:
         from shared.utils.state_writer import record_trade
-        record_trade(symbol, side, fill_price, qty, pnl if pnl is not None else 0.0)
+        record_trade(symbol, side, fill_price, qty, pnl if pnl is not None else 0.0, timestamp=timestamp)
     except Exception as e:
         log.error(f"Error registrando trade en state.json: {e}")
 

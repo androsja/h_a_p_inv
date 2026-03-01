@@ -91,6 +91,7 @@ def record_trade(
     hold_bars: int,
     exit_reason: str,
     ml_features: dict,
+    timestamp: str | None = None,
 ):
     """
     Registra un trade cerrado en el diario completo.
@@ -141,7 +142,7 @@ def record_trade(
                 break
 
         row = {
-            "timestamp_close": datetime.now(timezone.utc).isoformat(),
+            "timestamp_close": timestamp if timestamp else datetime.now(timezone.utc).isoformat(),
             "symbol":          symbol,
             "session":         session,
             "strategy":        strategy,
@@ -183,7 +184,8 @@ def record_trade(
                 side="BUY/SELL", # Genérico para el historial rápido
                 price=exit_price,
                 qty=qty,
-                pnl=gross_pnl
+                pnl=gross_pnl,
+                timestamp=timestamp
             )
         except Exception:
             pass

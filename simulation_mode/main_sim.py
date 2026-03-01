@@ -253,16 +253,33 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
     log.info(f"SL: {config.STOP_LOSS_PCT*100:.0f}%  TP: {config.TAKE_PROFIT_PCT*100:.0f}%  MaxPos: ${config.MAX_POSITION_USD}")
     log.info(f"{'─'*60}")
 
-    sim_start_date = ""
-    sim_end_date   = ""
+    sim_start_date_str = ""
+    sim_end_date_str   = ""
     if is_mock:
         try:
-            # MarketReplay usa .df, LivePaperReplay usa .full_df
-            _df = getattr(broker._replay, 'df', getattr(broker._replay, 'full_df', None))
-            if _df is not None and not _df.empty:
-                sim_start_date = _df.index[0].strftime("%Y-%m-%d")
-                sim_end_date   = _df.index[-1].strftime("%Y-%m-%d")
-        except: pass
+            # Capturar el DF real tras el filtrado para informar al dashboard
+            _replay = getattr(broker, '_replay', None)
+            if _replay:
+                _df = getattr(_replay, 'df', getattr(_replay, 'full_df', None))
+                if _df is not None and not _df.empty:
+                    sim_start_date_str = _df.index[0].strftime("%Y-%m-%d")
+                    sim_end_date_str   = _df.index[-1].strftime("%Y-%m-%d")
+                    log.info(f"📊 Ventana de simulación detectada: {sim_start_date_str} a {sim_end_date_str}")
+        except Exception as e_dates:
+            log.warning(f"No se pudo extraer fechas del replay: {e_dates}")
+
+    # Enviar un primer pulso de estado para limpiar la UI y mostrar las fechas reales
+    from shared.utils.state_writer import update_state
+    update_state(
+        mode=args.mode,
+        symbol=symbol,
+        status="running",
+        sim_start=sim_start_date_str,
+        sim_end=sim_end_date_str,
+        available_cash=account.available_cash,
+        total_trades=0,
+        win_rate=0
+    )
 
     # 📊 SEGUIMIENTO DE BLOQUEOS (Para análisis de estrategia)
     import collections
@@ -284,6 +301,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # ── 2. Obtener cotización ────────────────────────────────────────
             try:
                 quote = broker.get_quote(symbol)
+                last_price_str = f"${quote.last:.2f}"
+                current_sim_time = quote.timestamp # Capturar tiempo lógico
             except StopIteration:
                 log.info("▶ Datos de simulación agotados. Finalizando sesión.")
                 break
@@ -292,8 +311,6 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 time.sleep(5)
                 continue
 
-            # ── 3. Obtener datos históricos para indicadores ─────────────────
-            # 220 velas = EMA 200 + 20 de margen para estabilización
             # ── 3. Obtener datos históricos para indicadores ─────────────────
             # 220 velas = EMA 200 + 20 de margen para estabilización
             if is_mock:
@@ -306,8 +323,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         with open(cmd_file, "r") as f:
                             cmds = json.load(f)
                             
-                        if cmds.get("reset_all") or cmds.get("force_paper_trading") is False:
-                            log.info("🔄 Interrumpiendo simulación: Señal de RESET o STOP recibida.")
+                        if cmds.get("reset_all") or cmds.get("restart_sim") or cmds.get("force_paper_trading") is False:
+                            log.info(f"🔄 Interrumpiendo simulación ({symbol}): Señal de RESET/RESTART recibida.")
                             return # Salir de run_bot para procesar en main()
 
                         new_sym = cmds.get("force_symbol")
@@ -383,8 +400,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                                 stop_loss=position.initial_stop,
                                 take_profit=position.take_profit,
                                 hold_bars=getattr(position, 'hold_bars', 0),
-                                exit_reason=reason.split(' ')[0].replace('🔒','TRAILING_STOP').replace('','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
+                                exit_reason=reason.replace('🔒','TRAILING_STOP').replace('🛑','STOP_LOSS').replace('🎯','TAKE_PROFIT').replace('⏰','TIME_EXIT').replace('🛡️','FORCED_SELL'),
                                 ml_features=position.ml_features,
+                                timestamp=current_sim_time
                             )
                             # 🧠 Alimentar la Red Neural MLP con el resultado real del trade
                             try:
@@ -536,8 +554,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                 regime=getattr(signal, 'regime', 'NEUTRAL'),
                 mock_time_930=is_mock_active,
                 blocks=signal.blocks,
-                sim_start=sim_start_date,
-                sim_end=sim_end_date
+                sim_start=sim_start_date_str,
+                sim_end=sim_end_date_str
             )
 
             # ── 7. Display de estado (cada 10 iteraciones en simulación) ─────
@@ -591,8 +609,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         is_waiting=True,
                         mock_time_930=is_mock_active,
                         blocks=signal.blocks,
-                        sim_start=sim_start_date,
-                        sim_end=sim_end_date
+                        sim_start=sim_start_date_str,
+                        sim_end=sim_end_date_str
                     )
                     smart_sleep(1)
                 
@@ -603,8 +621,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     if config.COMMAND_FILE.exists():
                         with open(config.COMMAND_FILE, "r") as f:
                             c = json.load(f)
-                        if c.get("reset_all") or c.get("force_paper_trading") is False:
-                            log.info(f"🛑 Interrupción detectada para {symbol}.")
+                        if c.get("reset_all") or c.get("restart_sim") or c.get("force_paper_trading") is False:
+                            log.info(f"🛑 Interrupción detectada para {symbol} (Reset/Restart).")
                             return
                 except: pass
 

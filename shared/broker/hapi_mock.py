@@ -335,17 +335,17 @@ class HapiMock(BrokerInterface):
 
         for order in self._pending_orders:
             if order.side == "BUY" and bar_low <= order.limit_price:
-                self._execute_buy(order, fill_price=order.limit_price)
+                self._execute_buy(order, fill_price=order.limit_price, timestamp=str(bar.name))
                 filled.append(order)
 
             elif order.side == "SELL" and bar_high >= order.limit_price:
-                self._execute_sell(order, fill_price=order.limit_price)
+                self._execute_sell(order, fill_price=order.limit_price, timestamp=str(bar.name))
                 filled.append(order)
 
         for o in filled:
             self._pending_orders.remove(o)
 
-    def _execute_buy(self, order: PendingOrder, fill_price: float) -> None:
+    def _execute_buy(self, order: PendingOrder, fill_price: float, timestamp: str | None = None) -> None:
         # Slippage simulado de compra (0.05% de penalización por latencia)
         slippage = 0.0005
         actual_fill_price = round(fill_price * (1 + slippage), 2)
@@ -360,14 +360,14 @@ class HapiMock(BrokerInterface):
         self._cash -= cost
         self._last_buy_price = actual_fill_price
         self._last_buy_qty   = order.qty
-        log_order_filled(order.symbol, "BUY", actual_fill_price, order.qty)
+        log_order_filled(order.symbol, "BUY", actual_fill_price, order.qty, timestamp=timestamp)
         # Update global state for UI tracking
         try:
             from shared.utils.state_writer import _state
             _state.available_cash = self._cash
         except: pass
 
-    def _execute_sell(self, order: PendingOrder, fill_price: float) -> None:
+    def _execute_sell(self, order: PendingOrder, fill_price: float, timestamp: str | None = None) -> None:
         # Slippage simulado de venta (0.05% de penalización por latencia)
         slippage = 0.0005
         actual_fill_price = round(fill_price * (1 - slippage), 2)
@@ -397,7 +397,7 @@ class HapiMock(BrokerInterface):
         raw_pnl = (actual_fill_price - getattr(self, '_last_buy_price', actual_fill_price)) * order.qty
         net_pnl = raw_pnl - total_fees
         
-        log_order_filled(order.symbol, "SELL", actual_fill_price, order.qty, net_pnl)
+        log_order_filled(order.symbol, "SELL", actual_fill_price, order.qty, net_pnl, timestamp=timestamp)
         log.info(f"🏦 HAPI FEES COBRADOS: Cierre=${closing_fee:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
         
         self._stats.record_trade(net_pnl, current_balance=self._cash)
