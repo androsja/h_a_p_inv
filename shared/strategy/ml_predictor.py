@@ -14,6 +14,7 @@ class MLPredictor:
         self.is_trained = False
         self.min_samples = 20  # Requiere al menos 20 trades en el historial para entrenar
         self.blocking_count = 0 # Contador de trades bloqueados por ML en la sesión actual
+        self._frozen: bool = False   # ❄️ Si True, no guarda nuevos trades ni reentrena
         self._load_and_train()
 
     def _load_and_train(self):
@@ -82,8 +83,30 @@ class MLPredictor:
             log.error(f"Error prediciendo trade con ML: {e}")
             return True, 0.5  # Si hay error, opera normal
 
+    def freeze(self) -> None:
+        """❄️ Congela el modelo: no guarda nuevos trades ni re-entrena el Random Forest."""
+        self._frozen = True
+        from shared.utils.logger import log as _l
+        _l.info("🧊 [MLPredictor] Modelo RF CONGELADO. No se guardarán nuevos trades en el dataset.")
+
+    def unfreeze(self) -> None:
+        """🔥 Descongela: vuelve a guardar trades y entrenar."""
+        self._frozen = False
+        from shared.utils.logger import log as _l
+        _l.info("🔥 [MLPredictor] Modelo RF DESCONGELADO.")
+
+    @property
+    def is_frozen(self) -> bool:
+        return self._frozen
+
     def save_trade(self, symbol: str, features: dict, pnl: float):
-        """Guarda los resultados del trade en el recolector de memoria"""
+        """Guarda los resultados del trade en el recolector de memoria.
+        Si el modelo está congelado, no hace nada."""
+        # ❄️ Congelado: ignorar el guardado
+        if self._frozen:
+            from shared.utils.logger import log as _l
+            _l.debug("🧊 [MLPredictor] save_trade() ignorado — modelo congelado.")
+            return
         try:
             is_win = 1 if pnl > 0 else 0
             

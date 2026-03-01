@@ -2,82 +2,464 @@
     "assets": [
         {
             "symbol": "AAPL",
+            "enabled": false
+        },
+        {
+            "symbol": "ABBV",
             "enabled": true
         },
         {
-            "symbol": "MSFT",
+            "symbol": "ABNB",
             "enabled": true
         },
         {
-            "symbol": "AMZN",
+            "symbol": "ACN",
             "enabled": true
         },
         {
-            "symbol": "GOOGL",
+            "symbol": "ADBE",
             "enabled": true
         },
         {
-            "symbol": "NVDA",
+            "symbol": "ADI",
             "enabled": true
         },
         {
-            "symbol": "TSLA",
-            "enabled": true
+            "symbol": "AFRM",
+            "enabled": false
         },
         {
-            "symbol": "META",
-            "enabled": true
+            "symbol": "AI",
+            "enabled": false
         },
         {
-            "symbol": "NFLX",
+            "symbol": "AMAT",
             "enabled": true
         },
         {
             "symbol": "AMD",
+            "enabled": false
+        },
+        {
+            "symbol": "AMGN",
             "enabled": true
         },
         {
-            "symbol": "DIS",
+            "symbol": "AMT",
+            "enabled": false
+        },
+        {
+            "symbol": "AMZN",
+            "enabled": false
+        },
+        {
+            "symbol": "ARM",
+            "enabled": false
+        },
+        {
+            "symbol": "ASML",
             "enabled": true
         },
         {
-            "symbol": "PYPL",
+            "symbol": "AVGO",
             "enabled": true
         },
         {
-            "symbol": "JPM",
+            "symbol": "AXP",
+            "enabled": false
+        },
+        {
+            "symbol": "BA",
             "enabled": true
         },
         {
-            "symbol": "V",
+            "symbol": "BAC",
             "enabled": true
         },
         {
-            "symbol": "WMT",
+            "symbol": "BILL",
+            "enabled": false
+        },
+        {
+            "symbol": "BRK.B",
+            "enabled": false
+        },
+        {
+            "symbol": "BTI",
+            "enabled": false
+        },
+        {
+            "symbol": "C",
+            "enabled": false
+        },
+        {
+            "symbol": "CAT",
             "enabled": true
         },
         {
-            "symbol": "KO",
+            "symbol": "CDNS",
             "enabled": true
         },
         {
-            "symbol": "PEP",
-            "enabled": true
+            "symbol": "CELH",
+            "enabled": false
         },
         {
-            "symbol": "NKE",
-            "enabled": true
+            "symbol": "CL",
+            "enabled": false
         },
         {
-            "symbol": "SBUX",
+            "symbol": "COIN",
             "enabled": true
         },
         {
             "symbol": "COST",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CRM",
+            "enabled": false
+        },
+        {
+            "symbol": "CRWD",
+            "enabled": true
+        },
+        {
+            "symbol": "CSCO",
+            "enabled": true
+        },
+        {
+            "symbol": "CVS",
+            "enabled": true
+        },
+        {
+            "symbol": "CVX",
+            "enabled": false
+        },
+        {
+            "symbol": "D",
+            "enabled": false
+        },
+        {
+            "symbol": "DASH",
+            "enabled": true
+        },
+        {
+            "symbol": "DDOG",
+            "enabled": false
+        },
+        {
+            "symbol": "DE",
+            "enabled": true
+        },
+        {
+            "symbol": "DHR",
+            "enabled": true
+        },
+        {
+            "symbol": "DIS",
+            "enabled": false
+        },
+        {
+            "symbol": "DOCU",
+            "enabled": true
+        },
+        {
+            "symbol": "DUK",
+            "enabled": false
+        },
+        {
+            "symbol": "FDX",
+            "enabled": true
+        },
+        {
+            "symbol": "FTNT",
+            "enabled": true
+        },
+        {
+            "symbol": "GD",
+            "enabled": true
+        },
+        {
+            "symbol": "GE",
+            "enabled": true
+        },
+        {
+            "symbol": "GIS",
+            "enabled": false
+        },
+        {
+            "symbol": "GOOGL",
+            "enabled": false
+        },
+        {
+            "symbol": "GS",
+            "enabled": true
+        },
+        {
+            "symbol": "GTLB",
+            "enabled": false
+        },
+        {
+            "symbol": "HCP",
+            "enabled": false
+        },
+        {
+            "symbol": "HD",
+            "enabled": false
+        },
+        {
+            "symbol": "HON",
+            "enabled": true
+        },
+        {
+            "symbol": "HOOD",
+            "enabled": false
+        },
+        {
+            "symbol": "HSY",
+            "enabled": false
+        },
+        {
+            "symbol": "IBM",
+            "enabled": true
+        },
+        {
+            "symbol": "INTC",
+            "enabled": true
+        },
+        {
+            "symbol": "IONQ",
+            "enabled": false
+        },
+        {
+            "symbol": "ISRG",
+            "enabled": true
+        },
+        {
+            "symbol": "JNJ",
+            "enabled": true
+        },
+        {
+            "symbol": "JPM",
+            "enabled": false
+        },
+        {
+            "symbol": "K",
+            "enabled": false
+        },
+        {
+            "symbol": "KLAC",
+            "enabled": true
+        },
+        {
+            "symbol": "KO",
+            "enabled": false
+        },
+        {
+            "symbol": "LLY",
+            "enabled": true
+        },
+        {
+            "symbol": "LMT",
+            "enabled": true
+        },
+        {
+            "symbol": "LOW",
+            "enabled": false
+        },
+        {
+            "symbol": "LRCX",
+            "enabled": true
+        },
+        {
+            "symbol": "LYFT",
+            "enabled": true
+        },
+        {
+            "symbol": "MA",
+            "enabled": true
+        },
+        {
+            "symbol": "MCD",
+            "enabled": false
+        },
+        {
+            "symbol": "MCHP",
+            "enabled": true
+        },
+        {
+            "symbol": "MDB",
+            "enabled": false
+        },
+        {
+            "symbol": "MDLZ",
+            "enabled": false
+        },
+        {
+            "symbol": "META",
+            "enabled": false
+        },
+        {
+            "symbol": "MMM",
+            "enabled": true
+        },
+        {
+            "symbol": "MNDY",
+            "enabled": false
+        },
+        {
+            "symbol": "MRK",
+            "enabled": true
+        },
+        {
+            "symbol": "MS",
+            "enabled": true
+        },
+        {
+            "symbol": "MSFT",
+            "enabled": false
+        },
+        {
+            "symbol": "MSTR",
+            "enabled": true
+        },
+        {
+            "symbol": "MU",
+            "enabled": true
+        },
+        {
+            "symbol": "NEE",
+            "enabled": false
+        },
+        {
+            "symbol": "NET",
+            "enabled": false
+        },
+        {
+            "symbol": "NFLX",
+            "enabled": false
+        },
+        {
+            "symbol": "NKE",
+            "enabled": false
+        },
+        {
+            "symbol": "NOC",
+            "enabled": true
+        },
+        {
+            "symbol": "NOW",
+            "enabled": true
+        },
+        {
+            "symbol": "NVDA",
+            "enabled": false
+        },
+        {
+            "symbol": "O",
+            "enabled": false
+        },
+        {
+            "symbol": "OPEN",
+            "enabled": false
+        },
+        {
+            "symbol": "ORCL",
+            "enabled": true
+        },
+        {
+            "symbol": "PANW",
+            "enabled": true
+        },
+        {
+            "symbol": "PEP",
+            "enabled": false
+        },
+        {
+            "symbol": "PFE",
+            "enabled": true
+        },
+        {
+            "symbol": "PG",
+            "enabled": false
+        },
+        {
+            "symbol": "PLTR",
+            "enabled": true
+        },
+        {
+            "symbol": "PM",
+            "enabled": false
+        },
+        {
+            "symbol": "PSQ",
+            "enabled": true,
+            "type": "inverted"
+        },
+        {
+            "symbol": "PYPL",
+            "enabled": false
+        },
+        {
+            "symbol": "QCOM",
+            "enabled": true
+        },
+        {
+            "symbol": "RBLX",
+            "enabled": false
+        },
+        {
+            "symbol": "ROKU",
+            "enabled": true
+        },
+        {
+            "symbol": "RTX",
+            "enabled": true
+        },
+        {
+            "symbol": "SAP",
+            "enabled": true
+        },
+        {
+            "symbol": "SBUX",
+            "enabled": false
+        },
+        {
+            "symbol": "SH",
+            "enabled": true,
+            "type": "inverted"
+        },
+        {
+            "symbol": "SHOP",
+            "enabled": true
+        },
+        {
+            "symbol": "SMCI",
+            "enabled": false
+        },
+        {
+            "symbol": "SNOW",
+            "enabled": true
+        },
+        {
+            "symbol": "SNPS",
+            "enabled": true
+        },
+        {
+            "symbol": "SO",
+            "enabled": false
+        },
+        {
+            "symbol": "SOFI",
+            "enabled": false
+        },
+        {
+            "symbol": "SPG",
+            "enabled": false
+        },
+        {
+            "symbol": "SQ",
             "enabled": true
         },
         {
@@ -86,14 +468,84 @@
             "type": "inverted"
         },
         {
-            "symbol": "SH",
-            "enabled": true,
-            "type": "inverted"
+            "symbol": "STZ",
+            "enabled": false
         },
         {
-            "symbol": "PSQ",
-            "enabled": true,
-            "type": "inverted"
+            "symbol": "T",
+            "enabled": false
+        },
+        {
+            "symbol": "TAP",
+            "enabled": false
+        },
+        {
+            "symbol": "TGT",
+            "enabled": false
+        },
+        {
+            "symbol": "TMO",
+            "enabled": true
+        },
+        {
+            "symbol": "TSLA",
+            "enabled": false
+        },
+        {
+            "symbol": "TTD",
+            "enabled": false
+        },
+        {
+            "symbol": "TWLO",
+            "enabled": false
+        },
+        {
+            "symbol": "TXN",
+            "enabled": true
+        },
+        {
+            "symbol": "U",
+            "enabled": true
+        },
+        {
+            "symbol": "UBER",
+            "enabled": true
+        },
+        {
+            "symbol": "UNH",
+            "enabled": true
+        },
+        {
+            "symbol": "UPS",
+            "enabled": true
+        },
+        {
+            "symbol": "V",
+            "enabled": false
+        },
+        {
+            "symbol": "VZ",
+            "enabled": false
+        },
+        {
+            "symbol": "WFC",
+            "enabled": false
+        },
+        {
+            "symbol": "WMT",
+            "enabled": false
+        },
+        {
+            "symbol": "XOM",
+            "enabled": false
+        },
+        {
+            "symbol": "ZM",
+            "enabled": true
+        },
+        {
+            "symbol": "ZS",
+            "enabled": false
         }
     ]
 }

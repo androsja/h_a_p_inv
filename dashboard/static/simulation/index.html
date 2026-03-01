@@ -1058,29 +1058,119 @@
             background: var(--panel);
             border: 1px solid var(--border);
             border-radius: 10px;
-            display: grid;
-            grid-template-columns: auto 1fr 1fr 1fr;
+            padding: 14px 18px;
+            display: flex;
+            flex-direction: column;
             gap: 12px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .trade-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        .trade-header {
+            display: flex;
             align-items: center;
-            padding: 12px 16px;
+            justify-content: space-between;
+        }
+
+        .trade-main-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .trade-symbol {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: 0.5px;
         }
 
         .trade-pill {
             padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 700;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .trade-pill.buy {
             background: rgba(0, 230, 118, 0.15);
             color: var(--green);
+            border: 1px solid rgba(0, 230, 118, 0.3);
         }
 
         .trade-pill.sell {
             background: rgba(255, 61, 90, 0.15);
             color: var(--red);
-            /* No quitar esta linea en blanco para el linting */
+            border: 1px solid rgba(255, 61, 90, 0.3);
+        }
+
+        .trade-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px 14px;
+            border-radius: 8px;
+        }
+
+        .trade-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+
+        .trade-reason {
+            color: var(--muted);
+            font-style: italic;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .trade-confs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .conf-tag {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #ddd;
+        }
+
+        .ml-badge {
+            background: linear-gradient(90deg, #673ab7, #2196f3);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mult-badge {
+            background: rgba(255, 171, 64, 0.2);
+            color: #ffab40;
+            border: 1px solid rgba(255, 171, 64, 0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
         }
 
         /* ─── TAB: RESULTADOS ─── */
@@ -1284,6 +1374,11 @@
                 <button onclick="restartSim()"
                     style="background:#00bcd4;color:#111;border:none;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;">
                     🔄 RESTART SIM
+                </button>
+                <button id="btn-freeze" onclick="toggleFreeze()"
+                    style="background:#1a2a4a;color:#64b5f6;border:1px solid #1565c0;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;gap:5px;transition:all 0.3s;"
+                    title="Congela la estrategia actual para que no sea borrada ni reiniciada">
+                    ❄️ CONGELAR
                 </button>
                 <div class="status-dot-wrap" style="margin-left: 10px;">
                     <div class="dot off" id="status-dot"></div>
@@ -2484,8 +2579,11 @@
         <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.15em; background:rgba(0,0,0,0.2); border-top: 1px dashed var(--border);">
             $${netToBank.toFixed(2)}
         </td>
-        <td colspan="4" style="padding:10px; background:rgba(0,0,0,0.2);">
-            <span style="font-size:0.85em; color:var(--muted);">¿Ganaste algo? -> ${finalProfit > 0 ? 'Sí ✅' : 'No ❌'}</span>
+        <td colspan="4" style="padding:10px; background:rgba(0,0,0,0.2); text-align: left;">
+            <button onclick="openWithdrawalBreakdown(${totalNet}, ${netToBank})" 
+                style="background:var(--accent); color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:6px;">
+                🇨🇴 Ver en Pesos
+            </button>
         </td>
         `;
                     tbody.appendChild(cashoutRow);
@@ -2737,25 +2835,79 @@
                 list.innerHTML = '<div class="no-trades">Sin operaciones aún…</div>';
                 return;
             }
-            list.innerHTML = [...trades].reverse().map(t => `
-            <div class="trade-card">
-                <span class="trade-pill ${t.side.toLowerCase()}">${t.side}</span>
-                <div class="trade-field">
-                    <div class="trade-field-label">Precio</div>
-                    <div class="trade-field-val">$${(t.price || 0).toFixed(2)}</div>
-                </div>
-                <div class="trade-field">
-                    <div class="trade-field-label">Cantidad</div>
-                    <div class="trade-field-val">${(t.qty || 0).toFixed(4)}</div>
-                </div>
-                <div class="trade-field">
-                    <div class="trade-field-label">PnL</div>
-                    <div class="trade-field-val" style="color:${t.pnl >= 0 ? 'var(--green)' : 'var(--red)'};">
-                        ${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toFixed(2)}
+            list.innerHTML = [...trades].reverse().map(t => {
+                const confs = t.confirmations || [];
+                const hasML = t.ml_prob > 0;
+                const hasMult = t.conf_mult > 1.0;
+                const isSell = t.side === 'SELL';
+
+                // Formatear precios para mostrar Compra -> Venta si es SELL
+                const priceDisplay = isSell
+                    ? `<div style="display:flex; flex-direction:column;">
+                         <span style="font-size:10px; color:var(--muted); text-decoration:line-through;">Entrada: $${(t.entry_price || 0).toFixed(2)}</span>
+                         <span>Salida: $${(t.price || 0).toFixed(2)}</span>
+                       </div>`
+                    : `$${(t.price || 0).toFixed(2)}`;
+
+                return `
+                <div class="trade-card">
+                    <div class="trade-header">
+                        <div class="trade-main-info">
+                            <span class="trade-symbol">${esc(t.symbol || '---')}</span>
+                            <span class="trade-pill ${t.side.toLowerCase()}">${t.side}</span>
+                            ${hasML ? `<span class="ml-badge">🧠 IA ${(t.ml_prob * 100).toFixed(0)}%</span>` : ''}
+                            ${hasMult ? `<span class="mult-badge">🔥 x${t.conf_mult.toFixed(1)}</span>` : ''}
+                        </div>
+                        <div style="text-align:right">
+                            <div class="clock" style="font-size:10px; color:var(--text);">${t.date || ''}</div>
+                            <div class="clock" style="font-size:9px;">${t.time}</div>
+                        </div>
+                    </div>
+
+                    <div class="trade-stats-grid">
+                        <div class="trade-field">
+                            <div class="trade-field-label">${isSell ? 'Precios' : 'Precio'}</div>
+                            <div class="trade-field-val">${priceDisplay}</div>
+                        </div>
+                        <div class="trade-field">
+                            <div class="trade-field-label">Cantidad</div>
+                            <div class="trade-field-val">${(t.qty || 0).toFixed(4)}</div>
+                        </div>
+                        <div class="trade-field">
+                            <div class="trade-field-label">Inversión</div>
+                            <div class="trade-field-val">$${(t.entry_price ? t.entry_price * t.qty : t.price * t.qty).toFixed(2)}</div>
+                        </div>
+                        <div class="trade-field">
+                            <div class="trade-field-label">PnL Neto</div>
+                            <div class="trade-field-val" style="color:${t.pnl >= 0 ? 'var(--green)' : 'var(--red)'}; font-size: 15px;">
+                                ${t.pnl >= 0 ? '+' : ''}${(t.pnl || 0).toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="trade-details">
+                        <div class="trade-reason" style="margin-bottom: 4px;">
+                            <span style="opacity:0.6; font-weight: bold;">📝 Motivo:</span>
+                            <span style="color:var(--accent); font-weight: 600;">${esc(t.reason || 'S/E')}</span>
+                            ${isSell && t.entry_reason ? `
+                                <div style="font-size:11px; margin-top:2px;">
+                                    <span style="opacity:0.5;">↳ Origen:</span> ${esc(t.entry_reason)}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${confs.length > 0 ? `
+                        <div style="margin-top:5px;">
+                            <div style="font-size:10px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">🛡️ Filtros de Confluencia:</div>
+                            <div class="trade-confs">
+                                ${confs.map(c => `<span class="conf-tag" style="background:rgba(0,188,212,0.1); border-color:rgba(0,188,212,0.2); color:#80deea;">${esc(c)}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
-            </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // ═══════════════════════════════════════════════════════
@@ -3390,21 +3542,86 @@
             box.style.borderRadius = '12px';
             box.style.border = '1px solid #3c404b';
             box.style.textAlign = 'center';
-            box.style.maxWidth = '400px';
+            box.style.width = '90%';
+            box.style.maxWidth = '450px';
             box.style.boxShadow = '0 10px 40px rgba(0,0,0,0.8)';
+
+            let selectedDate = null;
+            let displayMonth = new Date().getMonth();
+            let displayYear = new Date().getFullYear();
+
+            const renderCalendar = () => {
+                const calContainer = box.querySelector('#cal-picker-grid');
+                if (!calContainer) return;
+                calContainer.innerHTML = '';
+
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                box.querySelector('#cal-month-name').textContent = `${monthNames[displayMonth]} ${displayYear}`;
+
+                const firstDay = new Date(displayYear, displayMonth, 1).getDay();
+                const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+
+                // Empty slots
+                for (let i = 0; i < firstDay; i++) {
+                    const empty = document.createElement('div');
+                    calContainer.appendChild(empty);
+                }
+
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dayEl = document.createElement('div');
+                    dayEl.textContent = d;
+                    dayEl.style.padding = '8px';
+                    dayEl.style.cursor = 'pointer';
+                    dayEl.style.borderRadius = '4px';
+                    dayEl.style.fontSize = '12px';
+                    dayEl.style.transition = 'all 0.2s';
+
+                    const dateStr = `${displayYear}-${String(displayMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    if (selectedDate === dateStr) {
+                        dayEl.style.background = '#00bcd4';
+                        dayEl.style.color = '#111';
+                        dayEl.style.fontWeight = 'bold';
+                    } else {
+                        dayEl.style.background = 'rgba(255,255,255,0.05)';
+                        dayEl.style.color = 'white';
+                    }
+
+                    dayEl.onmouseover = () => { if (selectedDate !== dateStr) dayEl.style.background = 'rgba(255,255,255,0.15)'; };
+                    dayEl.onmouseout = () => { if (selectedDate !== dateStr) dayEl.style.background = 'rgba(255,255,255,0.05)'; };
+
+                    dayEl.onclick = () => {
+                        selectedDate = dateStr;
+                        renderCalendar();
+                        document.getElementById('selected-date-display').textContent = `📅 Seleccionado: ${dateStr}`;
+                    };
+                    calContainer.appendChild(dayEl);
+                }
+            };
 
             box.innerHTML = `
                 <h3 style="color:#00bcd4; margin-top:0;">🔄 REINICIAR SIMULACIÓN</h3>
-                <p style="color:#e0e0e0; margin:15px 0;">¿Deseas reiniciar la simulación?</p>
-                <div style="margin-bottom: 20px; text-align: left;">
-                    <label style="color:#9aa0a6; font-size:12px; display:block; margin-bottom:5px;">📅 Fecha de Inicio (Opcional):</label>
-                    <input type="date" id="sim-start-input" 
-                        style="width:100%; background:#0f172a; color:white; border:1px solid #3c404b; padding:10px; border-radius:6px; font-family:'Inter', sans-serif;">
-                    <span style="color:#64748b; font-size:10px; display:block; margin-top:5px;">Deja en blanco para usar los últimos 60 días automáticamente.</span>
+                <p style="color:#9aa0a6; font-size:12px; margin-bottom:15px;">Selecciona una fecha de inicio en el calendario:</p>
+                
+                <div style="background:#0f172a; border:1px solid #3c404b; border-radius:8px; padding:15px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <button id="prev-month" style="background:none; border:none; color:#00bcd4; cursor:pointer; font-size:18px;">&lt;</button>
+                        <span id="cal-month-name" style="color:white; font-weight:bold; font-size:14px;"></span>
+                        <button id="next-month" style="background:none; border:none; color:#00bcd4; cursor:pointer; font-size:18px;">&gt;</button>
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:5px; margin-bottom:5px;">
+                        ${['D', 'L', 'M', 'M', 'J', 'V', 'S'].map(d => `<div style="color:#64748b; font-size:10px; font-weight:bold;">${d}</div>`).join('')}
+                    </div>
+                    <div id="cal-picker-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:5px;"></div>
                 </div>
-                <div style="color:#9aa0a6; font-size:13px; margin-bottom:25px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px;">
-                    📈 <b>NOTA:</b> ¡Esto NO borrará la base de datos de entrenamiento de Machine Learning!
+
+                <div id="selected-date-display" style="color:#00bcd4; font-size:13px; font-weight:bold; margin-bottom:15px;">
+                    📅 Seleccionado: (Últimos 60 días)
                 </div>
+
+                <div style="color:#9aa0a6; font-size:11px; margin-bottom:25px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; text-align:left;">
+                    ⚠️ <b>NOTA:</b> El wipe limpiará el historial de trades de esta sesión pero NO afectará el entrenamiento previo de la IA.
+                </div>
+
                 <div style="display:flex; gap:10px; justify-content:center;">
                     <button id="btn-cancelar-sim" style="background:#3c404b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Cancelar</button>
                     <button id="btn-confirmar-sim" style="background:#00bcd4; color:#111; font-weight:bold; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;">Reiniciar Ya</button>
@@ -3413,13 +3630,25 @@
             overlay.appendChild(box);
             document.body.appendChild(overlay);
 
+            renderCalendar();
+
+            document.getElementById('prev-month').onclick = () => {
+                displayMonth--;
+                if (displayMonth < 0) { displayMonth = 11; displayYear--; }
+                renderCalendar();
+            };
+            document.getElementById('next-month').onclick = () => {
+                displayMonth++;
+                if (displayMonth > 11) { displayMonth = 0; displayYear++; }
+                renderCalendar();
+            };
+
             document.getElementById('btn-cancelar-sim').onclick = () => overlay.remove();
             document.getElementById('btn-confirmar-sim').onclick = () => {
-                const startDate = document.getElementById('sim-start-input').value;
                 fetch('/api/restart_sim', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sim_start_date: startDate || null })
+                    body: JSON.stringify({ sim_start_date: selectedDate || null })
                 })
                     .then(res => res.json())
                     .then(data => {
@@ -3522,7 +3751,164 @@
             }
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // SISTEMA DE CONGELACIÓN DE ESTRATEGIA ❄️
+        // ═══════════════════════════════════════════════════════════
+        let _isFrozen = false;
+
+        async function checkFreezeStatus() {
+            try {
+                const res = await fetch('/api/freeze_status');
+                const data = await res.json();
+                _isFrozen = data.frozen || false;
+                _updateFreezeUI(_isFrozen, data.label);
+            } catch (e) { /* silencioso */ }
+        }
+
+        function _updateFreezeUI(frozen, label) {
+            const btn = document.getElementById('btn-freeze');
+            const existingBanner = document.getElementById('freeze-banner');
+
+            if (frozen) {
+                // Botón en modo "congelado"
+                if (btn) {
+                    btn.innerHTML = '🔥 DESCONGELAR';
+                    btn.style.background = 'linear-gradient(135deg, #0d47a1, #1565c0)';
+                    btn.style.color = '#90caf9';
+                    btn.style.border = '1px solid #42a5f5';
+                    btn.style.boxShadow = '0 0 12px rgba(33, 150, 243, 0.5)';
+                    btn.style.animation = 'freeze-pulse 2s infinite';
+                }
+                // Banner informativo (no bloquea nada)
+                if (!existingBanner) {
+                    const banner = document.createElement('div');
+                    banner.id = 'freeze-banner';
+                    banner.style.cssText = `
+                        position: fixed; top: 56px; left: 0; right: 0; z-index: 99999;
+                        background: linear-gradient(90deg, rgba(13,71,161,0.95), rgba(21,101,192,0.95));
+                        color: #90caf9; text-align: center; padding: 6px 20px;
+                        font-size: 12px; font-weight: bold; letter-spacing: 0.5px;
+                        border-bottom: 1px solid #42a5f5;
+                        display: flex; justify-content: center; align-items: center; gap: 10px;
+                    `;
+                    const lbl = label || 'Estrategia Congelada';
+                    banner.innerHTML = `
+                        <span style="font-size:16px;">❄️</span>
+                        <span>IA CONGELADA — "<b>${lbl}</b>" — La IA <b>NO cambia</b> con nuevas simulaciones. Podés hacer Wipe y Restart normalmente.</span>
+                        <span style="font-size:16px;">❄️</span>
+                    `;
+                    document.body.appendChild(banner);
+                }
+            } else {
+                // Restaurar botón normal
+                if (btn) {
+                    btn.innerHTML = '❄️ CONGELAR';
+                    btn.style.background = '#1a2a4a';
+                    btn.style.color = '#64b5f6';
+                    btn.style.border = '1px solid #1565c0';
+                    btn.style.boxShadow = '';
+                    btn.style.animation = '';
+                }
+                // Quitar banner
+                if (existingBanner) existingBanner.remove();
+            }
+        }
+
+        // ── Modal personalizado de congelación (sin prompt/alert del sistema) ──
+        function _showFreezeModal(defaultLabel, onConfirm) {
+            const overlay = document.createElement('div');
+            overlay.id = 'freeze-custom-modal';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:flex;justify-content:center;align-items:center;';
+            overlay.innerHTML = `
+                <div style="background:linear-gradient(135deg,#0d1b2a,#1a2a4a);border:1px solid #1565c0;border-radius:16px;padding:32px 28px 24px;width:420px;max-width:92vw;box-shadow:0 0 40px rgba(33,150,243,0.35);">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                        <span style="font-size:32px;">❄️</span>
+                        <div>
+                            <div style="font-size:17px;font-weight:700;color:#90caf9;">Congelar Estrategia de IA</div>
+                            <div style="font-size:12px;color:#546e7a;margin-top:2px;">La IA seguirá prediciendo, pero no aprenderá nada nuevo</div>
+                        </div>
+                    </div>
+                    <label style="display:block;font-size:11px;color:#78909c;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Nombre de esta versión</label>
+                    <input id="freeze-label-input" type="text" value="${defaultLabel}"
+                        style="width:100%;box-sizing:border-box;background:#0a1628;border:1px solid #1565c0;border-radius:8px;padding:10px 14px;font-size:14px;color:#e3f2fd;outline:none;" />
+                    <div style="font-size:11px;color:#37474f;margin-top:8px;margin-bottom:24px;line-height:1.5;">
+                        💡 Podés lanzar todas las simulaciones que quieras.<br>La IA dará siempre el mismo resultado mientras esté congelada.
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button id="freeze-cancel-btn" style="background:transparent;border:1px solid #37474f;color:#78909c;padding:9px 20px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">Cancelar</button>
+                        <button id="freeze-confirm-btn" style="background:linear-gradient(135deg,#0d47a1,#1976d2);border:none;color:#e3f2fd;padding:9px 24px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:700;">❄️ Congelar</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            setTimeout(() => { const i = document.getElementById('freeze-label-input'); if (i) { i.focus(); i.select(); } }, 50);
+            document.getElementById('freeze-label-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter') document.getElementById('freeze-confirm-btn').click();
+                if (e.key === 'Escape') document.getElementById('freeze-cancel-btn').click();
+            });
+            document.getElementById('freeze-confirm-btn').onclick = () => {
+                const label = document.getElementById('freeze-label-input').value.trim() || defaultLabel;
+                document.body.removeChild(overlay);
+                onConfirm(label);
+            };
+            document.getElementById('freeze-cancel-btn').onclick = () => document.body.removeChild(overlay);
+        }
+
+        function _showFreezeToast(html, isSuccess) {
+            const t = document.createElement('div');
+            t.style.cssText = `position:fixed;bottom:30px;right:30px;z-index:9999999;background:${isSuccess ? 'linear-gradient(135deg,#0d47a1,#1565c0)' : 'linear-gradient(135deg,#b71c1c,#c62828)'};color:white;padding:14px 22px;border-radius:12px;font-size:13px;font-weight:600;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,0.4);border:1px solid ${isSuccess ? '#42a5f5' : '#ef5350'};line-height:1.5;`;
+            t.innerHTML = html;
+            document.body.appendChild(t);
+            setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 4500);
+        }
+
+        async function toggleFreeze() {
+            const newState = !_isFrozen;
+
+            if (!newState) {
+                // Descongelar directo sin modal
+                try {
+                    const res = await fetch('/api/freeze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frozen: false, label: null }) });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        _isFrozen = false;
+                        _updateFreezeUI(false, null);
+                        _showFreezeToast('🔥 IA DESCONGELADA — El bot vuelve a aprender de nuevos trades.', true);
+                    }
+                } catch (e) { _showFreezeToast('❌ Error: ' + e.message, false); }
+                return;
+            }
+
+            // Congelar → mostrar modal personalizado
+            const defaultLabel = 'Estrategia Sim ' + new Date().toLocaleDateString('es-CO');
+            _showFreezeModal(defaultLabel, async (label) => {
+                try {
+                    const res = await fetch('/api/freeze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ frozen: true, label }) });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        _isFrozen = true;
+                        _updateFreezeUI(true, label);
+                        _showFreezeToast(`❄️ IA CONGELADA<br><b>"${label}"</b><br><span style="font-size:11px;opacity:0.8;">Podés lanzar miles de simulaciones — la IA no cambiará.</span>`, true);
+                    }
+                } catch (e) { _showFreezeToast('❌ Error: ' + e.message, false); }
+            });
+        }
+
+        // Añadir animación de parpadeo para el modo congelado
+        const _freezeStyle = document.createElement('style');
+        _freezeStyle.textContent = `
+            @keyframes freeze-pulse {
+                0%, 100% { box-shadow: 0 0 8px rgba(33,150,243,0.4); }
+                50% { box-shadow: 0 0 20px rgba(33,150,243,0.8); }
+            }
+            @keyframes freeze-modal-in {
+                from { opacity: 0; transform: scale(0.92) translateY(-10px); }
+                to   { opacity: 1; transform: scale(1) translateY(0); }
+            }
+        `;
+        document.head.appendChild(_freezeStyle);
+
         _preloadConfigAssets();
+        checkFreezeStatus();  // Verificar estado de congelación al cargar
         connectWS();
     </script>
     <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
@@ -3541,22 +3927,44 @@
                 <span onclick="closeSymbolManager()" style="cursor:pointer; color:#888; font-size:18px;">✕</span>
             </div>
             <div
-                style="padding:15px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
-                <div style="flex:1;">
-                    Los símbolos habilitados (verde) serán procesados por el Bot de Simulación por defecto. Los
-                    deshabilitados (gris) serán ignorados en el ciclo de exploración automático.
+                style="padding:12px 15px; font-size:11px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; flex-direction:column; gap:8px;">
+                <div>
+                    Los símbolos habilitados (verde) serán procesados por el Bot. Los deshabilitados serán ignorados.
                 </div>
-                <div style="display:flex; gap:10px; margin-left:15px;">
+                <!-- Fila 1: Presets básicos -->
+                <div style="display:flex; gap:8px; flex-wrap:nowrap;">
+                    <button onclick="toggleTop20Symbols()"
+                        style="flex:1; background:var(--accent); color:var(--bg); border:none; padding:7px 4px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap;">⭐
+                        TOP 20</button>
+                    <button onclick="toggleNonTop20Symbols()"
+                        style="flex:1; background:#7c3aed; color:white; border:none; padding:7px 4px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap;">🔮
+                        Resto</button>
                     <button onclick="toggleAllSymbols(true)"
-                        style="background:var(--green); color:#111; border:none; padding:6px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Seleccionar
+                        style="flex:1; background:#00c781; color:#111; border:none; padding:7px 4px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap;">✅
                         Todos</button>
                     <button onclick="toggleAllSymbols(false)"
-                        style="background:#555; color:white; border:none; padding:6px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;">Deseleccionar
-                        Todos</button>
+                        style="flex:1; background:#3a3f4b; color:white; border:none; padding:7px 4px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap;">❌
+                        Ninguno</button>
+                </div>
+                <!-- Fila 2: Packs de Entrenamiento IA -->
+                <div
+                    style="display:flex; gap:8px; flex-wrap:nowrap; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
+                    <span style="color:#546e7a; font-size:10px; white-space:nowrap; align-self:center;">🧠 Train:</span>
+                    <button onclick="togglePackGrowth()"
+                        title="ARM, SMCI, AI, IONQ, RBLX, DDOG, NET, MDB, ZS, TWLO, HOOD, SOFI, AFRM, TTD, CELH..."
+                        style="flex:1; background:linear-gradient(135deg,#1565c0,#0d47a1); color:#90caf9; border:1px solid #1976d2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🚀
+                        Growth<br><span style="font-size:9px; opacity:0.75;">20 Tech/AI</span></button>
+                    <button onclick="togglePackDividend()"
+                        title="PG, XOM, CVX, NEE, MCD, WFC, HD, LOW, TGT, T, VZ, O, AMT, PM..."
+                        style="flex:1; background:linear-gradient(135deg,#1b5e20,#2e7d32); color:#a5d6a7; border:1px solid #388e3c; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">💰
+                        Value<br><span style="font-size:9px; opacity:0.75;">30 Dividendos</span></button>
+                    <button onclick="togglePackMega()" title="Los 50 nuevos símbolos: Growth + Dividendos juntos"
+                        style="flex:1; background:linear-gradient(135deg,#4a148c,#6a1b9a); color:#ce93d8; border:1px solid #7b1fa2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🌍
+                        Mega<br><span style="font-size:9px; opacity:0.75;">50 Nuevas</span></button>
                 </div>
             </div>
             <div id="sym-manager-list"
-                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:10px;">
+                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:8px;">
                 <!-- Lista inyectada por JS -->
             </div>
             <!-- El bot ahora recarga dinámicamente, ya no es necesario el aviso de reinicio -->
@@ -3575,12 +3983,12 @@
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 10px;
+            padding: 6px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
             transition: 0.2s;
         }
 
@@ -3595,7 +4003,7 @@
 
         .sm-sym {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -3680,8 +4088,7 @@
                         html += `
                         <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}">
                             <div id="sms-${item.symbol}" class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
-                            <div style="font-size:10px; color:var(--muted); text-align:center; height:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;" title="${item.name}">${item.name}</div>
-                            <label class="switch">
+                            <label class="switch" style="transform: scale(0.85); margin-bottom: 2px;">
                                 <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
                                 <span class="slider"></span>
                             </label>
@@ -3743,10 +4150,75 @@
 
         async function toggleAllSymbols(enable) {
             if (!window.configAssets || !window.configAssets.assets) return;
-            // Para la mejor UX, enviamos la petición, pero mostramos los cambios visuales inmediatamente
             const symbolsToChange = window.configAssets.assets.filter(a => !!a.enabled !== enable).map(a => a.symbol);
             if (symbolsToChange.length === 0) return;
+            await applyMassSymbolToggle(symbolsToChange, enable);
+        }
 
+        async function toggleTop20Symbols() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const top20 = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'DIS', 'PYPL', 'JPM', 'V', 'WMT', 'KO', 'PEP', 'NKE', 'SBUX', 'COST', 'CRM'];
+
+            // Primero deseleccionamos todo
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            await applyMassSymbolToggle(allSymbols, false);
+
+            // Luego seleccionamos el top 20
+            await applyMassSymbolToggle(top20, true);
+        }
+
+        async function toggleNonTop20Symbols() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const top20 = new Set(['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'NVDA', 'TSLA', 'META', 'NFLX', 'AMD', 'DIS', 'PYPL', 'JPM', 'V', 'WMT', 'KO', 'PEP', 'NKE', 'SBUX', 'COST', 'CRM']);
+
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            const nonTop20 = allSymbols.filter(s => !top20.has(s));
+
+            // Primero deseleccionamos todo
+            await applyMassSymbolToggle(allSymbols, false);
+
+            // Luego seleccionamos solo los que NO son top 20
+            await applyMassSymbolToggle(nonTop20, true);
+        }
+
+        // ── Packs de Entrenamiento IA ───────────────────────────────────────
+
+        const _PACK_GROWTH = [
+            // Tech / AI / Alto crecimiento (20 empresas)
+            'ARM', 'SMCI', 'AI', 'IONQ', 'RBLX', 'TWLO', 'DDOG', 'NET', 'MDB', 'ZS',
+            'GTLB', 'HCP', 'MNDY', 'BILL', 'TTD', 'CELH', 'HOOD', 'SOFI', 'AFRM', 'OPEN'
+        ];
+
+        const _PACK_DIVIDEND = [
+            // Value / Dividendos / Estables (30 empresas)
+            'PG', 'XOM', 'CVX', 'T', 'VZ', 'NEE', 'DUK', 'SO', 'D', 'WFC',
+            'C', 'AXP', 'MCD', 'PM', 'BTI', 'O', 'SPG', 'AMT', 'LOW', 'HD',
+            'TGT', 'MDLZ', 'GIS', 'K', 'CL', 'HSY', 'STZ', 'TAP', 'BRK.B', 'WFC'
+        ];
+
+        async function togglePackGrowth() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            await applyMassSymbolToggle(allSymbols, false);
+            await applyMassSymbolToggle(_PACK_GROWTH, true);
+        }
+
+        async function togglePackDividend() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            await applyMassSymbolToggle(allSymbols, false);
+            await applyMassSymbolToggle(_PACK_DIVIDEND, true);
+        }
+
+        async function togglePackMega() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            const megaPack = [...new Set([..._PACK_GROWTH, ..._PACK_DIVIDEND])];
+            await applyMassSymbolToggle(allSymbols, false);
+            await applyMassSymbolToggle(megaPack, true);
+        }
+
+        async function applyMassSymbolToggle(symbolsToChange, enable) {
             // Update UI instantly
             symbolsToChange.forEach(sym => {
                 const asset = window.configAssets.assets.find(a => a.symbol === sym);
@@ -3770,12 +4242,12 @@
 
             // Process async sequence to backend
             const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;justify-content:center;align-items:center;color:white;font-weight:bold;';
-            overlay.textContent = "Aplicando a " + symbolsToChange.length + " símbolos...";
+            overlay.style.cssText = 'position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999999;display:flex;justify-content:center;align-items:center;color:white;font-weight:bold;text-align:center;padding:20px;';
+            overlay.innerHTML = `<div>🚀 Configurando símbolos...<br><span style="font-size:12px; color:var(--muted);">${symbolsToChange.length} activos siendo actualizados</span></div>`;
             document.body.appendChild(overlay);
 
             try {
-                // Hacer peticiones secuenciales rapidas
+                // Hacer peticiones secuenciales rapidas o mejor por lotes si el backend lo soporta (pero usemos el loop actual para seguridad)
                 for (let sym of symbolsToChange) {
                     await fetch('/api/toggle_symbol', {
                         method: 'POST',
@@ -3803,6 +4275,158 @@
                     alert("Error reiniciando el bot.");
                 }
             } catch (e) { console.error(e); }
+        }
+
+        window.openWithdrawalBreakdown = function (totalNet, netToBank) {
+            const trm = 3766.30; // TRM Real del 28 de Febrero 2026
+            const spread = 80;    // Spread estimado de Hapi/Bancos (~2%)
+            const finalRate = trm - spread;
+            const hapiFee = 1.99;
+
+            const netAfterHapi = totalNet - hapiFee;
+            const copProfitOnly = netAfterHapi * finalRate;
+            const totalBalanceCOP = (10000 + netAfterHapi) * finalRate;
+
+            // ── Cálculo de Impuestos Colombianos ────────────────────────────
+            // Ganancias Ocasionales (retención > 2 años): 15%
+            // Renta ordinaria (trading frecuente < 2 años): ~28% (rango medio)
+            const TAX_GANANCIA_OCASIONAL = 0.15;   // Artículo 303 E.T.
+            const TAX_RENTA_ORDINARIA = 0.28;   // Tarifa efectiva estimada persona natural
+
+            const taxGO_USD = netAfterHapi * TAX_GANANCIA_OCASIONAL;
+            const taxRO_USD = netAfterHapi * TAX_RENTA_ORDINARIA;
+            const netAfterGO = netAfterHapi - taxGO_USD;
+            const netAfterRO = netAfterHapi - taxRO_USD;
+
+            const copAfterGO = netAfterGO * finalRate;
+            const copAfterRO = netAfterRO * finalRate;
+
+            // Calcular días totales basándonos en la UI
+            let daysText = "esta simulación";
+            try {
+                const s1 = document.getElementById('sim-start')?.textContent;
+                const s2 = document.getElementById('sim-end')?.textContent;
+                if (s1 && s1 !== '─') {
+                    const d1 = new Date(s1);
+                    const d2 = (s2 && s2 !== '─') ? new Date(s2) : new Date();
+                    const diffTime = Math.abs(d2 - d1);
+                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diffDays <= 0) diffDays = 1;
+                    daysText = `tan solo ${diffDays} días`;
+                }
+            } catch (e) { }
+
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999999;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(6px);';
+
+            const modal = document.createElement('div');
+            modal.style.cssText = 'background:#1e212b; padding:30px; border-radius:16px; border:1px solid #3c404b; width:90%; max-width:520px; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative; max-height:90vh; overflow-y:auto;';
+
+            modal.innerHTML = `
+                <button onclick="this.parentElement.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+                <h2 style="margin-top:0; color:#4caf50; display:flex; align-items:center; gap:10px;">
+                    🇨🇴 Retiro Estimado a Pesos
+                </h2>
+
+                <div style="text-align:center; margin:15px 0 25px 0; padding:15px; background:rgba(0,188,212,0.1); border-radius:12px; border:1px dashed #00bcd4;">
+                    <p style="margin:0; color:#e0e0e0; font-size:14px; line-height:1.4;">
+                        Si esta fuera tu cuenta real, habrías ganado <b style="color:var(--green);">$${totalNet.toFixed(2)} USD</b> 
+                        en <span style="color:#00bcd4; font-weight:bold;">${daysText}</span>.
+                    </p>
+                </div>
+                
+                <!-- Desglose base -->
+                <div style="margin:20px 0; background:rgba(255,255,255,0.03); border-radius:12px; padding:15px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span style="color:#888;">Utilidad Neta (USD):</span>
+                        <span style="font-weight:bold; color:var(--green);">$${totalNet.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <span style="color:#888;">Costo de Retiro (Hapi):</span>
+                        <span style="font-weight:bold; color:#ff9800;">-$${hapiFee.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                        <span style="color:#888;">TRM Actual:</span>
+                        <span style="font-weight:bold; color:#03a9f4;">$${trm.toLocaleString('es-CO')} COP</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:0.85em;">
+                        <span style="color:#666;">Tasa Hapi (Spread incl.):</span>
+                        <span style="color:#666;">$${finalRate.toLocaleString('es-CO')} COP</span>
+                    </div>
+                </div>
+
+                <!-- Ganancia bruta en COP -->
+                <div style="text-align:center; padding:16px; background:rgba(76, 175, 80, 0.1); border-radius:12px; border:1px solid rgba(76, 175, 80, 0.2); margin-bottom:20px;">
+                    <div style="font-size:11px; color:#81c784; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Ganancia Bruta en Pesos (sin impuestos)</div>
+                    <div style="font-size:26px; font-weight:bold; color:#4caf50; font-family:'JetBrains Mono', monospace;">
+                        $${copProfitOnly.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP
+                    </div>
+                </div>
+
+                <!-- ⚠️ Sección de Impuestos Colombianos -->
+                <div style="background:rgba(255,152,0,0.07); border:1px solid rgba(255,152,0,0.3); border-radius:12px; padding:16px; margin-bottom:20px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                        <span style="font-size:16px;">🏛️</span>
+                        <span style="font-weight:bold; color:#ffb74d; font-size:13px;">Impuestos en Colombia (DIAN)</span>
+                    </div>
+                    <div style="font-size:11px; color:#ff9800; background:rgba(255,152,0,0.1); padding:8px 10px; border-radius:8px; margin-bottom:12px; line-height:1.5;">
+                        ⚠️ <b>Hapi NO paga impuestos colombianos por ti.</b> Eres responsable de declarar estas ganancias ante la DIAN cada año.
+                    </div>
+
+                    <!-- Opción 1: Ganancias Ocasionales -->
+                    <div style="margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #ff9800;">
+                        <div style="font-size:11px; color:#aaa; margin-bottom:6px; font-weight:bold;">
+                            OPCIÓN A — Ganancias Ocasionales (Art. 303 E.T.)
+                        </div>
+                        <div style="font-size:10px; color:#666; margin-bottom:8px;">
+                            Si mantuviste las acciones <b style="color:#aaa;">más de 2 años</b> → aplica tarifa fija del 15%.
+                            (Este bot hace trading frecuente, así que probablemente NO aplica)
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                            <span style="color:#888;">Impuesto 15% sobre $${netAfterHapi.toFixed(2)} USD:</span>
+                            <span style="color:#ff9800;">-$${taxGO_USD.toFixed(2)} USD</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; padding-top:6px; border-top:1px solid rgba(255,255,255,0.05);">
+                            <span style="color:#ccc;">Neto después de impuesto:</span>
+                            <span style="color:#ffd54f;">$${copAfterGO.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP</span>
+                        </div>
+                    </div>
+
+                    <!-- Opción 2: Renta Ordinaria -->
+                    <div style="padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #ef5350;">
+                        <div style="font-size:11px; color:#aaa; margin-bottom:6px; font-weight:bold;">
+                            OPCIÓN B — Renta Ordinaria (trading frecuente)
+                        </div>
+                        <div style="font-size:10px; color:#666; margin-bottom:8px;">
+                            Si las posiciones se mantuvieron <b style="color:#aaa;">menos de 2 años</b> → se suma a tu renta ordinaria.
+                            Tarifa estimada ~28% (varía según ingresos totales anuales).
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                            <span style="color:#888;">Impuesto ~28% sobre $${netAfterHapi.toFixed(2)} USD:</span>
+                            <span style="color:#ef5350;">-$${taxRO_USD.toFixed(2)} USD</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; padding-top:6px; border-top:1px solid rgba(255,255,255,0.05);">
+                            <span style="color:#ccc;">Neto después de impuesto:</span>
+                            <span style="color:#ff8a65;">$${copAfterRO.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Balance total -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:rgba(3, 169, 244, 0.1); border-radius:12px; border:1px solid rgba(3, 169, 244, 0.2);">
+                    <span style="font-size:12px; color:#4fc3f7;">BALANCE TOTAL SI RETIRAS TODO:</span>
+                    <span style="font-size:18px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono', monospace;">
+                        $${totalBalanceCOP.toLocaleString('es-CO', { maximumFractionDigits: 0 })} COP
+                    </span>
+                </div>
+
+                <p style="font-size:10px; color:#555; margin-top:15px; text-align:center; line-height:1.4;">
+                    * Valores aproximados. TRM y tasas impositivas pueden variar. Consulta un contador para declaración exacta.
+                </p>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
         }
     </script>
 

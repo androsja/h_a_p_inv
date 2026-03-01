@@ -661,6 +661,47 @@ async def get_history(symbol: str, interval: str = "5m", period: str = "5d"):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+class FreezeRequest(BaseModel):
+    frozen: bool
+    label: str | None = None  # Etiqueta opcional para identificar qué estrategia se congeló
+
+@app.post("/api/freeze")
+async def set_freeze(req: FreezeRequest):
+    """Congela o descongela la estrategia. Cuando está congelada el bot no acepta reset/wipe."""
+    import json
+    try:
+        data = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                data = json.load(f)
+        
+        data["strategy_frozen"] = req.frozen
+        data["freeze_label"] = req.label or ("Estrategia Congelada" if req.frozen else None)
+        
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(data, f)
+
+        action = "🧊 CONGELADA" if req.frozen else "🔥 DESCONGELADA"
+        return {"status": "success", "message": f"Estrategia {action}", "frozen": req.frozen}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/freeze_status")
+async def get_freeze_status():
+    """Retorna el estado actual de congelación de la estrategia."""
+    import json
+    try:
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                data = json.load(f)
+            return {
+                "frozen": data.get("strategy_frozen", False),
+                "label": data.get("freeze_label", None)
+            }
+        return {"frozen": False, "label": None}
+    except Exception as e:
+        return {"frozen": False, "label": None}
+
 @app.post("/api/paper_trade_stop")
 async def paper_trade_stop():
     import json

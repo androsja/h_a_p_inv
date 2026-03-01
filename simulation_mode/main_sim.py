@@ -366,17 +366,41 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 
                     if is_protective_exit and is_mock and hasattr(broker, "immediate_market_sell"):
                         # Usar market sell al bid actual — garantiza salida al precio real
-                        actual_fill = broker.immediate_market_sell(symbol, position.qty, quote.bid)
+                        # Consolidar metadata de salida con la de entrada para historial
+                        exit_metadata = {
+                            "exit_reason": reason,
+                            "entry_reason": getattr(position, 'entry_reason', ""),
+                            "entry_metadata": getattr(position, 'entry_metadata', {}),
+                            "ml_prob": position.entry_metadata.get('ml_prob', 0),
+                            "conf_mult": position.entry_metadata.get('conf_mult', 1.0),
+                            "confirmations": position.entry_metadata.get('confirmations', []),
+                            "entry_price": position.entry_price
+                        }
+                        actual_fill = broker.immediate_market_sell(
+                            symbol, position.qty, quote.bid, 
+                            reason=reason, metadata=exit_metadata
+                        )
                         resp_status = "FILLED"
                         sell_price  = actual_fill
                     else:
                         # Take Profit → limit order (busca el precio objetivo hacia arriba)
+                        sell_price = sell_plan.limit_price
+                        # Consolidar metadata de salida con la de entrada para historial
+                        exit_metadata = {
+                            "exit_reason": reason,
+                            "entry_reason": getattr(position, 'entry_reason', ""),
+                            "entry_metadata": getattr(position, 'entry_metadata', {}),
+                            "ml_prob": position.entry_metadata.get('ml_prob', 0),
+                            "conf_mult": position.entry_metadata.get('conf_mult', 1.0),
+                            "confirmations": position.entry_metadata.get('confirmations', []),
+                            "entry_price": position.entry_price
+                        }
                         resp = broker.place_limit_order(
                             symbol=symbol, side="SELL",
-                            limit_price=sell_plan.limit_price, qty=sell_plan.qty,
+                            limit_price=sell_price, qty=sell_plan.qty,
+                            reason=reason, metadata=exit_metadata
                         )
                         resp_status = resp.status
-                        sell_price  = sell_plan.limit_price
 
                     if resp_status not in ("REJECTED",):
                         pnl = (sell_price - position.entry_price) * position.qty
@@ -431,6 +455,21 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 
             # ── 5. Gestionar ENTRADA (si no hay posición y hay señal BUY) ────
             elif signal.signal == SIGNAL_BUY:
+                # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
+                is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
+                
+                # 📊 CALCULAR FACTOR DE CONFIANZA (Sistematización de aumento de compra)
+                conf_mult = 1.0
+                if is_win:
+                    if prob_win > 0.85: conf_mult *= 1.5  # IA muy segura (+50%)
+                    elif prob_win > 0.70: conf_mult *= 1.2 # IA segura (+20%)
+                
+                if len(signal.confirmations) >= 4:
+                    conf_mult *= 1.2 # Muchas confluencias técnicas (+20%)
+                
+                # Cap de seguridad: nunca duplicar más del 2x el riesgo base
+                conf_mult = min(conf_mult, 2.0)
+
                 # En modo simulado, sincronizar el cash real desde el MockBroker
                 if is_mock:
                     live_info = broker.get_account_info()
@@ -438,29 +477,43 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 
                 buy_plan = risk_mgr.calculate_buy_order(
                     symbol, quote.ask,
-                    atr_value=signal.atr_value,   # SL dinámico con ATR
+                    atr_value=signal.atr_value,
+                    confidence_multiplier=conf_mult
                 )
 
-                # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
-                if buy_plan.is_viable:
-                    is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
-                    if not is_win:
-                        buy_plan.is_viable = False
-                        buy_plan.block_reason = f"ML_REJECTION: El robot recuerda haber perdido con estos parámetros (Probabilidad de Ganar: {prob_win*100:.1f}%)"
-                        log.info(f"[{symbol}] 🧠 ML EVITÓ PERDER DINERO | Bloqueó entrada | Prob={prob_win*100:.1f}%")
+                if not is_win and prob_win < 0.48 and buy_plan.is_viable:
+                    buy_plan.is_viable = False
+                    buy_plan.block_reason = f"ML_REJECTION: El robot recuerda haber perdido con estos parámetros (Probabilidad de Ganar: {prob_win*100:.1f}%)"
+                    log.info(f"[{symbol}] 🧠 ML EVITÓ PERDER DINERO | Bloqueó entrada | Prob={prob_win*100:.1f}%")
 
                 if buy_plan.is_viable:
+                    if conf_mult > 1.0:
+                        log.info(f"[{symbol}] 🔥 COMPRA AGRESIVA: Aumentando tamaño x{conf_mult:.2f} por alta confianza (IA={prob_win*100:.0f}%, Confluencias={len(signal.confirmations)})")
+                    
+                    reason_str = f"BUY: {len(signal.confirmations)} confluencias"
+                    if conf_mult > 1.0:
+                        reason_str += f" | Aumento x{conf_mult:.1f}"
+
+                    metadata = {
+                        "confirmations": signal.confirmations,
+                        "ml_prob": prob_win,
+                        "conf_mult": conf_mult
+                    }
+
                     log_order_attempt(
                         symbol, "BUY",
                         buy_plan.limit_price, buy_plan.qty,
                         f"confluencias={len(signal.confirmations)} | "
-                        f"RSI={signal.rsi_value:.1f} | MACD={signal.macd_hist:.4f}"
+                        f"RSI={signal.rsi_value:.1f} | MACD={signal.macd_hist:.4f} | "
+                        f"IA={prob_win*100:.0f}% | Aumento=x{conf_mult:.2f}"
                     )
                     resp = broker.place_limit_order(
                         symbol=symbol,
                         side="BUY",
                         limit_price=buy_plan.limit_price,
                         qty=buy_plan.qty,
+                        reason=reason_str,
+                        metadata=metadata
                     )
                     if resp.status not in ("REJECTED",):
                         position = OpenPosition(
@@ -471,6 +524,8 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             take_profit=buy_plan.take_profit,
                             initial_stop=buy_plan.stop_loss,
                             ml_features=signal.ml_features,
+                            entry_reason=reason_str,
+                            entry_metadata=metadata
                         )
                         if not is_mock:
                             account.total_cash -= buy_plan.limit_price * buy_plan.qty
@@ -740,10 +795,16 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         status="completed",
                         session=session_num,
                         iteration=0,
-                        bid=0, ask=0, signal="HOLD", rsi=50, ema_fast=0, ema_slow=0, ema_200=0, macd_hist=0, vwap=0, atr=0, confirmations=[],
+                        bid=getattr(quote, 'bid', 0.0), 
+                        ask=getattr(quote, 'ask', 0.0), 
+                        signal="HOLD", 
+                        rsi=50, 
+                        ema_fast=0, ema_slow=0, ema_200=0, macd_hist=0, vwap=0, atr=0, confirmations=[],
                         initial_cash=account.total_cash, available_cash=account.available_cash, settlement=0,
                         win_rate=broker.stats.win_rate, total_trades=broker.stats.total_trades, winning_trades=broker.stats.winning_trades,
-                        gross_profit=broker.stats.gross_profit, gross_loss=broker.stats.gross_loss
+                        gross_profit=broker.stats.gross_profit, gross_loss=broker.stats.gross_loss,
+                        sim_start=sim_start_date_str,
+                        sim_end=sim_end_date_str
                     )
                 except Exception as e:
                     log.error(f"Error guardando bitácora: {e}")
@@ -818,6 +879,23 @@ def main() -> None:
                 with open(cmd_file, "r") as f:
                     cmds = json.load(f)
                 
+                # ── Sincronizar estado de congelación de IA ───────────────────────
+                _ai_frozen = cmds.get("strategy_frozen", False)
+                try:
+                    from shared.utils.neural_filter import get_neural_filter
+                    _nf = get_neural_filter()
+                    if _ai_frozen and not _nf.is_frozen:
+                        _nf.freeze()
+                    elif not _ai_frozen and _nf.is_frozen:
+                        _nf.unfreeze()
+                except Exception: pass
+                try:
+                    from shared.strategy.ml_predictor import ml_predictor as _ml
+                    if _ai_frozen and not _ml.is_frozen:
+                        _ml.freeze()
+                    elif not _ai_frozen and _ml.is_frozen:
+                        _ml.unfreeze()
+                except Exception: pass
                 if cmds.get("reset_all") or cmds.get("restart_sim"):
                     is_purgue = cmds.get("reset_all", False)
                     log.info(f"🔄 {'PURGANDO MEMORIA TOTAL' if is_purgue else 'REINICIANDO SIMULACIÓN'} por orden del usuario...")
@@ -849,11 +927,10 @@ def main() -> None:
                     importlib.reload(market_data)
                     set_assets_file(config.ASSETS_FILE_SIM)
                     all_symbols = market_data.get_symbols()
-                     # No necesitamos set_assets_file aquí porque ya se seteó al inicio y market_data ya lo tiene.
                     symbol_idx = 0
                     session_num = 0
                     
-                    # Limpiar memoria interna de estados de símbolos para evitar "fantasmas" paralelos en el dashboard
+                    # Limpiar memoria interna de estados de símbolos
                     try:
                         from shared.utils.state_writer import _symbol_states
                         _symbol_states.clear()

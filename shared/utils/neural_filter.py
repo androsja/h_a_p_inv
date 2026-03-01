@@ -60,6 +60,7 @@ class NeuralTradeFilter:
         self._X: list[list[float]] = []
         self._y: list[int]  = []   # 1 = trade ganador, 0 = perdedor
         self._lock = threading.Lock()
+        self._frozen: bool = False   # ❄️ Si True, no aprende ni sobreescribe el modelo
         self._load()
 
     # ── Persistencia ─────────────────────────────────────────────────────────
@@ -79,11 +80,31 @@ class NeuralTradeFilter:
             log.warning(f"No se pudo cargar el modelo neural: {e}")
 
     def _save(self):
+        # ❄️ Si el modelo está congelado, NO sobreescribir el archivo en disco
+        if self._frozen:
+            log.debug("🧊 [NeuralFilter] Modelo congelado — guardado omitido.")
+            return
         try:
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
             joblib.dump({"model": self._model, "X": self._X, "y": self._y}, MODEL_PATH)
         except Exception as e:
             log.warning(f"No se pudo guardar el modelo neural: {e}")
+
+    # ── Control de Congelación ───────────────────────────────────────────────
+
+    def freeze(self) -> None:
+        """❄️ Congela el modelo: seguirá prediciendo pero NO aprenderá ni guardará cambios."""
+        self._frozen = True
+        log.info("🧊 [NeuralFilter] Modelo MLP CONGELADO. Solo lectura — nuevos trades no modificarán la IA.")
+
+    def unfreeze(self) -> None:
+        """🔥 Descongela: el modelo vuelve a aprender de nuevos trades."""
+        self._frozen = False
+        log.info("🔥 [NeuralFilter] Modelo MLP DESCONGELADO. Retomarán el aprendizaje.")
+
+    @property
+    def is_frozen(self) -> bool:
+        return self._frozen
 
     # ── API Pública ───────────────────────────────────────────────────────────
 
@@ -140,8 +161,14 @@ class NeuralTradeFilter:
         """
         Registra el resultado de un trade y re-entrena el modelo.
         Llamar después de cerrar cada posición.
+        Si el modelo está congelado (frozen=True), esta función no hace nada.
         """
         from sklearn.neural_network import MLPClassifier
+
+        # ❄️ Si está congelado, NO aprender nada nuevo
+        if self._frozen:
+            log.debug("🧊 [NeuralFilter] fit() ignorado — modelo congelado.")
+            return
 
         with self._lock:
             self._X.append(features)
