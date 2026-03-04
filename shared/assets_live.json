@@ -26,7 +26,7 @@
         },
         {
             "symbol": "AFRM",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "AI",
