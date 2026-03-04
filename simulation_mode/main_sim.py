@@ -439,9 +439,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                                     macd_hist=ml_f.get('macd_hist', 0.0),
                                     atr_pct=ml_f.get('atr_pct', 0.0),
                                     vol_ratio=ml_f.get('vol_ratio', 1.0),
-                                    ema_fast=ml_f.get('ema_diff_pct', 0.0) + 100,  # Reconstruct approx
-                                    ema_slow=100.0,
-                                    zscore_vwap=ml_f.get('vwap_dist_pct', 0.0),
+                                    ema_fast=ml_f.get('ema_fast', ml_f.get('ema_diff_pct', 0.0) + 100),
+                                    ema_slow=ml_f.get('ema_slow', 100.0),
+                                    zscore_vwap=ml_f.get('zscore_vwap', ml_f.get('vwap_dist_pct', 0.0)),
                                     regime=ml_f.get('regime', 'NEUTRAL'),
                                     num_confirmations=int(ml_f.get('num_confirmations', 2)),
                                 )

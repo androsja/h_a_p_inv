@@ -649,6 +649,8 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
                 blocks_buy.append(f"Filtro ML: RSI en zona muerta ({rsi_now:.1f})")
             if is_low_trend:
                 blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 10)")
+            from shared.utils.logger import log as _log
+            _log.warning(f"{sym_prefix}🎯🛑 OPORTUNIDAD EVITADA: Momentum RSI/ADX insuficiente.")
             confirmations_buy.clear()
 
     # ── REGLA TREND_UP: Eliminamos el bloqueo de RSI > 68 para permitir momentum ──
@@ -663,7 +665,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         blocks_buy.append(msg)
         confirmations_buy.clear()
         from shared.utils.logger import log as _log
-        _log.info(f"🚧 BLOQUEADO: {msg}")
+        _log.warning(f"{sym_prefix}🎯� OPORTUNIDAD EVITADA: {msg}")
 
     if signal == SIGNAL_BUY and (20.0 < adx_now < 30.0) and is_adx_rising:
         if current_regime in ("NEUTRAL", "RANGE"):
@@ -674,7 +676,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
                 blocks_buy.append(msg)
                 confirmations_buy.clear()
                 from shared.utils.logger import log as _log
-                _log.info(f"🚧 BLOQUEADO: {msg}")
+                _log.warning(f"{sym_prefix}🎯� OPORTUNIDAD EVITADA: {msg}")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
     # Tu Take Profit (3%) o Trailing Stop harán el 90% del trabajo de salida. 
@@ -704,6 +706,11 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'atr_pct': float(atr_pct),
         'adx': float(adx_now),
         'regime': current_regime,
+        'vol_ratio': float(vol_ratio),
+        'ema_fast': float(ema_f_now),
+        'ema_slow': float(ema_s_now),
+        'zscore_vwap': float(zscore_now),
+        'num_confirmations': len(confirmations_buy),
     }
 
     # 🤖 EJECUCIÓN DEL MODELO DE INTELIGENCIA ARTIFICIAL EN VIVO

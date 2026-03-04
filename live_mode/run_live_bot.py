@@ -225,10 +225,10 @@ def run_symbol_live(
             # ── 6. Gestionar ENTRADA ──────────────────────────────────────────
             elif signal.signal == SIGNAL_BUY:
                 
-                # REGLA 1: Evitar el Sesgo de Look-Ahead (Solo operar cuando la vela cierre exactamente)
+                # REGLA 1: Evitar el Sesgo de Look-Ahead (Solo operar en el minuto exacto del cierre o inicio de vela)
                 now = datetime.now(config.NY_TZ)
-                if now.minute % 5 != 0 or now.second > 15:
-                    msg = "⏱️ Esperando cierre de vela (Look-Ahead Prevention)"
+                if now.minute % 5 != 0:
+                    msg = "⏱️ Esperando inicio de nueva vela de 5m (Look-Ahead Prevention)"
                     signal.blocks = [msg]
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
@@ -242,6 +242,7 @@ def run_symbol_live(
                     signal.blocks = [msg]
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
+                    log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
                     continue
 
                 # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
@@ -272,7 +273,7 @@ def run_symbol_live(
                     buy_plan.block_reason = msg
                     signal.signal = SIGNAL_HOLD
                     signal.blocks = [msg]
-                    log.info(f"[LIVE:{symbol}] {msg}")
+                    log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
 
 
                 # ─ Consultar Neural Filter (solo predict) ─
@@ -284,9 +285,9 @@ def run_symbol_live(
                             macd_hist=ml_f.get("macd_hist", 0.0),
                             atr_pct=ml_f.get("atr_pct", 0.0),
                             vol_ratio=ml_f.get("vol_ratio", 1.0),
-                            ema_fast=ml_f.get("ema_diff_pct", 0.0) + 100,
-                            ema_slow=100.0,
-                            zscore_vwap=ml_f.get("vwap_dist_pct", 0.0),
+                            ema_fast=ml_f.get("ema_fast", ml_f.get("ema_diff_pct", 0.0) + 100),
+                            ema_slow=ml_f.get("ema_slow", 100.0),
+                            zscore_vwap=ml_f.get("zscore_vwap", ml_f.get("vwap_dist_pct", 0.0)),
                             regime=ml_f.get("regime", "NEUTRAL"),
                             num_confirmations=int(ml_f.get("num_confirmations", 2)),
                         )
@@ -297,7 +298,7 @@ def run_symbol_live(
                             buy_plan.block_reason = msg
                             signal.signal = SIGNAL_HOLD
                             signal.blocks = [msg]
-                            log.info(f"[LIVE:{symbol}] {msg}")
+                            log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
                     except Exception as nfe:
                         log.debug(f"[LIVE:{symbol}] NF error: {nfe}")
 
