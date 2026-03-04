@@ -54,6 +54,8 @@ class AlpacaPaperBroker(BrokerInterface):
         self._winning_trades = 0
         self._gross_profit   = 0.0
         self._gross_loss     = 0.0
+        self._total_fees     = 0.0
+        self._total_slippage = 0.0
 
         log.info(f"[{symbol}] 🦙 AlpacaPaper | Conectado en modo PAPER ✅")
 
@@ -109,41 +111,51 @@ class AlpacaPaperBroker(BrokerInterface):
 
     def get_bars_df(self, symbol: str, limit: int = 220):
         """
-        Descarga las últimas `limit` barras de 5 minutos desde Alpaca.
-        Retorna un DataFrame compatible con analyze() de indicators.py.
+        Descarga las últimas barras directamente desde Alpaca de forma fresca.
+        Esto garantiza que en Live Trading jamás usemos datos cacheados
+        y siempre tengamos la información más reciente, incluso tras pausas.
         """
-        import pandas as pd
-        from alpaca.data.requests import StockBarsRequest
-        from alpaca.data.timeframe import TimeFrame
-
-        req = StockBarsRequest(
-            symbol_or_symbols=symbol,
-            timeframe=TimeFrame.Minute * 5,   # Barras de 5 minutos (igual que simulación)
-            limit=limit,
-        )
-        bars = self._data_client.get_stock_bars(req)
-        raw  = bars[symbol]
-
-        records = []
-        for b in raw:
-            records.append({
-                "Open":   float(b.open),
-                "High":   float(b.high),
-                "Low":    float(b.low),
-                "Close":  float(b.close),
-                "Volume": int(b.volume),
+        try:
+            import pandas as pd
+            from alpaca.data.requests import StockBarsRequest
+            from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+            from datetime import timedelta
+            
+            # Pedimos los últimos 5 días para asegurar suficientes barras (max 300)
+            end_time = datetime.now(timezone.utc)
+            start_time = end_time - timedelta(days=5)
+            
+            req = StockBarsRequest(
+                symbol_or_symbols=symbol, 
+                timeframe=TimeFrame(5, TimeFrameUnit.Minute), 
+                start=start_time,
+                end=end_time,
+                feed="iex" # Usar tier gratuito para evitar fallos de permisos en paper
+            )
+            bars = self._data_client.get_stock_bars(req)
+            
+            if bars.df.empty:
+                raise ValueError(f"Alpaca no devolvió barras para {symbol}")
+                
+            raw_df = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
+            raw_df = raw_df.rename(columns={
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume"
             })
-
-        if not records:
-            raise ValueError(f"No se obtuvieron barras de Alpaca para {symbol}")
-
-        df = pd.DataFrame(records)
-        # Índice temporal para compatibilidad con analyze() (igual que market_data)
-        timestamps = [b.timestamp for b in raw]
-        df.index = pd.DatetimeIndex(timestamps)
-        if df.index.tz is None:
-            df.index = df.index.tz_localize("UTC")
-        return df
+            
+            raw_df.index = pd.to_datetime(raw_df.index, utc=True)
+            df = raw_df[["Open", "High", "Low", "Close", "Volume"]].copy()
+            df.dropna(inplace=True)
+            
+            # Solo retornamos las que pedimos de límite si las filtramos localmente (opcional)
+            return df.tail(limit)
+            
+        except Exception as e:
+            log.warning(f"[{symbol}] AlpacaPaper | Error solicitando barras en vivo: {e}")
+            raise
 
     # ── Órdenes ───────────────────────────────────────────────────────────────
 
@@ -275,14 +287,18 @@ class AlpacaPaperBroker(BrokerInterface):
 
     # ── Stats (para compatibilidad con el dashboard) ──────────────────────────
 
-    def update_stats(self, pnl: float):
-        """Actualiza stats locales tras cerrar un trade."""
+    def update_stats(self, pnl: float, fees: float = 0.0, slippage: float = 0.0):
+        """Actualiza stats locales tras cerrar un trade. pnl es el Neto."""
         self._total_trades += 1
-        if pnl > 0:
+        self._total_fees += fees
+        self._total_slippage += slippage
+        # Reconstruir el Gross PnL
+        gross_pnl = pnl + fees + slippage
+        if gross_pnl > 0:
             self._winning_trades += 1
-            self._gross_profit += pnl
+            self._gross_profit += gross_pnl
         else:
-            self._gross_loss += abs(pnl)
+            self._gross_loss += abs(gross_pnl)
 
     @property
     def stats(self):
@@ -295,8 +311,9 @@ class AlpacaPaperBroker(BrokerInterface):
             "win_rate":       round(wins / total * 100, 1) if total else 0.0,
             "gross_profit":   round(self._gross_profit, 2),
             "gross_loss":     round(self._gross_loss, 2),
-            "total_pnl":      round(self._gross_profit - self._gross_loss, 2),
+            "total_pnl":      round(self._gross_profit - self._gross_loss - self._total_fees, 2),
             "profit_factor":  round(self._gross_profit / max(self._gross_loss, 0.01), 2),
             "max_drawdown":   0.0,
-            "total_fees":     0.0,
+            "total_fees":     round(self._total_fees, 2),
+            "total_slippage": round(self._total_slippage, 2),
         })()

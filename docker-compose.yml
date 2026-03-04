@@ -113,8 +113,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: "256M"
+          cpus: "1.0"
+          memory: "1024M"
 
   # ─── Bot LIVE PAPER (datos reales, dinero ficticio) ─────────────────────────
   trading-bot-paper:
@@ -129,22 +129,18 @@ services:
     environment:
       - TRADING_MODE=LIVE
       - HAPI_IS_TEST_MODE=true
-    command: [ "python", "live_mode/main_live.py", "--paper" ]
+    command: [ "python", "live_mode/live_alpaca_watcher.py" ]
     volumes:
       - ./live_mode:/app/live_mode
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./shared:/app/shared
       - ./shared/assets_live.json:/app/assets_live.json
-      - ./shared/data/market_data.py:/app/shared/data/market_data.py
-      - ./shared/broker:/app/broker
-      - ./shared/strategy:/app/strategy
-      - ./shared/utils:/app/utils
-      - ./shared/config.py:/app/config.py
     deploy:
       resources:
         limits:
           cpus: "1.0"
-          memory: "512M"
+          memory: "1024M"
 
 # ─── Volúmenes compartidos ────────────────────────────────────────────────────
 # (Usando bind mounts directos para mayor transparencia)

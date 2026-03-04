@@ -27,12 +27,13 @@ ALPACA_BASE_URL     = os.getenv("APCA_API_BASE_URL", "https://paper-api.alpaca.m
 TRADING_MODE    = os.getenv("TRADING_MODE", "SIMULATED").upper()   # LIVE | SIMULATED
 HAPI_TEST_MODE  = os.getenv("HAPI_IS_TEST_MODE", "true").lower() == "true"
 
-# ─── Gestión de riesgo (Intraday) ───────────────────────────────────────────
-STOP_LOSS_PCT       = float(os.getenv("STOP_LOSS_PCT",    "0.025"))   # 2.5% SL
-TAKE_PROFIT_PCT     = float(os.getenv("TAKE_PROFIT_PCT",  "0.05"))    # 5.0% TP  → ratio 1:2
-MAX_POSITION_USD    = float(os.getenv("MAX_POSITION_USD", "10000"))   # Relajado a tamaño total de la cuenta
-MAX_RISK_PCT        = float(os.getenv("MAX_RISK_PCT", "0.025"))      # Máximo riesgo de 2.5% del capital por trade
-CLEARING_COST_USD   = float(os.getenv("CLEARING_COST_USD","0.15"))   # $0.15 Apex
+# ── RISK MANAGEMENT (Configured for IBKR) ───────────────────────────
+STOP_LOSS_PCT     = float(os.getenv("STOP_LOSS_PCT", "0.01"))      # 1% por trade
+TAKE_PROFIT_PCT   = float(os.getenv("TAKE_PROFIT_PCT", "0.02"))    # 2% por trade
+MAX_POSITION_USD  = float(os.getenv("MAX_POSITION_USD", "5000.0")) # Tamaño máximo de posición en vivo
+INITIAL_CASH_LIVE = float(os.getenv("INITIAL_CASH_LIVE", "25000.0")) # Balance inicial forzado para Live Paper
+TARGET_MIN_NET_PROFIT_USD = float(os.getenv("TARGET_MIN_NET_PROFIT_USD", "0.75")) # IBKR Tiered minimum round trip fee + regulatory
+TARGET_MIN_NET_PROFIT_USD   = float(os.getenv("TARGET_MIN_NET_PROFIT_USD","0.15"))   # $0.15 Apex
 
 # ─── Latencia Bogotá → Nueva York ───────────────────────────────────────────
 LATENCY_OFFSET_CENTS = float(os.getenv("LATENCY_OFFSET_CENTS", "2")) / 100

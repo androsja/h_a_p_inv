@@ -1,1 +1,1 @@
-{"restart_sim": false, "reset_all": false, "force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO", "sim_start_date": "2026-02-01", "strategy_frozen": false, "freeze_label": null}
+{"restart_sim": false, "reset_all": false, "force_paper_trading": false, "force_symbols": [], "force_symbol": "AUTO", "sim_start_date": "2026-03-02", "strategy_frozen": false, "freeze_label": null, "live_start": false, "live_stop": false, "mock_time_930": true}

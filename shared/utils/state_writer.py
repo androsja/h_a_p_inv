@@ -28,6 +28,7 @@ class TradeRecord:
     entry_reason: str = ""
     entry_price: float = 0.0
     date: str = ""
+    fees: float = 0.0
 
 @dataclass
 class BotState:
@@ -65,6 +66,8 @@ class BotState:
     winning_trades: int   = 0
     gross_profit:   float = 0.0
     gross_loss:     float = 0.0
+    total_fees:     float = 0.0
+    total_slippage: float = 0.0
     # Estadísticas Acumuladas (para simulaciones de múltiples activos)
     total_sim_trades: int = 0
     total_sim_wins:   int = 0
@@ -195,6 +198,9 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
             conf_mult = metadata.get("conf_mult", 1.0)
             entry_reason = metadata.get("entry_reason", "")
             entry_price = metadata.get("entry_price", 0.0)
+            fees = metadata.get("fees", 0.0)
+        else:
+            fees = 0.0
 
         if side == "BUY" and not entry_reason:
             entry_reason = reason
@@ -209,7 +215,7 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
             symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, 
             time=t_str, date=d_str, reason=reason, confirmations=confirmations, 
             ml_prob=ml_prob, conf_mult=conf_mult, entry_reason=entry_reason,
-            entry_price=entry_price
+            entry_price=entry_price, fees=fees
         ))
         if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
@@ -244,6 +250,8 @@ def update_state(
     winning_trades: int = 0,
     gross_profit: float = 0.0,
     gross_loss: float = 0.0,
+    total_fees: float = 0.0,
+    total_slippage: float = 0.0,
     total_sim_trades: int = None,
     total_sim_wins: int = None,
     total_sim_pnl: float = None,
@@ -291,6 +299,8 @@ def update_state(
         winning_trades=winning_trades,
         gross_profit=gross_profit,
         gross_loss=gross_loss,
+        total_fees=total_fees,
+        total_slippage=total_slippage,
         total_sim_trades=ts_trades,
         total_sim_wins=ts_wins,
         total_sim_pnl=ts_pnl,

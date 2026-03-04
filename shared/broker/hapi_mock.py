@@ -124,7 +124,7 @@ class SessionStats:
             f"  Trades totales : {self.total_trades}\n"
             f"  Win rate       : {self.win_rate:.1f}%\n"
             f"  PnL NETO       : ${self.total_pnl:+.2f}\n"
-            f"  Hapi Fees Paid : ${self.total_fees:.2f}\n"
+            f"  IBKR Fees Paid : ${self.total_fees:.2f}\n"
             f"  Ganancia bruta : ${self.gross_profit:.2f}\n"
             f"  Pérdida bruta  : ${self.gross_loss:.2f}\n"
             f"  Profit Factor  : {self.profit_factor:.2f}\n"
@@ -361,7 +361,11 @@ class HapiMock(BrokerInterface):
         slippage = 0.0005
         actual_fill_price = round(fill_price * (1 + slippage), 2)
         
-        cost = actual_fill_price * order.qty
+        # --- IBKR FEES ON BUY (Tiered) ---
+        gross_cost = actual_fill_price * order.qty
+        comm = max(0.35, min(0.01 * gross_cost, 0.0035 * order.qty))
+        cost = gross_cost + comm
+        
         if cost > self._cash:
             log.warning(
                 f"HapiMock | Orden BUY rechazada: costo ${cost:.2f} > "
@@ -371,6 +375,12 @@ class HapiMock(BrokerInterface):
         self._cash -= cost
         self._last_buy_price = actual_fill_price
         self._last_buy_qty   = order.qty
+        self._stats.total_fees += comm
+        
+        try:
+            from shared.utils.state_writer import _state
+            _state.total_fees_paid += comm
+        except: pass
         log_order_filled(
             order.symbol, "BUY", actual_fill_price, order.qty, 
             timestamp=timestamp, reason=order.reason, metadata=order.metadata
@@ -388,11 +398,9 @@ class HapiMock(BrokerInterface):
         
         gross = actual_fill_price * order.qty
         
-        # --- HAPI SHADOW FEES ---
-        # 1. Comisión de Cierre Hapi
-        is_fractional = (order.qty % 1 != 0)
-        closing_fee = 0.15 if is_fractional else 0.10
-        # Crypto check (if we had crypto, we'd do 1%, but assuming ETFs/Stocks here)
+        # --- IBKR FEES ON SELL (Tiered) ---
+        # 1. Comisión accionaria
+        comm = max(0.35, min(0.01 * gross, 0.0035 * order.qty))
         
         # 2. SEC Fee ($0.0000278 per $1, min $0.01)
         sec_fee = max(0.01, round(gross * 0.0000278, 2))
@@ -402,7 +410,7 @@ class HapiMock(BrokerInterface):
         if taf_fee < 0.01: 
             taf_fee = 0.01 # minimal
             
-        total_fees = closing_fee + sec_fee + taf_fee
+        total_fees = comm + sec_fee + taf_fee
         
         net = gross - total_fees
         self._cash += net
@@ -415,7 +423,7 @@ class HapiMock(BrokerInterface):
             order.symbol, "SELL", actual_fill_price, order.qty, net_pnl, 
             timestamp=timestamp, reason=order.reason, metadata=order.metadata
         )
-        log.info(f"🏦 HAPI FEES COBRADOS: Cierre=${closing_fee:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
+        log.info(f"🏦 IBKR FEES COBRADOS: Com=${comm:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
         
         self._stats.record_trade(net_pnl, current_balance=self._cash)
         

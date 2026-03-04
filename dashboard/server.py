@@ -136,8 +136,15 @@ async def state_broadcaster():
                 mtime = config.STATE_FILE_SIM.stat().st_mtime
                 if mtime > last_sim_mtime:
                     last_sim_mtime = mtime
-                    content = config.STATE_FILE_SIM.read_text(encoding="utf-8")
-                    await manager.broadcast(content, mode="sim")
+                    try:
+                        content = config.STATE_FILE_SIM.read_text(encoding="utf-8")
+                        data = json.loads(content)
+                        data["logs"] = read_last_logs()
+                        await manager.broadcast(data, mode="sim")
+                    except Exception as e_json:
+                        print(f"Error parse sim state: {e_json}")
+                        # Fallback a enviar texto plano si falla el parse
+                        await manager.broadcast(content, mode="sim")
             elif last_sim_mtime > 0:
                 # Si el archivo existía y ya no existe, enviar estado vacío para limpiar UI
                 last_sim_mtime = 0
@@ -148,8 +155,14 @@ async def state_broadcaster():
                 mtime = config.STATE_FILE_LIVE.stat().st_mtime
                 if mtime > last_live_mtime:
                     last_live_mtime = mtime
-                    content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
-                    await manager.broadcast(content, mode="live")
+                    try:
+                        content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
+                        data = json.loads(content)
+                        data["logs"] = read_last_logs()
+                        await manager.broadcast(data, mode="live")
+                    except Exception as e_json:
+                        print(f"Error parse live state: {e_json}")
+                        await manager.broadcast(content, mode="live")
             elif last_live_mtime > 0:
                 last_live_mtime = 0
                 await manager.broadcast(json.dumps({}), mode="live")
@@ -495,14 +508,15 @@ async def get_config(mode: str = "sim"):
         
         return {
             "total_symbols": total_syms,
-            "max_risk_pct": config.MAX_RISK_PCT * 100,
-            "stop_loss_pct": config.STOP_LOSS_PCT * 100,
-            "take_profit_pct": config.TAKE_PROFIT_PCT * 100,
+            "max_risk_pct": getattr(config, 'MAX_RISK_PCT', 0.025) * 100,
+            "stop_loss_pct": getattr(config, 'STOP_LOSS_PCT', 0.01) * 100,
+            "take_profit_pct": getattr(config, 'TAKE_PROFIT_PCT', 0.02) * 100,
             "trading_window": f"{config.TRADING_OPEN_HOUR:02d}:{config.TRADING_OPEN_MIN:02d} - {config.TRADING_CLOSE_HOUR:02d}:{config.TRADING_CLOSE_MIN:02d}",
             "interval": config.DATA_INTERVAL,
             "max_pos_usd": config.MAX_POSITION_USD
         }
-    except Exception:
+    except Exception as e:
+        print(f"Error in get_config: {e}")
         return {"total_symbols": 0, "max_risk_pct": 2.5}
 
 @app.get("/api/active_symbols")

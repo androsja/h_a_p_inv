@@ -7,7 +7,7 @@ Reglas implementadas:
   3.  TRAILING STOP: el SL sube automáticamente a medida que el precio sube.
   4.  Cierre por TIEMPO: si la posición no se mueve en 20 min → cerrar.
   5.  Tamaño de posición limitado por MAX_POSITION_USD.
-  6.  La operación DEBE superar el costo de la cámara Apex ($0.15).
+  6.  La operación DEBE superar el costo de la cámara IBKR ($0.15).
   7.  Verificación de buying_power (descontando cash en T+1 settlement).
   8.  Ajuste de precio límite por latencia geográfica Colombia→NY.
 """
@@ -67,7 +67,7 @@ class OpenPosition:
 class AccountState:
     """
     Rastrea el capital disponible y el cash pendiente por settlement T+1.
-    En Hapi (Apex Clearing), el dinero de una venta no está disponible
+    En Hapi (IBKR Clearing), el dinero de una venta no está disponible
     para comprar el mismo día — se liquida al día hábil siguiente.
     """
 
@@ -100,7 +100,10 @@ class AccountState:
     def available_cash(self) -> float:
         self.release_settled_cash()
         blocked = sum(self._pending_settlement.values())
-        return max(0.0, self.total_cash - blocked)
+        cash = self.total_cash - blocked
+        if self.open_position:
+            cash -= (self.open_position.qty * self.open_position.entry_price)
+        return max(0.0, cash)
 
     @property
     def pending_settlement_total(self) -> float:
@@ -173,7 +176,7 @@ class RiskManager:
             return OrderPlan(
                 symbol=symbol, side="BUY", limit_price=limit_price,
                 qty=0, stop_loss=0, take_profit=0,
-                min_profit=config.CLEARING_COST_USD,
+                min_profit=config.TARGET_MIN_NET_PROFIT_USD,
                 is_viable=False,
                 block_reason="Precio inválido",
             )
@@ -212,7 +215,7 @@ class RiskManager:
             return OrderPlan(
                 symbol=symbol, side="BUY", limit_price=limit_price,
                 qty=0, stop_loss=0, take_profit=0,
-                min_profit=config.CLEARING_COST_USD,
+                min_profit=config.TARGET_MIN_NET_PROFIT_USD,
                 is_viable=False,
                 block_reason="Sin capital o restricción de riesgo le impide operar este símbolo hoy.",
             )
@@ -224,16 +227,16 @@ class RiskManager:
 
         # ── Verificación de rentabilidad ────────────────────────────────────
         gross_profit = tp_distance * qty
-        if gross_profit < config.CLEARING_COST_USD:
+        if gross_profit < config.TARGET_MIN_NET_PROFIT_USD:
             reason = (
                 f"Ganancia esperada ${gross_profit:.4f} < "
-                f"costo Apex ${config.CLEARING_COST_USD}"
+                f"costo IBKR ${config.TARGET_MIN_NET_PROFIT_USD}"
             )
             log_risk_block(symbol, reason)
             return OrderPlan(
                 symbol=symbol, side="BUY", limit_price=limit_price,
                 qty=qty, stop_loss=stop_loss, take_profit=take_profit,
-                min_profit=config.CLEARING_COST_USD,
+                min_profit=config.TARGET_MIN_NET_PROFIT_USD,
                 is_viable=False, block_reason=reason, atr_stop=sl_atr,
             )
 
@@ -246,7 +249,7 @@ class RiskManager:
         return OrderPlan(
             symbol=symbol, side="BUY", limit_price=limit_price,
             qty=qty, stop_loss=stop_loss, take_profit=take_profit,
-            min_profit=config.CLEARING_COST_USD,
+            min_profit=config.TARGET_MIN_NET_PROFIT_USD,
             is_viable=True, atr_stop=sl_atr,
         )
 
@@ -257,7 +260,7 @@ class RiskManager:
         return OrderPlan(
             symbol=position.symbol, side="SELL", limit_price=limit_price,
             qty=position.qty, stop_loss=0, take_profit=0,
-            min_profit=config.CLEARING_COST_USD,
+            min_profit=config.TARGET_MIN_NET_PROFIT_USD,
             is_viable=True,
         )
 

@@ -428,8 +428,8 @@ class SignalResult:
 #  FUNCIÓN PRINCIPAL DE ANÁLISIS
 # ════════════════════════════════════════════════════════════════════════════
 
-# Mínimo de barras para calcular todos los indicadores correctamente
-MIN_BARS = max(200, config.EMA_SLOW, config.RSI_PERIOD) + 10
+# Mínimo de barras para permitir inicio rápido con Alpaca Paper
+MIN_BARS = 80  # Restaurado! Ahora usamos el cache compartido de 60 días (market_data.py)
 
 
 def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> SignalResult:
@@ -447,6 +447,11 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     Returns:
         SignalResult con señal final y todos los valores de indicadores.
     """
+    # ── Diagnóstico de datos ──────────────────────────────────────────────────
+    from shared.utils.logger import log as _log
+    if symbol:
+        _log.info(f"[{symbol}] Analizando {len(df)} barras históricas (requiere {MIN_BARS})")
+
     # ── Inicializar resultado neutro si no hay suficientes datos ─────────────
     if len(df) < MIN_BARS:
         return SignalResult(
@@ -456,7 +461,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             vwap_value=0.0, atr_value=0.0,
             close=float(df["Close"].iloc[-1]) if len(df) > 0 else 0.0,
             timestamp=df.index[-1] if len(df) > 0 else None,
-            confirmations=[], blocks=["⏳ Acumulando datos históricos…"],
+            confirmations=[], blocks=[f"⏳ Cargando datos ({len(df)}/{MIN_BARS})"],
         )
 
     closes = df["Close"].astype(float)

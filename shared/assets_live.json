@@ -2,398 +2,549 @@
     "assets": [
         {
             "symbol": "AAPL",
-            "name": "Apple Inc.",
-            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "ABBV",
+            "enabled": true
+        },
+        {
+            "symbol": "ABNB",
+            "enabled": true
+        },
+        {
+            "symbol": "ACN",
             "enabled": false
         },
         {
-            "symbol": "MSFT",
-            "name": "Microsoft Corporation",
-            "type": "stock",
+            "symbol": "ADBE",
+            "enabled": true
+        },
+        {
+            "symbol": "ADI",
             "enabled": false
         },
         {
-            "symbol": "NVDA",
-            "name": "NVIDIA Corporation",
-            "type": "stock",
+            "symbol": "AFRM",
             "enabled": false
         },
         {
-            "symbol": "TSLA",
-            "name": "Tesla Inc.",
-            "type": "stock",
+            "symbol": "AI",
             "enabled": false
         },
         {
-            "symbol": "META",
-            "name": "Meta Platforms Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "AMZN",
-            "name": "Amazon.com Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "GOOGL",
-            "name": "Alphabet Inc. Class A",
-            "type": "stock",
-            "enabled": false
+            "symbol": "AMAT",
+            "enabled": true
         },
         {
             "symbol": "AMD",
-            "name": "Advanced Micro Devices",
-            "type": "stock",
             "enabled": false
         },
         {
-            "symbol": "UBER",
-            "name": "Uber Technologies Inc",
-            "type": "stock",
+            "symbol": "AMGN",
             "enabled": false
         },
         {
-            "symbol": "NFLX",
-            "name": "Netflix Inc.",
-            "type": "stock",
+            "symbol": "AMT",
+            "enabled": true
+        },
+        {
+            "symbol": "AMZN",
+            "enabled": true
+        },
+        {
+            "symbol": "ARM",
+            "enabled": true
+        },
+        {
+            "symbol": "ASML",
             "enabled": false
         },
         {
-            "symbol": "JPM",
-            "name": "JPMorgan Chase & Co.",
-            "type": "stock",
+            "symbol": "AVGO",
+            "enabled": false
+        },
+        {
+            "symbol": "AXP",
             "enabled": false
         },
         {
             "symbol": "BA",
-            "name": "Boeing Company",
-            "type": "stock",
+            "enabled": false
+        },
+        {
+            "symbol": "BAC",
+            "enabled": false
+        },
+        {
+            "symbol": "BILL",
+            "enabled": false
+        },
+        {
+            "symbol": "BRK.B",
+            "enabled": false
+        },
+        {
+            "symbol": "BTI",
             "enabled": true
         },
         {
-            "symbol": "DIS",
-            "name": "Walt Disney Company",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "INTC",
-            "name": "Intel Corporation",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SPY",
-            "name": "SPDR S&P 500 ETF Trust",
-            "type": "etf",
-            "enabled": false
-        },
-        {
-            "symbol": "QQQ",
-            "name": "Invesco QQQ Trust",
-            "type": "etf",
-            "enabled": false
-        },
-        {
-            "symbol": "PLTR",
-            "name": "Palantir Technologies",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SOFI",
-            "name": "SoFi Technologies",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "HOOD",
-            "name": "Robinhood Markets",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "RIVN",
-            "name": "Rivian Automotive",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "COIN",
-            "name": "Coinbase Global",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MSTR",
-            "name": "MicroStrategy",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "ABNB",
-            "name": "Airbnb",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "PYPL",
-            "name": "PayPal Holdings",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "TSM",
-            "name": "Taiwan Semiconductor",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "ARM",
-            "name": "Arm Holdings",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SMCI",
-            "name": "Super Micro Computer",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MU",
-            "name": "Micron Technology",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "CRWD",
-            "name": "CrowdStrike Holdings",
-            "type": "stock",
-            "enabled": true
-        },
-        {
-            "symbol": "SNOW",
-            "name": "Snowflake Inc",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "V",
-            "name": "Visa Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MA",
-            "name": "Mastercard Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "CRM",
-            "name": "Salesforce Inc.",
-            "type": "stock",
-            "enabled": true
-        },
-        {
-            "symbol": "ADBE",
-            "name": "Adobe Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "WMT",
-            "name": "Walmart Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "PG",
-            "name": "Procter & Gamble",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "PEP",
-            "name": "PepsiCo Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "KO",
-            "name": "Coca-Cola Company",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "XOM",
-            "name": "Exxon Mobil",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "CVX",
-            "name": "Chevron",
-            "type": "stock",
-            "enabled": true
-        },
-        {
-            "symbol": "HD",
-            "name": "Home Depot",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MCD",
-            "name": "McDonald's",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "NKE",
-            "name": "Nike",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SBUX",
-            "name": "Starbucks",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "JNJ",
-            "name": "Johnson & Johnson",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "UNH",
-            "name": "UnitedHealth Group",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "BABA",
-            "name": "Alibaba Group",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SHOP",
-            "name": "Shopify Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SQ",
-            "name": "Block Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "ROKU",
-            "name": "Roku Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "DKNG",
-            "name": "DraftKings Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "SPOT",
-            "name": "Spotify Technology",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "PFE",
-            "name": "Pfizer Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MRNA",
-            "name": "Moderna Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "ABBV",
-            "name": "AbbVie Inc.",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "GS",
-            "name": "Goldman Sachs Group",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "MS",
-            "name": "Morgan Stanley",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "LMT",
-            "name": "Lockheed Martin",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "NOC",
-            "name": "Northrop Grumman",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "RTX",
-            "name": "RTX Corporation",
-            "type": "stock",
-            "enabled": false
-        },
-        {
-            "symbol": "DE",
-            "name": "Deere & Company",
-            "type": "stock",
+            "symbol": "C",
             "enabled": false
         },
         {
             "symbol": "CAT",
-            "name": "Caterpillar Inc.",
-            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "CDNS",
+            "enabled": true
+        },
+        {
+            "symbol": "CELH",
+            "enabled": true
+        },
+        {
+            "symbol": "CL",
             "enabled": false
         },
         {
-            "symbol": "MMM",
-            "name": "3M Company",
-            "type": "stock",
+            "symbol": "COIN",
             "enabled": false
+        },
+        {
+            "symbol": "COST",
+            "enabled": true
+        },
+        {
+            "symbol": "CRM",
+            "enabled": false
+        },
+        {
+            "symbol": "CRWD",
+            "enabled": false
+        },
+        {
+            "symbol": "CSCO",
+            "enabled": true
+        },
+        {
+            "symbol": "CVS",
+            "enabled": false
+        },
+        {
+            "symbol": "CVX",
+            "enabled": false
+        },
+        {
+            "symbol": "D",
+            "enabled": true
+        },
+        {
+            "symbol": "DASH",
+            "enabled": false
+        },
+        {
+            "symbol": "DDOG",
+            "enabled": false
+        },
+        {
+            "symbol": "DE",
+            "enabled": false
+        },
+        {
+            "symbol": "DHR",
+            "enabled": false
+        },
+        {
+            "symbol": "DIS",
+            "enabled": true
+        },
+        {
+            "symbol": "DOCU",
+            "enabled": false
+        },
+        {
+            "symbol": "DUK",
+            "enabled": false
+        },
+        {
+            "symbol": "FDX",
+            "enabled": true
+        },
+        {
+            "symbol": "FTNT",
+            "enabled": false
+        },
+        {
+            "symbol": "GD",
+            "enabled": true
         },
         {
             "symbol": "GE",
-            "name": "General Electric",
-            "type": "stock",
+            "enabled": true
+        },
+        {
+            "symbol": "GIS",
+            "enabled": true
+        },
+        {
+            "symbol": "GOOGL",
             "enabled": false
         },
         {
-            "symbol": "F",
-            "name": "Ford Motor Company",
-            "type": "stock",
+            "symbol": "GS",
             "enabled": false
         },
         {
-            "symbol": "GM",
-            "name": "General Motors",
-            "type": "stock",
+            "symbol": "GTLB",
+            "enabled": false
+        },
+        {
+            "symbol": "HCP",
+            "enabled": false
+        },
+        {
+            "symbol": "HD",
+            "enabled": false
+        },
+        {
+            "symbol": "HON",
+            "enabled": false
+        },
+        {
+            "symbol": "HOOD",
+            "enabled": true
+        },
+        {
+            "symbol": "HSY",
+            "enabled": false
+        },
+        {
+            "symbol": "IBM",
+            "enabled": false
+        },
+        {
+            "symbol": "INTC",
+            "enabled": false
+        },
+        {
+            "symbol": "IONQ",
+            "enabled": false
+        },
+        {
+            "symbol": "ISRG",
+            "enabled": false
+        },
+        {
+            "symbol": "JNJ",
+            "enabled": false
+        },
+        {
+            "symbol": "JPM",
+            "enabled": true
+        },
+        {
+            "symbol": "K",
+            "enabled": false
+        },
+        {
+            "symbol": "KLAC",
+            "enabled": true
+        },
+        {
+            "symbol": "KO",
+            "enabled": false
+        },
+        {
+            "symbol": "LLY",
+            "enabled": false
+        },
+        {
+            "symbol": "LMT",
+            "enabled": true
+        },
+        {
+            "symbol": "LOW",
+            "enabled": false
+        },
+        {
+            "symbol": "LRCX",
+            "enabled": false
+        },
+        {
+            "symbol": "LYFT",
+            "enabled": false
+        },
+        {
+            "symbol": "MA",
+            "enabled": false
+        },
+        {
+            "symbol": "MCD",
+            "enabled": false
+        },
+        {
+            "symbol": "MCHP",
+            "enabled": true
+        },
+        {
+            "symbol": "MDB",
+            "enabled": true
+        },
+        {
+            "symbol": "MDLZ",
+            "enabled": false
+        },
+        {
+            "symbol": "META",
+            "enabled": true
+        },
+        {
+            "symbol": "MMM",
+            "enabled": false
+        },
+        {
+            "symbol": "MNDY",
+            "enabled": false
+        },
+        {
+            "symbol": "MRK",
+            "enabled": false
+        },
+        {
+            "symbol": "MS",
+            "enabled": false
+        },
+        {
+            "symbol": "MSFT",
+            "enabled": true
+        },
+        {
+            "symbol": "MSTR",
+            "enabled": false
+        },
+        {
+            "symbol": "MU",
+            "enabled": true
+        },
+        {
+            "symbol": "NEE",
+            "enabled": false
+        },
+        {
+            "symbol": "NET",
+            "enabled": true
+        },
+        {
+            "symbol": "NFLX",
+            "enabled": true
+        },
+        {
+            "symbol": "NKE",
+            "enabled": false
+        },
+        {
+            "symbol": "NOC",
+            "enabled": false
+        },
+        {
+            "symbol": "NOW",
+            "enabled": false
+        },
+        {
+            "symbol": "NVDA",
+            "enabled": false
+        },
+        {
+            "symbol": "O",
+            "enabled": false
+        },
+        {
+            "symbol": "OPEN",
+            "enabled": false
+        },
+        {
+            "symbol": "ORCL",
+            "enabled": false
+        },
+        {
+            "symbol": "PANW",
+            "enabled": true
+        },
+        {
+            "symbol": "PEP",
+            "enabled": true
+        },
+        {
+            "symbol": "PFE",
+            "enabled": true
+        },
+        {
+            "symbol": "PG",
+            "enabled": false
+        },
+        {
+            "symbol": "PLTR",
+            "enabled": false
+        },
+        {
+            "symbol": "PM",
+            "enabled": false
+        },
+        {
+            "symbol": "PSQ",
+            "enabled": true,
+            "type": "inverted"
+        },
+        {
+            "symbol": "PYPL",
+            "enabled": true
+        },
+        {
+            "symbol": "QCOM",
+            "enabled": false
+        },
+        {
+            "symbol": "RBLX",
+            "enabled": false
+        },
+        {
+            "symbol": "ROKU",
+            "enabled": true
+        },
+        {
+            "symbol": "RTX",
+            "enabled": false
+        },
+        {
+            "symbol": "SAP",
+            "enabled": false
+        },
+        {
+            "symbol": "SBUX",
+            "enabled": true
+        },
+        {
+            "symbol": "SH",
+            "enabled": true,
+            "type": "inverted"
+        },
+        {
+            "symbol": "SHOP",
+            "enabled": false
+        },
+        {
+            "symbol": "SMCI",
+            "enabled": true
+        },
+        {
+            "symbol": "SNOW",
+            "enabled": true
+        },
+        {
+            "symbol": "SNPS",
+            "enabled": false
+        },
+        {
+            "symbol": "SO",
+            "enabled": true
+        },
+        {
+            "symbol": "SOFI",
+            "enabled": false
+        },
+        {
+            "symbol": "SPG",
+            "enabled": false
+        },
+        {
+            "symbol": "SQ",
+            "enabled": false
+        },
+        {
+            "symbol": "SQQQ",
+            "enabled": false,
+            "type": "inverted"
+        },
+        {
+            "symbol": "STZ",
+            "enabled": false
+        },
+        {
+            "symbol": "T",
+            "enabled": false
+        },
+        {
+            "symbol": "TAP",
+            "enabled": false
+        },
+        {
+            "symbol": "TGT",
+            "enabled": false
+        },
+        {
+            "symbol": "TMO",
+            "enabled": false
+        },
+        {
+            "symbol": "TSLA",
+            "enabled": true
+        },
+        {
+            "symbol": "TTD",
+            "enabled": false
+        },
+        {
+            "symbol": "TWLO",
+            "enabled": true
+        },
+        {
+            "symbol": "TXN",
+            "enabled": false
+        },
+        {
+            "symbol": "U",
+            "enabled": true
+        },
+        {
+            "symbol": "UBER",
+            "enabled": false
+        },
+        {
+            "symbol": "UNH",
+            "enabled": true
+        },
+        {
+            "symbol": "UPS",
+            "enabled": false
+        },
+        {
+            "symbol": "V",
+            "enabled": true
+        },
+        {
+            "symbol": "VZ",
+            "enabled": false
+        },
+        {
+            "symbol": "WFC",
+            "enabled": false
+        },
+        {
+            "symbol": "WMT",
+            "enabled": true
+        },
+        {
+            "symbol": "XOM",
+            "enabled": true
+        },
+        {
+            "symbol": "ZM",
+            "enabled": true
+        },
+        {
+            "symbol": "ZS",
             "enabled": false
         }
     ]
