@@ -455,6 +455,12 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
 
             # ── 5. Gestionar ENTRADA (si no hay posición y hay señal BUY) ────
             elif signal.signal == SIGNAL_BUY:
+                # ── REGLA: Evitar el Sesgo de Look-Ahead (Solo operar cuando la vela cierre exactamente) ──
+                # En simulación, simulamos que el tiempo ocurre en saltos por lo que las velas "cierran".
+                # No podemos bloquear por segundos ya que mock data viaja en chunks, 
+                # pero aplicaremos un castigo/simulación del tiempo si fuera necesario, 
+                # o dejaremos constancia de que la vela está "completada" en el mock.
+
                 # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
                 is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
                 
@@ -475,6 +481,16 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     live_info = broker.get_account_info()
                     account.total_cash = live_info.total_cash
 
+                # ── REGLA: Liquidez / SLIPPAGE PREVENTIVO ──
+                spread = quote.ask - quote.bid
+                max_spread_allowed = quote.bid * 0.0020 # 0.2% max spread
+                if spread > max_spread_allowed:
+                    msg = f"📉 Spread Tóxico ({spread:.2f} > {max_spread_allowed:.2f}) | Slippage risk"
+                    signal.blocks = [msg]
+                    signal.signal = SIGNAL_HOLD
+                    log.info(f"[{symbol}] {msg}")
+                    continue
+
                 buy_plan = risk_mgr.calculate_buy_order(
                     symbol, quote.ask,
                     atr_value=signal.atr_value,
@@ -485,6 +501,41 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     buy_plan.is_viable = False
                     buy_plan.block_reason = f"ML_REJECTION: El robot recuerda haber perdido con estos parámetros (Probabilidad de Ganar: {prob_win*100:.1f}%)"
                     log.info(f"[{symbol}] 🧠 ML EVITÓ PERDER DINERO | Bloqueó entrada | Prob={prob_win*100:.1f}%")
+
+                # ─ Consultar Neural Filter (solo predict, igual que Live) ─
+                if buy_plan.is_viable:
+                    try:
+                        from shared.utils.neural_filter import get_neural_filter
+                        nf = get_neural_filter()
+                        ml_f = signal.ml_features
+                        fv = nf.build_features(
+                            rsi=ml_f.get("rsi", 50.0),
+                            macd_hist=ml_f.get("macd_hist", 0.0),
+                            atr_pct=ml_f.get("atr_pct", 0.0),
+                            vol_ratio=ml_f.get("vol_ratio", 1.0),
+                            ema_fast=ml_f.get("ema_diff_pct", 0.0) + 100,
+                            ema_slow=100.0,
+                            zscore_vwap=ml_f.get("vwap_dist_pct", 0.0),
+                            regime=ml_f.get("regime", "NEUTRAL"),
+                            num_confirmations=int(ml_f.get("num_confirmations", 2)),
+                        )
+                        # ─ ML Tolerance Threshold ─
+                        if not is_win and prob_win < 0.48 and buy_plan.is_viable:
+                            buy_plan.is_viable = False
+                            msg = f"🧠 AI bloqueó entrada | MLP P={prob_win*100:.1f}%"
+                            buy_plan.block_reason = msg
+                            signal.signal = SIGNAL_HOLD
+                            signal.blocks = [msg]
+                            log.info(f"[LIVE:{symbol}] {msg}")
+                        nf_win, nf_prob = nf.predict(fv)
+                        if not nf_win:
+                            buy_plan.is_viable = False
+                            msg = f"🧠 Red Neuronal bloqueó | P={nf_prob*100:.1f}%"
+                            buy_plan.block_reason = msg
+                            signal.signal = SIGNAL_HOLD
+                            log.info(f"[{symbol}] {msg}")
+                    except Exception as nfe:
+                        log.debug(f"[{symbol}] NF error: {nfe}")
 
                 if buy_plan.is_viable:
                     if conf_mult > 1.0:

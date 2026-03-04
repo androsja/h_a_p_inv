@@ -34,7 +34,9 @@ def get_active_symbols() -> list[str]:
     return []
 
 
-def launch(api_key: str, secret_key: str, initial_cash: float = 25000.0):
+from shared import config
+
+def launch(api_key: str, secret_key: str, initial_cash: float = config.INITIAL_CASH_LIVE):
     """
     Lanza hilos de trading en vivo para todos los símbolos activos.
     Si ya hay hilos corriendo, los detiene primero.

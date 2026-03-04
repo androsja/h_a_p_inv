@@ -2303,6 +2303,7 @@
             try {
                 const res = await fetch('/api/config?mode=sim');
                 const data = await res.json();
+                if (data && data.initial_cash) window.INITIAL_CAPITAL = data.initial_cash;
                 if (data && data.total_symbols) {
                     TOTAL_SYMBOLS = data.total_symbols;
                 }
@@ -2401,7 +2402,7 @@
                         ids.forEach(id => {
                             const el = document.getElementById(id);
                             if (el) {
-                                el.textContent = id === 'summary-final-balance' ? '$10000.00' : '─';
+                                el.textContent = id === 'summary-final-balance' ? '$' + (window.INITIAL_CAPITAL || 10000).toFixed(2) : '─';
                                 el.style.color = '';
                             }
                         });
@@ -2435,8 +2436,9 @@
                     const totalNet = totalGross - totalFees - totalSlip;
 
                     const withdrawalFee = 1.99;
-                    const netToBank = (10000 + totalNet) - withdrawalFee;
-                    const finalProfit = netToBank - 10000;
+                    const initCash = window.INITIAL_CAPITAL || 10000;
+                    const netToBank = (initCash + totalNet) - withdrawalFee;
+                    const finalProfit = netToBank - initCash;
 
                     // Update Summary Card
                     const grossEl = document.getElementById('summary-gross-pnl');
@@ -2453,7 +2455,7 @@
                         netEl.style.color = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
                     }
                     const balEl = document.getElementById('summary-final-balance');
-                    if (balEl) balEl.textContent = `$${(10000 + totalNet).toFixed(2)}`;
+                    if (balEl) balEl.textContent = `$${(initCash + totalNet).toFixed(2)}`;
 
                     const profitEl = document.getElementById('summary-real-profit');
                     if (profitEl) {
@@ -2631,7 +2633,7 @@
         <td style="padding:10px; color:#ff5722; font-family:'JetBrains Mono',monospace;">-$${slip.toFixed(2)}</td>
         <td style="padding:10px; color:${pnlColor}; font-family:'JetBrains Mono',monospace; font-weight:bold;">
             ${prefix}$${netPnl.toFixed(2)}</td>
-        <td style="padding:10px; font-weight:bold; color:var(--text);">$${(10000 + netPnl).toFixed(2)}</td>
+        <td style="padding:10px; font-weight:bold; color:var(--text);">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
         <td style="padding:10px;">${row.drawdown}%</td>
         <td style="padding:10px;">
             <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
@@ -2668,7 +2670,7 @@
             -$${totalSlip.toFixed(2)}</td>
         <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totColor};">
             ${totPre}$${totalNet.toFixed(2)}</td>
-        <td style="padding:10px; font-weight:bold; color:var(--text);">$${(10000 + totalNet).toFixed(2)}</td>
+        <td style="padding:10px; font-weight:bold; color:var(--text);">$${((window.INITIAL_CAPITAL || 10000) + totalNet).toFixed(2)}</td>
         <td colspan="3" style="padding:10px;"></td>
         `;
                     tbody.appendChild(sumRow);
@@ -3288,7 +3290,7 @@
                         const noData = document.querySelector('.no-trades');
                         if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
 
-                        const pnl = (sState.available_cash || 10000) - (sState.initial_cash || 10000);
+                        const pnl = (sState.available_cash || window.INITIAL_CAPITAL || 10000) - (sState.initial_cash || window.INITIAL_CAPITAL || 10000);
                         const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
                         const pnlSign = pnl > 0 ? '+' : '';
 
@@ -3338,7 +3340,7 @@
                 <td style="padding:10px; color:var(--muted);">─</td>
                 <td style="padding:10px; color:var(--muted);">─</td>
                 <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${pnlSign}$${pnl.toFixed(2)}</td>
-                <td style="padding:10px;">$${(sState.available_cash || 10000).toFixed(2)}</td>
+                <td style="padding:10px;">$${(sState.available_cash || window.INITIAL_CAPITAL || 10000).toFixed(2)}</td>
                 <td style="padding:10px; color:var(--muted);">─</td>
                 <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
                     ${(() => {
@@ -3415,7 +3417,7 @@
             }
 
             // Sidebar estadísticas (esto es global de la cuenta)
-            const init = state.initial_cash ?? 10000;
+            const init = state.initial_cash ?? (window.INITIAL_CAPITAL || 10000);
             const avail = state.available_cash ?? init;
             const pnl = avail - init;
 
@@ -4990,7 +4992,7 @@
             const spread = 20; // IBKR/Wise exchange spread is practically zero, maybe small buffer
             const finalRate = trm - spread;
             const ibkrFee = 10.00; // Wire transfer fee from IBKR (first is free, subseq $10)
-            const capitalUSD = 10000; // capital simulado
+            const capitalUSD = (window.INITIAL_CAPITAL || 10000); // capital simulado
 
             const netAfterIBKR = totalNet - ibkrFee;
             const copProfitOnly = netAfterIBKR * finalRate;

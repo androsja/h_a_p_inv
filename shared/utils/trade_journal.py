@@ -181,7 +181,7 @@ def record_trade(
             from shared.utils import state_writer
             state_writer.record_trade(
                 symbol=symbol,
-                side="BUY/SELL", # Genérico para el historial rápido
+                side="SELL", # Modificado de BUY/SELL para que Dashboard lo asimile como Ciclo Cerrado con PNL
                 price=exit_price,
                 qty=qty,
                 pnl=gross_pnl,

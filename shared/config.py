@@ -31,7 +31,7 @@ HAPI_TEST_MODE  = os.getenv("HAPI_IS_TEST_MODE", "true").lower() == "true"
 STOP_LOSS_PCT     = float(os.getenv("STOP_LOSS_PCT", "0.01"))      # 1% por trade
 TAKE_PROFIT_PCT   = float(os.getenv("TAKE_PROFIT_PCT", "0.02"))    # 2% por trade
 MAX_POSITION_USD  = float(os.getenv("MAX_POSITION_USD", "5000.0")) # Tamaño máximo de posición en vivo
-INITIAL_CASH_LIVE = float(os.getenv("INITIAL_CASH_LIVE", "25000.0")) # Balance inicial forzado para Live Paper
+INITIAL_CASH_LIVE = float(os.getenv("INITIAL_CASH_LIVE", "10000.0")) # Balance inicial forzado para Live Paper
 TARGET_MIN_NET_PROFIT_USD = float(os.getenv("TARGET_MIN_NET_PROFIT_USD", "0.75")) # IBKR Tiered minimum round trip fee + regulatory
 TARGET_MIN_NET_PROFIT_USD   = float(os.getenv("TARGET_MIN_NET_PROFIT_USD","0.15"))   # $0.15 Apex
 

@@ -244,21 +244,36 @@ def run_symbol_live(
                     blocking_history[msg.split("(")[0].strip()] += 1
                     continue
 
+                # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
+                is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
+                
+                # 📊 CALCULAR FACTOR DE CONFIANZA (Sistematización de aumento de compra)
+                conf_mult = 1.0
+                if is_win:
+                    if prob_win > 0.85: conf_mult *= 1.5  # IA muy segura (+50%)
+                    elif prob_win > 0.70: conf_mult *= 1.2 # IA segura (+20%)
+                
+                if len(signal.confirmations) >= 4:
+                    conf_mult *= 1.2 # Muchas confluencias técnicas (+20%)
+                
+                # Cap de seguridad: nunca duplicar más del 2x el riesgo base
+                conf_mult = min(conf_mult, 2.0)
+
                 buy_plan = risk_mgr.calculate_buy_order(
                     symbol, quote.ask,
                     atr_value=signal.atr_value,
+                    confidence_multiplier=conf_mult
                 )
 
-                # ─ Consultar ML (solo predict, sin fit) ─
-                if buy_plan.is_viable:
-                    is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
-                    if not is_win:
-                        buy_plan.is_viable = False
-                        msg = f"🧠 AI bloqueó entrada | MLP P={prob_win*100:.1f}%"
-                        buy_plan.block_reason = msg
-                        signal.signal = SIGNAL_HOLD
-                        signal.blocks = [msg]
-                        log.info(f"[LIVE:{symbol}] {msg}")
+                # ─ ML Tolerance Threshold ─
+                if not is_win and prob_win < 0.48 and buy_plan.is_viable:
+                    buy_plan.is_viable = False
+                    msg = f"🧠 AI bloqueó entrada | MLP P={prob_win*100:.1f}%"
+                    buy_plan.block_reason = msg
+                    signal.signal = SIGNAL_HOLD
+                    signal.blocks = [msg]
+                    log.info(f"[LIVE:{symbol}] {msg}")
+
 
                 # ─ Consultar Neural Filter (solo predict) ─
                 if buy_plan.is_viable:
@@ -287,11 +302,25 @@ def run_symbol_live(
                         log.debug(f"[LIVE:{symbol}] NF error: {nfe}")
 
                 if buy_plan.is_viable:
+                    if conf_mult > 1.0:
+                        log.info(f"[{symbol}] 🔥 COMPRA AGRESIVA: Aumentando tamaño x{conf_mult:.2f} por alta confianza (IA={prob_win*100:.0f}%, Confluencias={len(signal.confirmations)})")
+                    
+                    reason_str = f"BUY: {len(signal.confirmations)} confluencias"
+                    if conf_mult > 1.0:
+                        reason_str += f" | Aumento x{conf_mult:.1f}"
+
+                    metadata = {
+                        "confirmations": signal.confirmations,
+                        "ml_prob": prob_win,
+                        "conf_mult": conf_mult
+                    }
+
                     resp = broker.place_limit_order(
                         symbol=symbol, side="BUY",
                         limit_price=buy_plan.limit_price,
                         qty=buy_plan.qty,
-                        reason=f"confluencias={len(signal.confirmations)} RSI={signal.rsi_value:.1f}",
+                        reason=reason_str,
+                        metadata=metadata
                     )
 
                     if resp.status not in ("REJECTED",):

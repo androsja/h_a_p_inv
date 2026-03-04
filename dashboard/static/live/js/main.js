@@ -720,7 +720,7 @@ async function renderTrades(trades) {
         const confs = t.confirmations || [];
         const hasML = t.ml_prob > 0;
         const hasMult = t.conf_mult > 1.0;
-        const isSell = t.side === 'SELL';
+        const isSell = t.side === 'SELL' || t.side === 'BUY/SELL';
 
         // Formatear precios para mostrar Compra -> Venta si es SELL
         const priceDisplay = isSell
@@ -1163,7 +1163,11 @@ function updateUI(fullState) {
 
     const globalNet = globalGross - globalFees - globalSlippage;
 
-    const init = 25000;
+    let init = 10000;
+    const firstActiveState = Object.values(fullState).find(v => v && typeof v === 'object' && typeof v.initial_cash === 'number');
+    if (firstActiveState) {
+        init = firstActiveState.initial_cash;
+    }
     const avail = init + globalNet; // Pnl Total sumado al balance principal
     const pnl = globalNet; // Esto es el PNL GLOBAL
 

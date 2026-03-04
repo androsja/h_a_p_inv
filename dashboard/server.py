@@ -588,7 +588,7 @@ async def bank_deposit(req: DepositRequest):
         if STATE_FILE.exists():
             with open(STATE_FILE) as f:
                 data = json.load(f)
-            data["available_cash"] = data.get("available_cash", 10000.0) + req.amount
+            data["available_cash"] = data.get("available_cash", config.INITIAL_CASH_LIVE) + req.amount
             with open(STATE_FILE, "w") as f:
                 json.dump(data, f)
             return {"status": "success", "message": f"Deposited ${req.amount:.2f}", "new_balance": data["available_cash"]}
@@ -607,7 +607,7 @@ async def bank_withdraw(req: DepositRequest):
             withdrawal_fee = 4.99
             total_deduction = req.amount + withdrawal_fee
             
-            if data.get("available_cash", 10000.0) >= total_deduction:
+            if data.get("available_cash", config.INITIAL_CASH_LIVE) >= total_deduction:
                 data["available_cash"] -= total_deduction
                 with open(STATE_FILE, "w") as f:
                     json.dump(data, f)

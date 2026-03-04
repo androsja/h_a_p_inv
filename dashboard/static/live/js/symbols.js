@@ -350,7 +350,7 @@ window.openWithdrawalBreakdown = function (totalNet, netToBank) {
     const hapiFee = 1.99;
 
     const copProfitOnly = (totalNet - hapiFee) * finalRate;
-    const totalBalanceCOP = (25000 + totalNet - hapiFee) * finalRate;
+    const totalBalanceCOP = netToBank * finalRate;
 
     // Intentar calcular días en Live Mode
     let daysText = "esta simulación";
