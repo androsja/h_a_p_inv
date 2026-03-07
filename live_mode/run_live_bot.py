@@ -96,6 +96,7 @@ def run_symbol_live(
     account  = AccountState(total_cash=initial_cash)
     risk_mgr = RiskManager(account)
     position: OpenPosition | None = None
+    shadow_positions: list[OpenPosition] = []
     nf = get_neural_filter()
 
     blocking_history = collections.Counter()
@@ -126,7 +127,8 @@ def run_symbol_live(
                 continue
 
             # ── 3. Analizar señal técnica (módulo shared compartido) ──────────
-            signal = analyze(df, symbol=symbol)
+            asset_type = "inverted" if symbol in ["SQQQ", "SOXS", "SARK"] else "normal"
+            signal = analyze(df, symbol=symbol, asset_type=asset_type)
 
             if signal.signal == SIGNAL_HOLD and signal.blocks:
                 for b in signal.blocks:
@@ -141,7 +143,7 @@ def run_symbol_live(
                 _smart_sleep(20, stop_event)
                 continue
 
-            # ── 5. Gestionar SALIDA (posición abierta) ────────────────────────
+            # ── 5. Gestionar SALIDA (posición abierta SOCIAL/REAL) ──────────
             if position is not None:
                 position.hold_bars = getattr(position, "hold_bars", 0) + 1
                 should_exit, exit_reason = risk_mgr.should_exit(position, quote.bid)
@@ -223,9 +225,9 @@ def run_symbol_live(
                         account.open_position = None
 
             # ── 6. Gestionar ENTRADA ──────────────────────────────────────────
-            elif signal.signal == SIGNAL_BUY:
+            if position is None and signal.signal == SIGNAL_BUY:
                 
-                # REGLA 1: Evitar el Sesgo de Look-Ahead (Solo operar en el minuto exacto del cierre o inicio de vela)
+                # REGLA 1: Evitar el Sesgo de Look-Ahead
                 now = datetime.now(config.NY_TZ)
                 if now.minute % 5 != 0:
                     msg = "⏱️ Esperando inicio de nueva vela de 5m (Look-Ahead Prevention)"
@@ -245,19 +247,17 @@ def run_symbol_live(
                     log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
                     continue
 
-                # 🧠 CONSULTAR AL MODELO DE MACHINE LEARNING ANTES DE ENTRAR
+                # 🧠 CONSULTAR AL MODELO DE AI
                 is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
                 
-                # 📊 CALCULAR FACTOR DE CONFIANZA (Sistematización de aumento de compra)
                 conf_mult = 1.0
                 if is_win:
-                    if prob_win > 0.85: conf_mult *= 1.5  # IA muy segura (+50%)
-                    elif prob_win > 0.70: conf_mult *= 1.2 # IA segura (+20%)
+                    if prob_win > 0.85: conf_mult *= 1.5 
+                    elif prob_win > 0.70: conf_mult *= 1.2
                 
                 if len(signal.confirmations) >= 4:
-                    conf_mult *= 1.2 # Muchas confluencias técnicas (+20%)
-                
-                # Cap de seguridad: nunca duplicar más del 2x el riesgo base
+                    conf_mult *= 1.2 
+
                 conf_mult = min(conf_mult, 2.0)
 
                 buy_plan = risk_mgr.calculate_buy_order(
@@ -267,16 +267,18 @@ def run_symbol_live(
                 )
 
                 # ─ ML Tolerance Threshold ─
+                ai_blocked = False
                 if not is_win and prob_win < 0.48 and buy_plan.is_viable:
                     buy_plan.is_viable = False
+                    ai_blocked = True
                     msg = f"🧠 AI bloqueó entrada | MLP P={prob_win*100:.1f}%"
                     buy_plan.block_reason = msg
                     signal.signal = SIGNAL_HOLD
                     signal.blocks = [msg]
                     log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
 
-
                 # ─ Consultar Neural Filter (solo predict) ─
+                nf_blocked = False
                 if buy_plan.is_viable:
                     try:
                         ml_f = signal.ml_features
@@ -285,15 +287,19 @@ def run_symbol_live(
                             macd_hist=ml_f.get("macd_hist", 0.0),
                             atr_pct=ml_f.get("atr_pct", 0.0),
                             vol_ratio=ml_f.get("vol_ratio", 1.0),
-                            ema_fast=ml_f.get("ema_fast", ml_f.get("ema_diff_pct", 0.0) + 100),
+                            ema_fast=ml_f.get("ema_fast", 100.0), # Fallback simplificado
                             ema_slow=ml_f.get("ema_slow", 100.0),
-                            zscore_vwap=ml_f.get("zscore_vwap", ml_f.get("vwap_dist_pct", 0.0)),
+                            zscore_vwap=ml_f.get("zscore_vwap", 0.0),
                             regime=ml_f.get("regime", "NEUTRAL"),
                             num_confirmations=int(ml_f.get("num_confirmations", 2)),
+                            adx=ml_f.get("adx", 20.0),
+                            has_pattern=ml_f.get("has_pattern", False),
+                            is_adx_rising=ml_f.get("is_adx_rising", False),
                         )
                         nf_win, nf_prob = nf.predict(fv)
                         if not nf_win:
                             buy_plan.is_viable = False
+                            nf_blocked = True
                             msg = f"🧠 Red Neuronal bloqueó | P={nf_prob*100:.1f}%"
                             buy_plan.block_reason = msg
                             signal.signal = SIGNAL_HOLD
@@ -301,6 +307,36 @@ def run_symbol_live(
                             log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
                     except Exception as nfe:
                         log.debug(f"[LIVE:{symbol}] NF error: {nfe}")
+
+                # 🕵️ SHADOW TRADING: Si fue bloqueado por IA o Smart Filter (pero es viable por riesgo/capital)
+                # O si estamos en SIGNAL_HOLD pero por filtros de indicadores (Smart Filter)
+                technical_buy = (signal.signal == SIGNAL_BUY) or (ai_blocked or nf_blocked)
+                
+                if technical_buy and not buy_plan.is_viable and position is None:
+                    # Verificar si la razón de no viabilidad es AI o si es un Smart Filter de indicators.py
+                    is_smart_filtered = any("SMART FILTER" in str(b) or "RANGE:" in str(b) for b in signal.blocks)
+                    
+                    if ai_blocked or nf_blocked or is_smart_filtered:
+                        # Si no hay posición real, crear una virtual para aprender
+                        shadow_pos = OpenPosition(
+                            symbol=symbol,
+                            entry_price=quote.ask,
+                            qty=1.0, # Tamaño simbólico para shadow
+                            stop_loss=quote.ask * 0.985, # 1.5% fixed fallback
+                            take_profit=quote.ask * 1.03, # 3.0% fixed fallback
+                            ml_features=signal.ml_features,
+                            entry_metadata={"ml_features": signal.ml_features, "reason": "shadow"}
+                        )
+                        # Intentar usar el plan de riesgo si existía pero fue bloqueado solo por IA
+                        # (Si fue bloqueado por capital, shadow_pos usa los default arriba)
+                        if buy_plan.qty > 0:
+                            shadow_pos.qty = buy_plan.qty
+                            shadow_pos.stop_loss = buy_plan.stop_loss
+                            shadow_pos.take_profit = buy_plan.take_profit
+                            shadow_pos.initial_stop = buy_plan.stop_loss
+
+                        shadow_positions.append(shadow_pos)
+                        log.info(f"[LIVE:{symbol}] 🕵️ Shadow Trade iniciado para aprender de esta omisión (SL=${shadow_pos.stop_loss:.2f} TP=${shadow_pos.take_profit:.2f})")
 
                 if buy_plan.is_viable:
                     if conf_mult > 1.0:
@@ -364,6 +400,42 @@ def run_symbol_live(
             # ── 8. Dormir 60s entre scans (mercado real) ──────────────────────
             log.info(f"[LIVE:{symbol}] ⏳ Próximo scan en 60s...")
             _smart_sleep(60, stop_event)
+
+            # ── 8.1 Gestionar SHADOW POSITIONS (Aprendizaje de Omisiones) ──
+            completed_shadows = []
+            for sp in shadow_positions:
+                sp.hold_bars += 1
+                s_exit, s_reason = risk_mgr.should_exit(sp, quote.bid)
+                if s_exit:
+                    s_net_pnl = (quote.bid - sp.entry_price) * sp.qty
+                    s_won = s_net_pnl > 0
+                    log.info(f"[LIVE:{symbol}] 🧠 Shadow Trade Cerrado: {s_reason} | PnL=${s_net_pnl:+.2f} | AI aprendiendo de esta omisión...")
+                    # Alimentar a la Red Neuronal
+                    try:
+                        # Extraer features originales
+                        ml_f = sp.entry_metadata.get("ml_features", {})
+                        if ml_f:
+                            fv = nf.build_features(
+                                rsi=ml_f.get("rsi", 50.0),
+                                macd_hist=ml_f.get("macd_hist", 0.0),
+                                atr_pct=ml_f.get("atr_pct", 0.0),
+                                vol_ratio=ml_f.get("vol_ratio", 1.0),
+                                ema_fast=ml_f.get("ema_fast", 100.0),
+                                ema_slow=ml_f.get("ema_slow", 100.0),
+                                zscore_vwap=ml_f.get("zscore_vwap", 0.0),
+                                regime=ml_f.get("regime", "NEUTRAL"),
+                                num_confirmations=int(ml_f.get("num_confirmations", 2)),
+                                adx=ml_f.get("adx", 20.0),
+                                has_pattern=ml_f.get("has_pattern", False),
+                                is_adx_rising=ml_f.get("is_adx_rising", False),
+                            )
+                            nf.fit(fv, s_won)
+                    except Exception as fe:
+                        log.debug(f"[LIVE:{symbol}] Fit error en shadow position: {fe}")
+                    completed_shadows.append(sp)
+            
+            for cs in completed_shadows:
+                shadow_positions.remove(cs)
 
     except Exception as e:
         log.error(f"[LIVE:{symbol}] ❌ Error inesperado en hilo: {e}")

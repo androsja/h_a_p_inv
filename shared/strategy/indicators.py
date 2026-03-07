@@ -711,6 +711,8 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'ema_slow': float(ema_s_now),
         'zscore_vwap': float(zscore_now),
         'num_confirmations': len(confirmations_buy),
+        'has_pattern': is_hammer or is_engulf or is_bb_reversal,
+        'is_adx_rising': is_adx_rising,
     }
 
     # 🤖 EJECUCIÓN DEL MODELO DE INTELIGENCIA ARTIFICIAL EN VIVO
@@ -746,6 +748,9 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
                 zscore_vwap  = zscore_now,
                 regime       = current_regime,
                 num_confirmations = len(confirmations_buy),
+                adx          = adx_now,
+                has_pattern  = ml_features['has_pattern'],
+                is_adx_rising = is_adx_rising,
             )
             proba, reason = nf.predict(features_vec)
 

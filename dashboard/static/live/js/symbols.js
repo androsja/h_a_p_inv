@@ -20,7 +20,7 @@ async function openSymbolManager() {
                 html += `
                         <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}">
                             <div id="sms-${item.symbol}" class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
-                            <label class="switch" style="transform: scale(0.85); margin-bottom: 2px;">
+                            <label class="switch" style="transform: scale(0.7); margin-bottom: 0px;">
                                 <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
                                 <span class="slider"></span>
                             </label>

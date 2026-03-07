@@ -1190,16 +1190,17 @@
                 opacity: 0;
             }
         }
+
         .sm-item {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 6px;
+            padding: 2px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
             transition: 0.2s;
         }
 
@@ -1214,7 +1215,7 @@
 
         .sm-sym {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 10px;
             font-family: 'JetBrains Mono', monospace;
         }
 

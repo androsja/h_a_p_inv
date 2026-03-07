@@ -50,9 +50,10 @@ class NeuralTradeFilter:
     """
     Filtro neuronal online. Aprende con cada trade completado.
 
-    Features de entrada (8 valores normalizados):
+    Features de entrada (11 valores normalizados):
         [rsi, macd_hist, atr_pct, vol_ratio, ema_spread_pct,
-         zscore_vwap, regime_encoded, num_confirmations]
+         zscore_vwap, regime_encoded, num_confirmations,
+         adx, has_pattern, is_adx_rising]
     """
 
     def __init__(self):
@@ -72,6 +73,14 @@ class NeuralTradeFilter:
                 self._model = bundle.get("model")
                 self._X     = bundle.get("X", [])
                 self._y     = bundle.get("y", [])
+                
+                # Validación de arquitectura (si cambiamos el número de features, reseteamos)
+                if self._X and len(self._X[0]) != 11:
+                    log.warning("⚠️ Arquitectura de features cambió (8 -> 11). Reseteando modelo para nueva base de datos.")
+                    self._model = None
+                    self._X = []
+                    self._y = []
+
                 log.info(
                     f"🧠 Red Neuronal cargada — {len(self._y)} trades en memoria, "
                     f"modelo={'activo' if self._model else 'cold-start'}"
@@ -119,20 +128,26 @@ class NeuralTradeFilter:
         zscore_vwap: float,
         regime: str,
         num_confirmations: int,
+        adx: float = 20.0,
+        has_pattern: bool = False,
+        is_adx_rising: bool = False,
     ) -> list[float]:
         """Construye el vector de features normalizado para el modelo."""
         ema_spread_pct = ((ema_fast - ema_slow) / ema_slow * 100) if ema_slow else 0.0
         regime_enc = REGIME_ENCODING.get(regime, 3)  # Default NEUTRAL=3
 
         return [
-            rsi / 100.0,                    # 0–1
-            np.tanh(macd_hist),             # -1–1
-            min(atr_pct / 5.0, 1.0),       # 0–1 (cap 5%)
-            min(vol_ratio / 5.0, 1.0),     # 0–1 (cap 5x)
-            np.tanh(ema_spread_pct),        # -1–1
+            rsi / 100.0,                        # 0–1
+            np.tanh(macd_hist),                 # -1–1
+            min(atr_pct / 5.0, 1.0),           # 0–1 (cap 5%)
+            min(vol_ratio / 5.0, 1.0),         # 0–1 (cap 5x)
+            np.tanh(ema_spread_pct),            # -1–1
             np.clip(zscore_vwap / 3.0, -1, 1),  # -1–1
-            regime_enc / 5.0,              # 0–1
+            regime_enc / 5.0,                  # 0–1
             min(num_confirmations / 7.0, 1.0),  # 0–1
+            min(adx / 50.0, 1.0),              # 0–1 (cap 50 ADX)
+            1.0 if has_pattern else 0.0,        # 0 o 1 (Documentación técnica probada)
+            1.0 if is_adx_rising else 0.0,      # 0 o 1
         ]
 
     def predict(self, features: list[float]) -> tuple[float, str]:

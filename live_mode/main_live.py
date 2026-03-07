@@ -208,6 +208,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
     account   = AccountState(total_cash=acct_info.total_cash)
     risk_mgr  = RiskManager(account)
     position: OpenPosition | None = None
+    last_trade_ts = None
 
     log.info(f"{'─'*60}")
     log.info(f"Bot iniciado | Símbolo: {symbol} | Modo: {broker.name}")
@@ -235,6 +236,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
             # ── 2. Obtener cotización ────────────────────────────────────────
             try:
                 quote = broker.get_quote(symbol)
+                current_sim_time = quote.timestamp # Capturar tiempo lógico
             except StopIteration:
                 log.info("▶ Datos de simulación agotados. Finalizando sesión.")
                 break
@@ -360,6 +362,9 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         # En LIVE registrar el capital como T+1 pendiente
                         if not is_mock:
                             account.record_sale(sell_price * position.qty)
+                        
+                        # Guardar el timestamp del último trade cerrado
+                        last_trade_ts = current_sim_time
                         position = None
 
             # ── 5. Gestionar ENTRADA (si no hay posición y hay señal BUY) ────
@@ -640,6 +645,7 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                         "profit_factor":  round(getattr(broker.stats, 'profit_factor', 0.0), 2),
                         "drawdown":       round(getattr(broker.stats, 'max_drawdown', 0.0), 2),
                         "last_price":     round(getattr(final_info, 'last_price', 0.0), 2),
+                        "last_order_date": (last_trade_ts.isoformat() if hasattr(last_trade_ts, 'isoformat') else str(last_trade_ts)) if last_trade_ts else "─",
                         "insight":        insight,
                         "regime":         regime_val,
                         "blocking_summary": dict(blocking_history),

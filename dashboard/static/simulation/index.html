@@ -1862,6 +1862,7 @@
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted);">
                                         <th style="padding:10px;">Símbolo</th>
+                                        <th style="padding:10px;">Última Orden</th>
                                         <th style="padding:10px;">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
                                         <th style="padding:10px;">Trades</th>
@@ -1882,7 +1883,7 @@
                                 </thead>
                                 <tbody id="results-table-body">
                                     <tr>
-                                        <td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">
+                                        <td colspan="14" style="padding:20px; text-align:center; color:var(--muted);">
                                             Sin sesiones finalizadas todavía.</td>
                                     </tr>
                                 </tbody>
@@ -2395,7 +2396,7 @@
                     if (lastResultCount !== 0) {
                         lastResultCount = 0;
                         totalNetValue = 0;
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="14" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
 
                         // Reset Summary Cards explicitly
                         const ids = ['summary-gross-pnl', 'summary-total-fees', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
@@ -2620,6 +2621,9 @@
                 style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px 5px; cursor:pointer; font-size:12px; transition:all 0.2s;"
                 onmouseover="this.style.background='rgba(255,255,255,0.1)'"
                 onmouseout="this.style.background='rgba(255,255,255,0.05)'">📅</button>
+        </td>
+        <td style="padding:10px; color:var(--muted); font-size:11px;">
+            ${row.last_order_date && row.last_order_date !== '─' ? (row.last_order_date.includes('T') ? row.last_order_date.split('T')[0] : (row.last_order_date.includes(' ') ? row.last_order_date.split(' ')[0] : row.last_order_date)) : '─'}
         </td>
         <td style="padding:10px; color:${row.last_price ? 'var(--green)' : 'var(--muted)'}">
             ${row.last_price ? '$' + parseFloat(row.last_price).toFixed(2) : '─'}
@@ -4557,7 +4561,7 @@
             style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px);">
         </div>
         <div id="sym-manager-modal"
-            style="position:relative; background:var(--bg-card); border:1px solid #3c404b; border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,0.8);">
+            style="position:relative; background:var(--bg-card); border:1px solid #3c404b; border-radius:12px; width:90%; max-width:850px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 40px rgba(0,0,0,0.8);">
             <div
                 style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid rgba(255,255,255,0.05); background:var(--panel);">
                 <h3 style="margin:0; font-size:16px; color:white; display:flex; align-items:center; gap:10px;">
@@ -4620,7 +4624,7 @@
                 </div>
             </div>
             <div id="sym-manager-list"
-                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap:8px;">
+                style="padding:15px; overflow-y:auto; flex:1; display:grid; grid-template-columns: repeat(auto-fill, minmax(65px, 1fr)); gap:8px;">
                 <!-- Lista inyectada por JS -->
             </div>
             <!-- El bot ahora recarga dinámicamente, ya no es necesario el aviso de reinicio -->
@@ -4639,12 +4643,12 @@
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 6px;
+            padding: 2px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
-            gap: 4px;
+            gap: 2px;
             transition: 0.2s;
         }
 
@@ -4659,7 +4663,7 @@
 
         .sm-sym {
             font-weight: bold;
-            font-size: 13px;
+            font-size: 10px;
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -4733,7 +4737,7 @@
             listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
 
             try {
-                const res = await fetch('/api/all_symbols');
+                const res = await fetch('/api/all_symbols?mode=sim');
                 const data = await res.json();
                 if (data.status === 'success') {
                     let html = '';
@@ -4747,7 +4751,7 @@
                         <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}" style="position:relative;">
                             ${isRec ? `<span style="position:absolute;top:3px;right:3px;font-size:9px;color:#fbbf24;line-height:1;" title="Recomendada para mañana">★</span>` : ''}
                             <div id="sms-${item.symbol}" class="sm-sym ${isEn ? 'enabled' : 'disabled'}">${item.symbol}</div>
-                            <label class="switch" style="transform: scale(0.85); margin-bottom: 2px;">
+                            <label class="switch" style="transform: scale(0.7); margin-bottom: 0px;">
                                 <input type="checkbox" ${isEn ? 'checked' : ''} onchange="toggleMasterSymbol('${item.symbol}', this.checked)">
                                 <span class="slider"></span>
                             </label>
