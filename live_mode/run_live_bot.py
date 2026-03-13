@@ -23,7 +23,7 @@ from pathlib import Path
 
 from shared import config
 from shared.utils.logger import log
-from shared.utils.market_hours import is_market_open, market_status_str, next_open_str
+from shared.utils.market_hours import is_market_open, market_status_str, next_open_str, TZ_NYC
 from shared.strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
 from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
 from shared.strategy.ml_predictor import ml_predictor
@@ -197,6 +197,33 @@ def run_symbol_live(
                         # Actualizar el capital real de la cuenta para que el Dashboard lo refleje
                         account.total_cash += net_pnl
 
+                        # 🧠 Alimentar al modelo de ML con el resultado real
+                        if hasattr(position, 'ml_features') and position.ml_features:
+                            log.info(f"[{symbol}] 🧠 SAVING REAL TRADE: Pnl=${net_pnl:.2f} Features={position.ml_features}")
+                            ml_predictor.save_trade(symbol, position.ml_features, net_pnl)
+                            
+                            try:
+                                ml_f = position.ml_features
+                                fv = nf.build_features(
+                                    rsi=ml_f.get("rsi", 50.0),
+                                    macd_hist=ml_f.get("macd_hist", 0.0),
+                                    atr_pct=ml_f.get("atr_pct", 0.0),
+                                    vol_ratio=ml_f.get("vol_ratio", 1.0),
+                                    ema_fast=ml_f.get("ema_fast", 100.0),
+                                    ema_slow=ml_f.get("ema_slow", 100.0),
+                                    zscore_vwap=ml_f.get("zscore_vwap", 0.0),
+                                    regime=ml_f.get("regime", "NEUTRAL"),
+                                    num_confirmations=int(ml_f.get("num_confirmations", 2)),
+                                    adx=ml_f.get("adx", 20.0),
+                                    has_pattern=ml_f.get("has_pattern", False),
+                                    is_adx_rising=ml_f.get("is_adx_rising", False),
+                                )
+                                s_won = net_pnl > 0
+                                nf.fit(fv, s_won)
+                                log.info(f"[LIVE:{symbol}] 🧠 AI MLP aprendiendo del trade real (Ganado={s_won})")
+                            except Exception as _e:
+                                log.warning(f"[LIVE:{symbol}] No se pudo entrenar red neuronal: {_e}")
+
                         # Registro en bitácora (CSV persistente)
                         try:
                             journal_record_trade(
@@ -228,7 +255,7 @@ def run_symbol_live(
             if position is None and signal.signal == SIGNAL_BUY:
                 
                 # REGLA 1: Evitar el Sesgo de Look-Ahead
-                now = datetime.now(config.NY_TZ)
+                now = datetime.now(TZ_NYC)
                 if now.minute % 5 != 0:
                     msg = "⏱️ Esperando inicio de nueva vela de 5m (Look-Ahead Prevention)"
                     signal.blocks = [msg]
@@ -296,11 +323,12 @@ def run_symbol_live(
                             has_pattern=ml_f.get("has_pattern", False),
                             is_adx_rising=ml_f.get("is_adx_rising", False),
                         )
-                        nf_win, nf_prob = nf.predict(fv)
-                        if not nf_win:
+                        proba, reason = nf.predict(fv)
+                        from shared.config import CONFIDENCE_THRESHOLD
+                        if proba < CONFIDENCE_THRESHOLD:
                             buy_plan.is_viable = False
                             nf_blocked = True
-                            msg = f"🧠 Red Neuronal bloqueó | P={nf_prob*100:.1f}%"
+                            msg = f"🧠 Red Neuronal bloqueó | P={proba*100:.1f}%"
                             buy_plan.block_reason = msg
                             signal.signal = SIGNAL_HOLD
                             signal.blocks = [msg]

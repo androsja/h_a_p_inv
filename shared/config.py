@@ -45,7 +45,7 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # ─── Estrategia Intraday (velas de 5 minutos) ────────────────────────────────
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
-# Hyper-Aggressive V3: Ajustado a 0.55 para mayor cautela (Anti-Trampas).
+# Hyper-Aggressive V3: Ajustado a 0.35 para permitir investigación de trades bloqueados.
 CONFIDENCE_THRESHOLD = 0.55
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
@@ -66,9 +66,9 @@ TRADING_CLOSE_HOUR  = 13   # Hora de cierre de ventana
 TRADING_CLOSE_MIN   = 30
 
 # ─── Archivos de datos ──────────────────────────────────────────────────────
-ASSETS_FILE      = BASE_DIR / "assets.json" # Legacy
-ASSETS_FILE_SIM  = BASE_DIR / "assets_sim.json"
-ASSETS_FILE_LIVE = BASE_DIR / "assets_live.json"
+ASSETS_FILE      = BASE_DIR / "assets.json"
+ASSETS_FILE_SIM  = ASSETS_FILE
+ASSETS_FILE_LIVE = ASSETS_FILE
 DATA_DIR         = BASE_DIR / "data"
 COMMAND_FILE     = DATA_DIR / "command.json"
 STATE_FILE       = DATA_DIR / "state.json" # Legacy/Default

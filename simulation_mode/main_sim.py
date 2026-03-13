@@ -531,10 +531,11 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                             signal.signal = SIGNAL_HOLD
                             signal.blocks = [msg]
                             log.info(f"[LIVE:{symbol}] {msg}")
-                        nf_win, nf_prob = nf.predict(fv)
-                        if not nf_win:
+                        proba, reason = nf.predict(fv)
+                        from shared.config import CONFIDENCE_THRESHOLD
+                        if proba < CONFIDENCE_THRESHOLD:
                             buy_plan.is_viable = False
-                            msg = f"🧠 Red Neuronal bloqueó | P={nf_prob*100:.1f}%"
+                            msg = f"🧠 Red Neuronal bloqueó | P={proba*100:.1f}%"
                             buy_plan.block_reason = msg
                             signal.signal = SIGNAL_HOLD
                             log.info(f"[{symbol}] {msg}")
@@ -725,16 +726,24 @@ def run_bot(broker: BrokerInterface, args: argparse.Namespace, session_num: int 
                     smart_sleep(1)
                 
         if not (stop_event and stop_event.is_set()):
-            smart_sleep(1)
             if not is_live_paper_b:
+                # Simulación a máxima velocidad (sin 'smart_sleep' de 1 segundo)
+                # Solo consultar comandos cada 20 velas para no sobrecargar el disco
+                if iteration % 20 == 0:
+                    try:
+                        if config.COMMAND_FILE.exists():
+                            with open(config.COMMAND_FILE, "r") as f:
+                                c = json.load(f)
+                            if c.get("reset_all") or c.get("restart_sim") or c.get("force_paper_trading") is False:
+                                log.info(f"🛑 Interrupción detectada para {symbol} (Reset/Restart).")
+                                return
+                    except: pass
+            else:
                 try:
-                    if config.COMMAND_FILE.exists():
-                        with open(config.COMMAND_FILE, "r") as f:
-                            c = json.load(f)
-                        if c.get("reset_all") or c.get("restart_sim") or c.get("force_paper_trading") is False:
-                            log.info(f"🛑 Interrupción detectada para {symbol} (Reset/Restart).")
-                            return
-                except: pass
+                    smart_sleep(1)
+                except SessionInterrupted:
+                    log.info(f"🛑 Interrupción detectada para {symbol} (Reset/Restart desde sleep).")
+                    return
 
     except KeyboardInterrupt:
         print("\n")

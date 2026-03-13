@@ -8,7 +8,7 @@ async function openSymbolManager() {
     listContainer.innerHTML = '<div style="color:var(--muted); text-align:center; grid-column:1/-1; padding:20px;">Cargando catálogo...</div>';
 
     try {
-        const res = await fetch('/api/all_symbols?mode=live');
+        const res = await fetch('/api/all_symbols');
         const data = await res.json();
         if (data.status === 'success') {
             window.configAssets = data; // Guardar estado global
@@ -203,7 +203,7 @@ async function applySimRecommendations() {
 async function confirmApplyLiveRec(symbols) {
     document.getElementById('ndr-live-preview')?.remove();
     if (!window.configAssets || !window.configAssets.assets) {
-        const r = await fetch('/api/all_symbols?mode=live');
+        const r = await fetch('/api/all_symbols');
         const d = await r.json();
         window.configAssets = d;
     }
@@ -222,7 +222,7 @@ async function toggleMasterSymbol(symbol, isEnabled) {
         const res = await fetch('/api/toggle_symbol', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ symbol: symbol, enabled: isEnabled, mode: 'live' })
+            body: JSON.stringify({ symbol: symbol, enabled: isEnabled })
         });
         const data = await res.json();
         if (res.ok && data.status === 'success') {
@@ -318,7 +318,7 @@ async function applyMassSymbolToggle(symbolsToChange, enable) {
             await fetch('/api/toggle_symbol', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol: sym, enabled: enable, mode: 'live' })
+                body: JSON.stringify({ symbol: sym, enabled: enable })
             });
         }
     } finally {

@@ -52,7 +52,7 @@
         .app {
             height: 100vh;
             display: grid;
-            grid-template-rows: 56px 1fr;
+            grid-template-rows: auto 1fr;
         }
 
         /* ─── HEADER ─── */
@@ -60,7 +60,9 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            flex-wrap: wrap;
+            padding: 10px 20px;
+            gap: 15px;
             background: rgba(0, 0, 0, 0.9);
             border-bottom: 1px solid var(--border);
             backdrop-filter: blur(20px);
@@ -360,7 +362,29 @@
         .hdr-right {
             display: flex;
             align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .status-dot-wrap {
@@ -1320,6 +1344,88 @@
                 opacity: 0;
             }
         }
+
+        .hdr-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+            white-space: nowrap;
+        }
+
+        .hdr-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .hdr-btn.btn-primary {
+            background: rgba(0, 255, 213, 0.15);
+            border-color: rgba(0, 255, 213, 0.3);
+            color: var(--accent);
+        }
+
+        .hdr-btn.btn-primary:hover {
+            background: rgba(0, 255, 213, 0.25);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 255, 213, 0.2);
+        }
+
+        .hdr-btn.btn-danger {
+            background: rgba(255, 43, 94, 0.15);
+            border-color: rgba(255, 43, 94, 0.3);
+            color: #ff6b8b;
+        }
+
+        .hdr-btn.btn-danger:hover {
+            background: rgba(255, 43, 94, 0.25);
+            border-color: var(--red);
+            box-shadow: 0 0 10px rgba(255, 43, 94, 0.2);
+        }
+
+        .hdr-btn.btn-warning {
+            background: rgba(253, 224, 71, 0.15);
+            border-color: rgba(253, 224, 71, 0.3);
+            color: var(--yellow);
+        }
+
+        .hdr-btn.btn-warning:hover {
+            background: rgba(253, 224, 71, 0.25);
+            border-color: var(--yellow);
+            box-shadow: 0 0 10px rgba(253, 224, 71, 0.2);
+        }
+
+        .hdr-btn.btn-purple {
+            background: rgba(191, 149, 255, 0.15);
+            border-color: rgba(191, 149, 255, 0.3);
+            color: var(--purple);
+        }
+
+        .hdr-btn.btn-purple:hover {
+            background: rgba(191, 149, 255, 0.25);
+            border-color: var(--purple);
+            box-shadow: 0 0 10px rgba(191, 149, 255, 0.2);
+        }
+
+        .hdr-btn.btn-blue {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.3);
+            color: var(--accent2);
+        }
+
+        .hdr-btn.btn-blue:hover {
+            background: rgba(56, 189, 248, 0.25);
+            border-color: var(--accent2);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+        }
     </style>
 </head>
 
@@ -1355,61 +1461,72 @@
             </div>
 
             <!-- Derecho -->
-            <div class="hdr-right" style="gap:5px;">
-                <button onclick="openSymbolManager()"
-                    style="background:#673ab7; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
-                    🎛️ GESTOR SÍMBOLOS
-                </button>
-                <!-- Se eliminó el botón redundante de "Símbolos", todo se maneja desde el GESTOR SÍMBOLOS -->
-                <button id="btn-start-paper" onclick="startPaperTrade()"
-                    style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
-                    ▶️ LIVE PAPER
-                </button>
-                <button id="btn-stop-paper" onclick="stopPaperTrade()"
-                    style="background:#ff3d5a; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:none; align-items:center; gap:5px;">
-                    🛑 DETENER LIVE
-                </button>
-                <button onclick="openBankModal()"
-                    style="background:#0057ff; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; margin-left: 10px;">
-                    🏦 BANCO
-                </button>
+            <div class="hdr-right">
 
-                <button onclick="resetAllData()"
-                    style="background:var(--red);color:white;border:none;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;display:flex;align-items:center;gap:5px;">
-                    <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                        </path>
-                    </svg>
-                    WIPE MEMORY
-                </button>
-                <button onclick="restartSim()"
-                    style="background:#00bcd4;color:#111;border:none;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;">
-                    🔄 RESTART SIM
-                </button>
-                <button id="btn-freeze" onclick="toggleFreeze()"
-                    style="background:#1a2a4a;color:#64b5f6;border:1px solid #1565c0;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;gap:5px;transition:all 0.3s;"
-                    title="Congela la estrategia actual para que no sea borrada ni reiniciada">
-                    ❄️ CONGELAR
-                </button>
-                <button onclick="openSnapshotPanel()"
-                    style="background:#1a1a2e;color:#ce93d8;border:1px solid #7b1fa2;border-radius:4px;padding:6px 12px;font-size:11px;cursor:pointer;font-weight:bold;margin-left:5px;display:flex;align-items:center;gap:4px;"
-                    title="Guardar y restaurar versiones del modelo de IA">
-                    📸 VERSIONES
-                </button>
-                <div class="status-dot-wrap" style="margin-left: 10px;">
-                    <div class="dot off" id="status-dot"></div>
-                    <span id="status-text" style="color:var(--muted);">Conectando…</span>
+                <!-- GRUPO 1: Símbolos y Entorno -->
+                <div class="btn-group">
+                    <button onclick="openSymbolManager()" class="hdr-btn btn-purple"
+                        title="Configurar activos en simulador">
+                        🎛️ SÍMBOLOS
+                    </button>
+                    <button id="btn-start-paper" onclick="startPaperTrade()" class="hdr-btn btn-warning"
+                        title="Iniciar Live Paper Trading (falso dinero, mercado real)">
+                        ▶️ LIVE PAPER
+                    </button>
+                    <button id="btn-stop-paper" onclick="stopPaperTrade()" class="hdr-btn btn-danger"
+                        style="display:none;" title="Detener Live Paper Trading">
+                        🛑 DETENER
+                    </button>
+                    <button onclick="openBankModal()" class="hdr-btn btn-blue" title="Gestionar fondos simulados">
+                        🏦 BANCO
+                    </button>
                 </div>
-                <div class="mode-chip" id="mode-chip">SIM</div>
-                <div id="scan-countdown"
-                    style="margin-right: 15px; font-size: 11px; color: var(--accent); display: none; align-items: center; border: 1px solid rgba(0,255,213,0.3); padding: 2px 8px; border-radius: 20px; background: rgba(0,255,213,0.1);">
-                    <span style="margin-right: 5px;">⏳ Próximo escaneo en:</span>
-                    <span id="countdown-val" style="font-weight: bold;">60s</span>
+
+                <!-- GRUPO 2: Machine Learning y Memoria -->
+                <div class="btn-group">
+                    <button onclick="openSnapshotPanel()" class="hdr-btn btn-purple"
+                        title="Guardar y restaurar versiones pre-entrenadas de IA">
+                        📸 IA VERSIONES
+                    </button>
+                    <button id="btn-freeze" onclick="toggleFreeze()" class="hdr-btn btn-blue"
+                        title="Congela la estrategia actual para que no siga aprendiendo nuevas velas">
+                        ❄️ CONGELAR
+                    </button>
                 </div>
-                <div class="clock" id="sim-date" style="margin-right: 10px; font-weight: bold; color: var(--accent2);">
-                    ----/--/--</div>
-                <div class="clock" id="clock">00:00:00</div>
+
+                <!-- GRUPO 3: Control y Reinicio -->
+                <div class="btn-group">
+                    <button onclick="restartSim()" class="hdr-btn btn-primary"
+                        title="Reiniciar sesión sin borrar memoria (Keep ML)">
+                        🔄 REINICIAR
+                    </button>
+                    <button onclick="resetAllData()" class="hdr-btn btn-danger"
+                        title="Borrar TODOS los datos y memoria neuronal (Wipe)">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                            </path>
+                        </svg>
+                        WIPE TOTAL
+                    </button>
+                </div>
+
+                <!-- GRUPO 4: Estado y Relojes -->
+                <div class="status-group">
+                    <div class="status-dot-wrap">
+                        <div class="dot off" id="status-dot"></div>
+                        <span id="status-text" style="color:var(--muted);">Conectando…</span>
+                    </div>
+                    <div class="mode-chip" id="mode-chip">SIM</div>
+                    <div id="scan-countdown"
+                        style="font-size: 11px; color: var(--accent); display: none; align-items: center; border: 1px solid rgba(0,255,213,0.3); padding: 2px 8px; border-radius: 20px; background: rgba(0,255,213,0.1);">
+                        <span style="margin-right: 5px;">⏳ Próximo:</span>
+                        <span id="countdown-val" style="font-weight: bold;">60s</span>
+                    </div>
+                    <div class="clock" id="sim-date" style="font-weight: bold; color: var(--accent2);">
+                        ----/--/--</div>
+                    <div class="clock" id="clock">00:00:00</div>
+                </div>
             </div>
         </header>
 
@@ -1751,14 +1868,14 @@
                     <div class="card">
                         <div style="flex-shrink: 0;">
                             <div class="card-title"
-                                style="display:flex; justify-content:space-between; align-items:center;">
+                                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                                 <span>🧠 Bitácora General (Pipeline para Machine Learning)</span>
                                 <span id="results-live-badge" style="
                                     font-size:11px; color:#4caf50; font-weight:bold;
-                                    display:flex; align-items:center; gap:5px;
+                                    display:flex; align-items:center; gap:5px; white-space:nowrap;
                                 ">
                                     <span
-                                        style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite;"></span>
+                                        style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite; flex-shrink:0;"></span>
                                     <span id="results-mode-text">SIMULACIÓN (HISTÓRICO)</span>
                                 </span>
                             </div>
@@ -1812,40 +1929,41 @@
                                 border-radius: 10px;
                                 padding: 15px 20px;
                                 margin-bottom: 20px;
-                                display: flex;
-                                justify-content: space-around;
-                                align-items: center;
-                                flex-wrap: wrap;
+                                display: grid;
+                                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
                                 gap: 15px;
+                                align-items: center;
                             ">
                                 <div style="text-align:center;">
-                                    <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">PNL BRUTO ACUM.
+                                    <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">GANANCIAS (WINS)
                                     </div>
-                                    <div style="font-size:20px; font-weight:bold; font-family:'JetBrains Mono',monospace;"
-                                        id="summary-gross-pnl">─</div>
+                                    <div style="font-size:20px; font-weight:bold; color:var(--green); font-family:'JetBrains Mono',monospace;"
+                                        id="summary-gross-wins">─</div>
                                 </div>
-                                <div style="border-left:1px solid rgba(255,255,255,0.1); height:30px;"></div>
+                                <div style="text-align:center;">
+                                    <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">PÉRDIDAS
+                                        (LOSSES)</div>
+                                    <div style="font-size:20px; font-weight:bold; color:var(--red); font-family:'JetBrains Mono',monospace;"
+                                        id="summary-gross-losses">─</div>
+                                </div>
                                 <div style="text-align:center;">
                                     <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">TOTAL FEES
                                         (COMISIONES)</div>
                                     <div style="font-size:20px; font-weight:bold; color:#ff9800; font-family:'JetBrains Mono',monospace;"
                                         id="summary-total-fees">─</div>
                                 </div>
-                                <div style="border-left:1px solid rgba(255,255,255,0.1); height:30px;"></div>
                                 <div style="text-align:center;">
                                     <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">RENDIMIENTO NETO
                                         TOTAL</div>
                                     <div style="font-size:20px; font-weight:bold; font-family:'JetBrains Mono',monospace;"
                                         id="summary-net-pnl">─</div>
                                 </div>
-                                <div style="border-left:1px solid rgba(255,255,255,0.1); height:30px;"></div>
                                 <div style="text-align:center;">
                                     <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">BALANCE FINAL
                                         ESTIMADO</div>
                                     <div style="font-size:20px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono',monospace;"
                                         id="summary-final-balance">─</div>
                                 </div>
-                                <div style="border-left:1px solid rgba(255,255,255,0.1); height:30px;"></div>
                                 <div style="text-align:center;">
                                     <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">GANANCIA REAL
                                         RETIRADA</div>
@@ -1855,9 +1973,9 @@
                             </div>
                         </div>
 
-                        <div class="trades-container" style="flex:1; overflow-y:auto; padding-right: 5px;">
+                        <div class="trades-container" style="flex:1; overflow:auto; padding-right: 5px;">
                             <table
-                                style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; font-family:'Inter', sans-serif;">
+                                style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; font-family:'Inter', sans-serif; white-space: nowrap;">
                                 <thead
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted);">
@@ -2399,7 +2517,7 @@
                         if (tbody) tbody.innerHTML = '<tr><td colspan="14" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
 
                         // Reset Summary Cards explicitly
-                        const ids = ['summary-gross-pnl', 'summary-total-fees', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
+                        const ids = ['summary-gross-wins', 'summary-gross-losses', 'summary-total-fees', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
                         ids.forEach(id => {
                             const el = document.getElementById(id);
                             if (el) {
@@ -2431,7 +2549,14 @@
                     lastResultCount = data.length;
                     window._lastResultsData = data;  // Cache para el recomendador
 
-                    const totalGross = data.reduce((sum, item) => sum + (item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0), 0);
+                    let totalWins = 0;
+                    let totalLosses = 0;
+                    data.forEach(item => {
+                        let p = item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0;
+                        if (p > 0) totalWins += p;
+                        else totalLosses += p;
+                    });
+                    const totalGross = totalWins + totalLosses;
                     const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
                     const totalSlip = data.reduce((sum, item) => sum + (item.slippage_est || 0), 0);
                     const totalNet = totalGross - totalFees - totalSlip;
@@ -2442,11 +2567,11 @@
                     const finalProfit = netToBank - initCash;
 
                     // Update Summary Card
-                    const grossEl = document.getElementById('summary-gross-pnl');
-                    if (grossEl) {
-                        grossEl.textContent = `${totalGross >= 0 ? '+' : ''}$${totalGross.toFixed(2)}`;
-                        grossEl.style.color = totalGross >= 0 ? 'var(--green)' : 'var(--red)';
-                    }
+                    const winsEl = document.getElementById('summary-gross-wins');
+                    if (winsEl) winsEl.textContent = `+$${totalWins.toFixed(2)}`;
+
+                    const lossesEl = document.getElementById('summary-gross-losses');
+                    if (lossesEl) lossesEl.textContent = `-$${Math.abs(totalLosses).toFixed(2)}`;
                     const feesEl = document.getElementById('summary-total-fees');
                     if (feesEl) feesEl.textContent = `-$${totalFees.toFixed(2)}`;
 

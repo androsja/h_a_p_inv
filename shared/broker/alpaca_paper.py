@@ -135,9 +135,28 @@ class AlpacaPaperBroker(BrokerInterface):
             bars = self._data_client.get_stock_bars(req)
             
             if bars.df.empty:
-                raise ValueError(f"Alpaca no devolvió barras para {symbol}")
+                log.warning(f"[{symbol}] Alpaca no devolvió barras. Intentando fallback con yfinance...")
+                try:
+                    import yfinance as yf
+                    yf_df = yf.download(symbol, period="5d", interval="5m", progress=False)
+                    if yf_df.empty:
+                        raise ValueError(f"Alpaca y yfinance no devolvieron barras para {symbol}")
+                    
+                    if isinstance(yf_df.columns, pd.MultiIndex):
+                        yf_df.columns = yf_df.columns.droplevel(1)
+                        
+                    raw_df = yf_df.rename(columns={
+                        "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"
+                    })
+                    # Add missing capitalizations if needed
+                    cols_map = {c: c.capitalize() for c in raw_df.columns if c.islower() and c in ["open", "high", "low", "close", "volume"]}
+                    if cols_map:
+                        raw_df = raw_df.rename(columns=cols_map)
+                except Exception as fb_err:
+                    raise ValueError(f"Alpaca no devolvió barras y fallback falló: {fb_err}")
+            else:
+                raw_df = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
                 
-            raw_df = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
             raw_df = raw_df.rename(columns={
                 "open": "Open",
                 "high": "High",

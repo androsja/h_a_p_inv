@@ -22,15 +22,18 @@ _global_stop = threading.Event()
 
 
 def get_active_symbols() -> list[str]:
-    """Lee los símbolos activos de assets_live.json."""
+    """Lee los símbolos habilitados de assets.json (archivo maestro compartido)."""
     try:
-        path = config.ASSETS_FILE_LIVE
+        path = config.ASSETS_FILE  # ← usa el mismo archivo que el Gestor de Símbolos
         if path.exists():
             with open(path) as f:
                 data = json.load(f)
-            return [a["symbol"] for a in data.get("assets", []) if a.get("enabled", False)]
+            # Formato estándar: {"assets": [{"symbol": "X", "enabled": true}, ...]}
+            assets = data.get("assets", [])
+            if assets and isinstance(assets[0], dict):
+                return [a["symbol"] for a in assets if a.get("enabled", False)]
     except Exception as e:
-        log.warning(f"[AlpacaLauncher] Error leyendo assets_live.json: {e}")
+        log.warning(f"[AlpacaLauncher] Error leyendo assets.json: {e}")
     return []
 
 
@@ -42,15 +45,20 @@ def launch(api_key: str, secret_key: str, initial_cash: float = config.INITIAL_C
     Si ya hay hilos corriendo, los detiene primero.
     """
     from live_mode.run_live_bot import run_symbol_live
-    from shared.utils.state_writer import set_state_file
+    from shared.utils.state_writer import set_state_file, clear_state
 
     # Asegurar que Live escribe en state_live.json (NUNCA state_sim.json)
     set_state_file(config.STATE_FILE_LIVE)
 
     symbols = get_active_symbols()
     if not symbols:
-        log.warning("[AlpacaLauncher] No hay símbolos activos en assets_live.json. Nada que lanzar.")
+        log.warning("[AlpacaLauncher] No hay símbolos activos en assets.json. Nada que lanzar.")
         return
+
+    # ── LIMPIAR estado anterior para que el dashboard solo muestre los nuevos símbolos ──
+    # Sin esto, los símbolos de sesiones anteriores siguen apareciendo en la tabla.
+    log.info("[AlpacaLauncher] 🧹 Limpiando state_live.json de sesión anterior...")
+    clear_state()
 
     # Detener hilos previos si los hay
     stop_all()
@@ -136,7 +144,24 @@ def watch_commands():
                     with open(config.COMMAND_FILE, "w") as f:
                         json.dump(cmds, f)
 
+                elif cmds.get("reset_neural"):
+                    log.info("[AlpacaLauncher] 🧨 Comando reset_neural recibido — limpiando IA en memoria...")
+                    # Detener hilos para que no sigan escribiendo el modelo
+                    stop_all()
+                    # Resetear el singleton de la Red Neuronal en memoria
+                    try:
+                        from shared.utils.neural_filter import reset_neural_filter
+                        reset_neural_filter()
+                        log.info("[AlpacaLauncher] ✅ Red Neuronal reseteada en memoria y disco.")
+                    except Exception as e:
+                        log.error(f"[AlpacaLauncher] Error reseteando neural filter: {e}")
+                    # Limpiar flag
+                    cmds["reset_neural"] = False
+                    with open(config.COMMAND_FILE, "w") as f:
+                        json.dump(cmds, f)
+
         except Exception as e:
             log.debug(f"[AlpacaLauncher] watch_commands error: {e}")
 
         time.sleep(2)
+

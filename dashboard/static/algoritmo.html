@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hapi Bot — Arquitectura del Algoritmo</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #080c18;
+            --bg2: #0f1629;
+            --bg3: #141e35;
+            --bg4: #1a2540;
+            --accent: #6366f1;
+            --accent2: #22d3ee;
+            --accent3: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --purple: #8b5cf6;
+            --orange: #f97316;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --border: rgba(255, 255, 255, 0.07);
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden
+        }
+
+        /* ── HERO ── */
+        .hero {
+            background: linear-gradient(135deg, #050810 0%, #0f0b2e 40%, #08131f 100%);
+            padding: 100px 40px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.15), transparent);
+            pointer-events: none;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+            padding: 5px 18px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #818cf8 0%, #22d3ee 50%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--muted);
+            max-width: 640px;
+            margin: 0 auto 40px
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap
+        }
+
+        .stat {
+            text-align: center
+        }
+
+        .stat-val {
+            font-size: 2rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(8, 12, 24, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 40px;
+            display: flex;
+            gap: 0;
+            overflow-x: auto;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 16px 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--text);
+            border-bottom-color: var(--accent)
+        }
+
+        /* ── LAYOUT ── */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 70px 40px
+        }
+
+        .section-head {
+            margin-bottom: 48px
+        }
+
+        .section-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .section-badge.indigo {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3)
+        }
+
+        .section-badge.cyan {
+            background: rgba(34, 211, 238, 0.12);
+            color: #67e8f9;
+            border: 1px solid rgba(34, 211, 238, 0.3)
+        }
+
+        .section-badge.amber {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3)
+        }
+
+        .section-badge.green {
+            background: rgba(16, 185, 129, 0.12);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.3)
+        }
+
+        .section-badge.purple {
+            background: rgba(139, 92, 246, 0.12);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.3)
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 8px
+        }
+
+        .section-sub {
+            color: var(--muted);
+            font-size: 0.95rem;
+            max-width: 680px
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.25), transparent);
+            margin: 0
+        }
+
+        /* ── PIPELINE FLOW ── */
+        .pipeline {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            margin: 48px 0;
+            flex-wrap: wrap;
+            justify-content: center
+        }
+
+        .pipe-step {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px 20px;
+            text-align: center;
+            flex: 1;
+            min-width: 130px;
+            max-width: 160px;
+            position: relative;
+            transition: transform 0.2s, border-color 0.2s;
+            cursor: default;
+        }
+
+        .pipe-step:hover {
+            transform: translateY(-4px);
+            border-color: rgba(99, 102, 241, 0.4)
+        }
+
+        .pipe-step .p-num {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: #fff;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pipe-step .p-icon {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            display: block
+        }
+
+        .pipe-step .p-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 4px
+        }
+
+        .pipe-step .p-name {
+            font-size: 0.88rem;
+            font-weight: 700
+        }
+
+        .pipe-step .p-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 6px
+        }
+
+        .pipe-arrow {
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            color: rgba(99, 102, 241, 0.5);
+            font-size: 1.4rem;
+            flex-shrink: 0
+        }
+
+        /* ── REGIMES ── */
+        .regimes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+            margin-top: 32px
+        }
+
+        .regime-card {
+            background: var(--bg3);
+            border-radius: 14px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-top: 3px solid;
+            transition: transform 0.2s;
+        }
+
+        .regime-card:hover {
+            transform: translateY(-3px)
+        }
+
+        .regime-card.tu {
+            border-top-color: #10b981
+        }
+
+        .regime-card.td {
+            border-top-color: #ef4444
+        }
+
+        .regime-card.rg {
+            border-top-color: #f59e0b
+        }
+
+        .regime-card.mo {
+            border-top-color: #8b5cf6
+        }
+
+        .regime-card.ch {
+            border-top-color: #f97316
+        }
+
+        .regime-card.ne {
+            border-top-color: #64748b
+        }
+
+        .regime-card .r-emoji {
+            font-size: 2.2rem;
+            margin-bottom: 12px
+        }
+
+        .regime-card h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px
+        }
+
+        .regime-card p {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-bottom: 10px
+        }
+
+        .regime-card .r-cond {
+            font-size: 0.72rem;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block
+        }
+
+        .tu .r-cond {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7
+        }
+
+        .td .r-cond {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5
+        }
+
+        .rg .r-cond {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d
+        }
+
+        .mo .r-cond {
+            background: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd
+        }
+
+        .ch .r-cond {
+            background: rgba(249, 115, 22, 0.15);
+            color: #fdba74
+        }
+
+        .ne .r-cond {
+            background: rgba(100, 116, 139, 0.15);
+            color: #94a3b8
+        }
+
+        /* ── STRATEGIES ── */
+        .strat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 20px;
+            margin-top: 32px
+        }
+
+        .strat-card {
+            background: var(--bg3);
+            border-radius: 18px;
+            padding: 32px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .strat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px
+        }
+
+        .strat-card.sa::before {
+            background: linear-gradient(90deg, #6366f1, #8b5cf6)
+        }
+
+        .strat-card.sb::before {
+            background: linear-gradient(90deg, #22d3ee, #06b6d4)
+        }
+
+        .strat-card.sc::before {
+            background: linear-gradient(90deg, #f59e0b, #f97316)
+        }
+
+        .strat-card.sd::before {
+            background: linear-gradient(90deg, #10b981, #22d3ee)
+        }
+
+        .strat-card .s-tag {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 10px
+        }
+
+        .strat-card h3 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: 18px
+        }
+
+        .cond {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 10px
+        }
+
+        .cond-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px
+        }
+
+        .cond-dot::after {
+            content: '✓';
+            font-size: 0.6rem;
+            color: #10b981;
+            font-weight: 700
+        }
+
+        .cond span {
+            font-size: 0.83rem;
+            color: var(--muted)
+        }
+
+        .cond span strong {
+            color: var(--text)
+        }
+
+        .regime-pill {
+            margin-top: 18px;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+        }
+
+        /* ── FILTERS ── */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 32px
+        }
+
+        .filter-card {
+            background: var(--bg3);
+            border-radius: 14px;
+            padding: 22px;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .filter-card h4 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #fca5a5;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .filter-card p {
+            font-size: 0.8rem;
+            color: var(--muted)
+        }
+
+        .filter-card code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            padding: 1px 7px;
+            border-radius: 4px;
+        }
+
+        .filter-card.exception {
+            border-color: rgba(245, 158, 11, 0.25)
+        }
+
+        .filter-card.exception h4 {
+            color: #fcd34d
+        }
+
+        /* ── NEURAL SECTION ── */
+        .neural-wrap {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(34, 211, 238, 0.04) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 24px;
+            padding: 60px 50px;
+            margin: 20px 0;
+        }
+
+        .neural-header {
+            text-align: center;
+            margin-bottom: 56px
+        }
+
+        .neural-header h2 {
+            font-size: 2.4rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #818cf8, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .neural-header p {
+            color: var(--muted);
+            max-width: 580px;
+            margin: 0 auto
+        }
+
+        /* Modes */
+        .modes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 56px
+        }
+
+        .mode-card {
+            background: var(--bg4);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid var(--border)
+        }
+
+        .mode-card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .mode-card p {
+            font-size: 0.83rem;
+            color: var(--muted);
+            margin-bottom: 12px
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700
+        }
+
+        .pill.blue {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.35)
+        }
+
+        .pill.cyan {
+            background: rgba(34, 211, 238, 0.15);
+            color: #67e8f9;
+            border: 1px solid rgba(34, 211, 238, 0.35)
+        }
+
+        .pill.green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.35)
+        }
+
+        /* NN Visualization */
+        .nn-viz {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            margin: 48px 0;
+            flex-wrap: wrap
+        }
+
+        .nn-layer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0
+        }
+
+        .nn-layer-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 14px;
+            text-align: center
+        }
+
+        .nn-layer-subtitle {
+            font-size: 0.62rem;
+            color: rgba(100, 116, 139, 0.7);
+            text-align: center;
+            margin-top: 6px
+        }
+
+        .nn-nodes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .neuron {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            border: 2px solid;
+            transition: transform 0.2s;
+            cursor: default;
+        }
+
+        .neuron:hover {
+            transform: scale(1.15)
+        }
+
+        .neuron.ni {
+            background: rgba(99, 102, 241, 0.18);
+            border-color: #6366f1;
+            color: #a5b4fc
+        }
+
+        .neuron.nh1 {
+            background: rgba(34, 211, 238, 0.12);
+            border-color: #22d3ee;
+            color: #67e8f9
+        }
+
+        .neuron.nh2 {
+            background: rgba(139, 92, 246, 0.12);
+            border-color: #8b5cf6;
+            color: #c4b5fd
+        }
+
+        .neuron.nh3 {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: #f59e0b;
+            color: #fcd34d
+        }
+
+        .neuron.no {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10b981;
+            color: #6ee7b7;
+            width: 58px;
+            height: 58px;
+            font-size: 0.82rem
+        }
+
+        .neuron.dots {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 1.1rem
+        }
+
+        .nn-arrow {
+            color: rgba(99, 102, 241, 0.4);
+            font-size: 1.6rem;
+            align-self: center;
+            flex-shrink: 0
+        }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 12px;
+            margin-top: 32px
+        }
+
+        .feat-row {
+            background: var(--bg4);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+        }
+
+        .feat-row:hover {
+            border-color: rgba(99, 102, 241, 0.35)
+        }
+
+        .feat-idx {
+            background: rgba(99, 102, 241, 0.18);
+            color: #818cf8;
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .feat-info h5 {
+            font-size: 0.87rem;
+            font-weight: 600;
+            margin-bottom: 2px
+        }
+
+        .feat-info p {
+            font-size: 0.76rem;
+            color: var(--muted)
+        }
+
+        .feat-info code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.74rem;
+            background: rgba(34, 211, 238, 0.1);
+            color: #67e8f9;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        /* Decision */
+        .decision-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(99, 102, 241, 0.1));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-top: 36px;
+            text-align: center;
+        }
+
+        .decision-box h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #6ee7b7;
+            margin-bottom: 8px
+        }
+
+        .decision-box p {
+            font-size: 0.85rem;
+            color: var(--muted)
+        }
+
+        /* ── LEARNING CYCLE ── */
+        .timeline {
+            margin-top: 32px
+        }
+
+        .tl-item {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px
+        }
+
+        .tl-num {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .tl-body {
+            background: var(--bg3);
+            border-radius: 12px;
+            padding: 18px 22px;
+            flex: 1;
+            border: 1px solid var(--border)
+        }
+
+        .tl-body h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 6px
+        }
+
+        .tl-body p {
+            font-size: 0.81rem;
+            color: var(--muted)
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            background: var(--bg2);
+            border-top: 1px solid var(--border);
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-bottom: 6px
+        }
+
+        footer strong {
+            color: var(--text)
+        }
+
+        /* ── SCROLL INDICATOR ── */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            cursor: pointer;
+            color: #fff;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+            z-index: 200;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .scroll-to-top:hover {
+            transform: scale(1.1)
+        }
+
+        @media(max-width:768px) {
+            .hero {
+                padding: 60px 24px 50px
+            }
+
+            .container {
+                padding: 50px 24px
+            }
+
+            .pipeline {
+                flex-direction: column;
+                align-items: center
+            }
+
+            .pipe-arrow {
+                transform: rotate(90deg)
+            }
+
+            .modes-grid {
+                grid-template-columns: 1fr
+            }
+
+            .nn-viz {
+                gap: 12px
+            }
+
+            nav {
+                padding: 0 20px
+            }
+
+            .neural-wrap {
+                padding: 40px 24px
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="hero" id="top">
+        <div class="badge">📚 Documentación Técnica v3.0</div>
+        <h1>Hapi Trading Bot</h1>
+        <p>Arquitectura completa del algoritmo de confluencia multi-indicador y la red neuronal MLP adaptativa que
+            aprende de cada trade</p>
+        <div class="hero-stats">
+            <div class="stat">
+                <div class="stat-val">4</div>
+                <div class="stat-label">Estrategias</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">6</div>
+                <div class="stat-label">Regímenes</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">11</div>
+                <div class="stat-label">Features IA</div>
+            </div>
+            <div class="stat">
+                <div class="stat-val">32→16→8</div>
+                <div class="stat-label">Capas MLP</div>
+            </div>
+        </div>
+    </div>
+
+    <nav>
+        <a href="#flujo">🔄 Flujo</a>
+        <a href="#regimen">🌍 Régimen</a>
+        <a href="#estrategias">🔬 Estrategias</a>
+        <a href="#filtros">🛡️ Filtros</a>
+        <a href="#neuronal">🧠 Red Neuronal</a>
+        <a href="#aprendizaje">🔁 Aprendizaje</a>
+    </nav>
+
+    <!-- ────────────────────── FLUJO ────────────────────── -->
+    <section id="flujo">
+        <div class="container">
+            <div class="section-head">
+                <div class="section-badge indigo">Paso a Paso</div>
+                <h2 class="section-title">🔄 Flujo General del Algoritmo</h2>
+                <p class="section-sub">Cada símbolo pasa por estas 6 etapas secuenciales cada 60 segundos en modo LIVE
+                </p>
+            </div>
+
+            <div class="pipeline">
+                <div class="pipe-step">
+                    <div class="p-num">1</div>
+                    <span class="p-icon">📡</span>
+                    <div class="p-label">Datos</div>
+                    <div class="p-name">OHLCV</div>
+                    <div class="p-desc">220 barras de 5min vía Alpaca API</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">2</div>
+                    <span class="p-icon">📊</span>
+                    <div class="p-label">Cálculo</div>
+                    <div class="p-name">Indicadores</div>
+                    <div class="p-desc">EMA, RSI, MACD, ADX, VWAP, ATR, BB, KAMA</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">3</div>
+                    <span class="p-icon">🌍</span>
+                    <div class="p-label">Contexto</div>
+                    <div class="p-name">Régimen</div>
+                    <div class="p-desc">Clasifica el mercado en 6 estados</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">4</div>
+                    <span class="p-icon">🔬</span>
+                    <div class="p-label">Señal</div>
+                    <div class="p-name">Estrategia</div>
+                    <div class="p-desc">Evalúa A, B, C, D según régimen (lógica OR)</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">5</div>
+                    <span class="p-icon">🛡️</span>
+                    <div class="p-label">Seguridad</div>
+                    <div class="p-name">Filtros</div>
+                    <div class="p-desc">RSI, ADX, Z-Score, Smart Filter</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">6</div>
+                    <span class="p-icon">🧠</span>
+                    <div class="p-label">IA</div>
+                    <div class="p-name">Red Neuronal</div>
+                    <div class="p-desc">MLP predice P(win) y aprueba o bloquea</div>
+                </div>
+                <div class="pipe-arrow">→</div>
+                <div class="pipe-step">
+                    <div class="p-num">7</div>
+                    <span class="p-icon">📈</span>
+                    <div class="p-label">Acción</div>
+                    <div class="p-name">BUY / HOLD</div>
+                    <div class="p-desc">Orden en Alpaca con SL, TP y trailing</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── RÉGIMEN ────────────────────── -->
+    <section id="regimen">
+        <div class="container">
+            <div class="section-head">
+                <div class="section-badge cyan">Análisis de Mercado</div>
+                <h2 class="section-title">🌍 Detección de Régimen de Mercado</h2>
+                <p class="section-sub">El algoritmo clasifica el estado del mercado usando ADX, ATR%, precio vs EMA200,
+                    RSI y volumen. El régimen determina qué estrategia se activa.</p>
+            </div>
+            <div class="regimes-grid">
+
+                <div class="regime-card tu">
+                    <div class="r-emoji">🚀</div>
+                    <h4>Tendencia Alcista</h4>
+                    <p>Mercado con dirección clara hacia arriba. Se activan estrategias de seguimiento de tendencia.</p>
+                    <span class="r-cond">ADX &gt; 28 · precio &gt; EMA200</span>
+                </div>
+
+                <div class="regime-card td">
+                    <div class="r-emoji">📉</div>
+                    <h4>Tendencia Bajista</h4>
+                    <p>Mercado cayendo sostenidamente. No se compra excepto en flash crashes extremos con patrón de
+                        reversión.</p>
+                    <span class="r-cond">ADX &gt; 28 · precio &lt; EMA200</span>
+                </div>
+
+                <div class="regime-card rg">
+                    <div class="r-emoji">🎯</div>
+                    <h4>Mercado Lateral</h4>
+                    <p>Sin dirección clara. Se buscan rebotes en extremos del rango (VWAP, Bollinger).</p>
+                    <span class="r-cond">ADX &lt; 20 · ATR% &lt; 0.6%</span>
+                </div>
+
+                <div class="regime-card mo">
+                    <div class="r-emoji">⚡</div>
+                    <h4>Momentum Explosivo</h4>
+                    <p>Ruptura con volumen masivo y momentum alto. Estrategia: subirse a la ola con stop ajustado.</p>
+                    <span class="r-cond">Vol &gt; 3x · RSI 60-80 · &gt; EMA200</span>
+                </div>
+
+                <div class="regime-card ch">
+                    <div class="r-emoji">🌩️</div>
+                    <h4>Caos / Alta Volatilidad</h4>
+                    <p>Volatilidad extrema que destruye cualquier stop. El bot no opera hasta que se calme.</p>
+                    <span class="r-cond">ATR% &gt; 1.5%</span>
+                </div>
+
+                <div class="regime-card ne">
+                    <div class="r-emoji">☁️</div>
+                    <h4>Mercado Neutro</h4>
+                    <p>Condición mixta que no encaja en ningún régimen claro. Se usan criterios base conservadores.</p>
+                    <span class="r-cond">Default — no cumple otros regímenes</span>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── ESTRATEGIAS ────────────────────── -->
+    <section id="estrategias">
+        <div class="container">
+            <div class="section-head">
+                <div class="section-badge amber">Señales de Entrada</div>
+                <h2 class="section-title">🔬 Las 4 Estrategias de Entrada</h2>
+                <p class="section-sub">El sistema evalúa las estrategias en orden (A→B→C→D) y activa la primera que se
+                    cumpla según el régimen. Si ninguna aplica → HOLD.</p>
+            </div>
+            <div class="strat-grid">
+
+                <div class="strat-card sa">
+                    <div class="s-tag">Estrategia A — Oliver Vélez</div>
+                    <h3>🎯 Rebote en la EMA 20</h3>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>EMA20 &gt; EMA200</strong> — tendencia alcista macro
+                            confirmada</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Low ≤ EMA20 × 1.002</strong> — pullback toca o casi
+                            toca la media</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Close &gt; EMA20 y vela verde</strong> — los toros
+                            defendieron y rebotaron</span>
+                    </div>
+                    <div class="regime-pill">TREND_UP · MOMENTUM · NEUTRAL</div>
+                </div>
+
+                <div class="strat-card sb">
+                    <div class="s-tag">Estrategia B — SMB Capital</div>
+                    <h3>🌊 Rebote Institucional VWAP</h3>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Z-Score VWAP &lt; -2.0</strong> — precio se alejó del
+                            equilibrio institucional</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Vela alcista o Hammer</strong> — señal de rechazo y
+                            reversión</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Precio &gt; EMA200</strong> — contexto macro
+                            positivo</span>
+                    </div>
+                    <div class="regime-pill">RANGE · NEUTRAL</div>
+                </div>
+
+                <div class="strat-card sc">
+                    <div class="s-tag">Estrategia C — Bollinger</div>
+                    <h3>📊 Reversión de Bandas</h3>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Low ≤ Banda inferior BB</strong> — toque de pánico en
+                            el extremo de la banda</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Close &gt; Open</strong> — la vela cerró verde, los
+                            compradores rechazaron</span>
+                    </div>
+                    <div class="regime-pill">RANGE · NEUTRAL</div>
+                </div>
+
+                <div class="strat-card sd">
+                    <div class="s-tag">Estrategia D — Técnica Clásica</div>
+                    <h3>📈 Cruce EMA 12/26</h3>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>EMA12 cruza al alza EMA26</strong> — golden cross
+                            clásico de tendencia</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>Precio &gt; EMA200</strong> — filtro de tendencia
+                            macro</span>
+                    </div>
+                    <div class="cond">
+                        <div class="cond-dot"></div><span><strong>RSI ∈ [35, 70]</strong> — momentum saludable, sin
+                            extremos</span>
+                    </div>
+                    <div class="regime-pill">RANGE · NEUTRAL</div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── FILTROS ────────────────────── -->
+    <section id="filtros">
+        <div class="container">
+            <div class="section-head">
+                <div class="section-badge purple">Protección de Capital</div>
+                <h2 class="section-title">🛡️ Filtros de Calidad Post-Señal</h2>
+                <p class="section-sub">Una señal puede activarse por las estrategias pero aún así ser bloqueada por
+                    estos filtros antes de llegar a la red neuronal</p>
+            </div>
+            <div class="filters-grid">
+
+                <div class="filter-card">
+                    <h4>⚡ Filtro Whipsaw RSI</h4>
+                    <p>Si <code>RSI ∈ [43–47]</code>, la zona muerta estadística, la entrada se bloquea. En esta franja
+                        los precios oscilan sin dirección real con alta frecuencia de falsos positivos.</p>
+                </div>
+
+                <div class="filter-card">
+                    <h4>📉 Filtro ADX Débil</h4>
+                    <p>Si <code>ADX &lt; 10</code> y no hay patrón de vela confirmatoria (Hammer/Engulfing/BB Touch), el
+                        mercado está demasiado plano para un breakout sostenido.</p>
+                </div>
+
+                <div class="filter-card">
+                    <h4>🎯 Filtro RANGE Z-Score</h4>
+                    <p>En régimen RANGE se exige <code>Z-Score &lt; -1.8</code>. Si el precio no se ha alejado
+                        suficientemente del VWAP, la señal se descarta como ruido lateral.</p>
+                </div>
+
+                <div class="filter-card">
+                    <h4>🧠 Smart Filter ADX Zona Duda</h4>
+                    <p>Si <code>ADX ∈ [20–30]</code> y está subiendo (zona de transición) en régimen NEUTRAL/RANGE, se
+                        exige patrón de vela confirmatoria. Sin él → HOLD.</p>
+                </div>
+
+                <div class="filter-card exception">
+                    <h4>🔥 Excepción: Capitulación Extrema</h4>
+                    <p>Si <code>Z-Score &lt; -2.3</code>, los filtros RSI y ADX se anulan completamente. Una caída tan
+                        extrema justifica compra anti-pánico incluso sin momentum.</p>
+                </div>
+
+                <div class="filter-card exception">
+                    <h4>⚠️ Alerta Venta Táctica</h4>
+                    <p>Si <code>Close &lt; EMA20</code> + MACD bajista y decreciente → señal SELL generada. <strong>Solo
+                            se ejecuta</strong> si hay posición abierta en ese símbolo.</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── RED NEURONAL ────────────────────── -->
+    <section id="neuronal">
+        <div class="container">
+            <div class="neural-wrap">
+
+                <div class="neural-header">
+                    <div class="section-badge green" style="margin-bottom:16px">Inteligencia Artificial</div>
+                    <h2>🧠 Red Neuronal MLP Adaptativa</h2>
+                    <p>Multi-Layer Perceptron que aprende del resultado de cada trade cerrado y decide en tiempo real si
+                        la señal técnica merece ejecutarse</p>
+                </div>
+
+                <!-- Modos -->
+                <div class="modes-grid">
+                    <div class="mode-card">
+                        <h3><span class="pill blue">COLD-START</span> Modo Heurístico</h3>
+                        <p>Activo cuando hay <strong>menos de 8 trades</strong> en memoria. Usa reglas estadísticas
+                            derivadas del análisis de sesiones históricas iniciales.</p>
+                        <p>Evalúa: RSI extremo en TREND_UP, MACD débil en RANGE, confirmaciones acumuladas y volumen.
+                        </p>
+                        <p style="font-size:0.8rem;color:#818cf8">P(win) = 0.5 base ± ajustes heurísticos → clamp [0, 1]
+                        </p>
+                    </div>
+                    <div class="mode-card">
+                        <h3><span class="pill cyan">MLP ACTIVO</span> Aprendizaje Real</h3>
+                        <p>Con <strong>≥ 8 trades completados</strong>, activa un MLPClassifier sklearn con arquitectura
+                            <code style="color:#67e8f9">32 → 16 → 8</code> neuronas y activación ReLU.</p>
+                        <p>Re-entrena con <code style="color:#67e8f9">warm_start=True</code> tras cada trade:
+                            aprendizaje incremental continuo sin olvidar el pasado.</p>
+                        <p style="font-size:0.8rem;color:#67e8f9">P(win) = model.predict_proba(X)[0][1] → clase 1 =
+                            ganador</p>
+                    </div>
+                </div>
+
+                <!-- Red Neuronal Visual -->
+                <h3
+                    style="text-align:center;font-size:1rem;font-weight:700;color:var(--muted);margin-bottom:32px;text-transform:uppercase;letter-spacing:2px">
+                    Arquitectura de la Red</h3>
+                <div class="nn-viz">
+
+                    <div class="nn-layer">
+                        <div class="nn-layer-title">Entradas<br><span style="color:#6366f1">(11 features)</span></div>
+                        <div class="nn-nodes">
+                            <div class="neuron ni">RSI</div>
+                            <div class="neuron ni">MACD</div>
+                            <div class="neuron ni">ATR%</div>
+                            <div class="neuron ni">VOL</div>
+                            <div class="neuron ni">EMA△</div>
+                            <div class="neuron ni">Z</div>
+                            <div class="neuron ni">RGM</div>
+                            <div class="neuron ni">CONF</div>
+                            <div class="neuron ni">ADX</div>
+                            <div class="neuron ni">PAT</div>
+                            <div class="neuron ni">ADX↑</div>
+                        </div>
+                        <div class="nn-layer-subtitle">Normalizados [0,1]</div>
+                    </div>
+
+                    <div class="nn-arrow">⟶</div>
+
+                    <div class="nn-layer">
+                        <div class="nn-layer-title">Capa Oculta 1<br><span style="color:#22d3ee">(32 neuronas)</span>
+                        </div>
+                        <div class="nn-nodes">
+                            <div class="neuron nh1">ReLU</div>
+                            <div class="neuron nh1">ReLU</div>
+                            <div class="neuron nh1">ReLU</div>
+                            <div class="neuron nh1">ReLU</div>
+                            <div class="neuron dots">···</div>
+                        </div>
+                        <div class="nn-layer-subtitle">Patrones básicos</div>
+                    </div>
+
+                    <div class="nn-arrow">⟶</div>
+
+                    <div class="nn-layer">
+                        <div class="nn-layer-title">Capa Oculta 2<br><span style="color:#8b5cf6">(16 neuronas)</span>
+                        </div>
+                        <div class="nn-nodes">
+                            <div class="neuron nh2">ReLU</div>
+                            <div class="neuron nh2">ReLU</div>
+                            <div class="neuron nh2">ReLU</div>
+                            <div class="neuron dots">···</div>
+                        </div>
+                        <div class="nn-layer-subtitle">Interacciones</div>
+                    </div>
+
+                    <div class="nn-arrow">⟶</div>
+
+                    <div class="nn-layer">
+                        <div class="nn-layer-title">Capa Oculta 3<br><span style="color:#f59e0b">(8 neuronas)</span>
+                        </div>
+                        <div class="nn-nodes">
+                            <div class="neuron nh3">ReLU</div>
+                            <div class="neuron nh3">ReLU</div>
+                            <div class="neuron dots">···</div>
+                        </div>
+                        <div class="nn-layer-subtitle">Abstracción alta</div>
+                    </div>
+
+                    <div class="nn-arrow">⟶</div>
+
+                    <div class="nn-layer">
+                        <div class="nn-layer-title">Salida<br><span style="color:#10b981">Clasificador</span></div>
+                        <div class="nn-nodes">
+                            <div class="neuron no">P(win)</div>
+                        </div>
+                        <div class="nn-layer-subtitle">Softmax [0,1]</div>
+                    </div>
+
+                </div>
+
+                <!-- Features -->
+                <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">📐 Vector de 11 Features que recibe la
+                    IA</h3>
+                <p style="color:var(--muted);font-size:0.85rem;margin-bottom:24px">Cada valor se normaliza antes de
+                    entrar a la red para mantener escala uniforme y evitar dominancia de magnitud</p>
+
+                <div class="features-grid">
+                    <div class="feat-row">
+                        <div class="feat-idx">0</div>
+                        <div class="feat-info">
+                            <h5>RSI</h5>
+                            <p><code>rsi / 100</code> → rango [0.0, 1.0]</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">1</div>
+                        <div class="feat-info">
+                            <h5>MACD Histograma</h5>
+                            <p><code>tanh(macd_hist)</code> → rango [-1.0, 1.0]</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">2</div>
+                        <div class="feat-info">
+                            <h5>ATR%</h5>
+                            <p><code>min(atr_pct / 5.0, 1.0)</code> → cap en 5%</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">3</div>
+                        <div class="feat-info">
+                            <h5>Ratio de Volumen</h5>
+                            <p><code>min(vol_ratio / 5.0, 1.0)</code> → cap en 5x promedio</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">4</div>
+                        <div class="feat-info">
+                            <h5>EMA Spread %</h5>
+                            <p><code>tanh((ema_fast - ema_slow) / ema_slow × 100)</code></p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">5</div>
+                        <div class="feat-info">
+                            <h5>Z-Score VWAP</h5>
+                            <p><code>clip(zscore / 3.0, -1, 1)</code> → distancia al VWAP</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">6</div>
+                        <div class="feat-info">
+                            <h5>Régimen (encoded)</h5>
+                            <p><code>TREND_UP=0 DOWN=1 RANGE=2 NEUTRAL=3 MOM=4 CHAOS=5</code> / 5</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">7</div>
+                        <div class="feat-info">
+                            <h5>Nº Confirmaciones</h5>
+                            <p><code>min(num_conf / 7.0, 1.0)</code> → cuántos indicadores confirmaron</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">8</div>
+                        <div class="feat-info">
+                            <h5>ADX</h5>
+                            <p><code>min(adx / 50.0, 1.0)</code> → fuerza de la tendencia, cap en 50</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">9</div>
+                        <div class="feat-info">
+                            <h5>Tiene Patrón de Vela</h5>
+                            <p><code>1.0</code> si Hammer, Engulfing o toque BB inferior · <code>0.0</code> si no</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">10</div>
+                        <div class="feat-info">
+                            <h5>ADX Subiendo</h5>
+                            <p><code>1.0</code> si ADX ahora > ADX barra anterior · <code>0.0</code> si está cayendo</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="decision-box">
+                    <h3>📊 Regla de Decisión Final</h3>
+                    <p>Si <strong>P(win) ≥ CONFIDENCE_THRESHOLD</strong> → ✅ Señal BUY aprobada → Se ejecuta en Alpaca
+                    </p>
+                    <p style="margin-top:8px">Si <strong>P(win) &lt; CONFIDENCE_THRESHOLD</strong> → ❌ Señal bloqueada →
+                        HOLD</p>
+                    <p style="margin-top:12px;font-size:0.8rem">El umbral se configura en <code
+                            style="color:#6ee7b7">.env</code> como <code
+                            style="color:#6ee7b7">CONFIDENCE_THRESHOLD</code> (default: <strong>0.60 = 60%</strong>)</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── APRENDIZAJE ────────────────────── -->
+    <section id="aprendizaje">
+        <div class="container">
+            <div class="section-head">
+                <div class="section-badge green">Mejora Continua</div>
+                <h2 class="section-title">🔁 Ciclo de Aprendizaje de la IA</h2>
+                <p class="section-sub">Cómo la red neuronal se vuelve más inteligente con cada trade completado</p>
+            </div>
+
+            <div class="timeline">
+
+                <div class="tl-item">
+                    <div class="tl-num">1</div>
+                    <div class="tl-body">
+                        <h4>📡 Señal BUY Aprobada</h4>
+                        <p>El análisis técnico genera una señal, pasa los filtros y la red neuronal la aprueba con
+                            P(win) ≥ umbral. Se guarda el vector de 11 features del momento exacto de entrada.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">2</div>
+                    <div class="tl-body">
+                        <h4>📈 Trade Ejecutado en Alpaca Paper</h4>
+                        <p>Se coloca la orden de compra. El bot monitorea activamente: Stop Loss dinámico (1.5× ATR),
+                            Take Profit fijo (3%) y Trailing Stop que sigue el precio al alza.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">3</div>
+                    <div class="tl-body">
+                        <h4>🏁 Trade Cerrado</h4>
+                        <p>El trade se cierra por Take Profit, Stop Loss, Trailing Stop, venta táctica por estructura
+                            deteriorada o fin de sesión. Se calcula el PnL bruto real.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">4</div>
+                    <div class="tl-body">
+                        <h4>📓 Registro en trade_journal.csv</h4>
+                        <p>Se guarda la fila completa: símbolo, precio entrada/salida, qty, SL, TP, motivo de salida,
+                            PnL%, R/R real y todos los indicadores del momento de entrada.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">5</div>
+                    <div class="tl-body">
+                        <h4>🧠 IA Aprende: <code style="color:#6ee7b7">neural_filter.fit(features, won)</code></h4>
+                        <p>El vector de 11 features se etiqueta como WIN (1) o LOSS (0) y se añade al dataset interno.
+                            Si hay ≥ 8 muestras, el MLP re-entrena inmediatamente con warm_start.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">6</div>
+                    <div class="tl-body">
+                        <h4>💾 Modelo Guardado a Disco</h4>
+                        <p>El archivo <code style="color:#6ee7b7">data/neural_model.joblib</code> se actualiza con el
+                            nuevo modelo entrenado y los datos históricos acumulados. Se reporta accuracy en train.</p>
+                    </div>
+                </div>
+
+                <div class="tl-item">
+                    <div class="tl-num">7</div>
+                    <div class="tl-body">
+                        <h4>🚀 Próximos Trades Más Inteligentes</h4>
+                        <p>La red recuerda qué combinaciones de indicadores y régimen produjeron ganancias reales.
+                            Aplica ese conocimiento para filtrar señales futuras y mejorar el P(win) progresivamente.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p><strong>🤖 Hapi Trading Bot</strong> — Documentación del Algoritmo de Confluencia Multi-Indicador v3.0</p>
+        <p style="margin-top:8px">Estrategias inspiradas en <strong>Oliver Vélez</strong>, <strong>SMB Capital</strong>
+            y metodología institucional de análisis técnico</p>
+        <p style="margin-top:8px">Red Neuronal MLP · sklearn MLPClassifier · warm_start incremental · 11 features
+            normalizadas</p>
+    </footer>
+
+    <button class="scroll-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+</body>
+
+</html>

@@ -60,6 +60,12 @@
                     style="background:#ff3d5a; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:none; align-items:center; gap:5px;">
                     🛑 DETENER LIVE
                 </button>
+                <button onclick="wipeNeuralTotal()"
+                    title="Borra el modelo neuronal, dataset ML, historial de trades y logs. Empieza desde cero."
+                    style="background:linear-gradient(135deg,#b71c1c,#e53935); color:white; border:1px solid rgba(255,100,100,0.4); border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; transition:opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    🧨 WIPE TOTAL
+                </button>
                 <button onclick="openBankModal()"
                     style="background:#0057ff; color:white; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; margin-left: 10px;">
                     🏦 BANCO
@@ -605,5 +611,115 @@
     </div>
 
 </body>
+
+<!-- ══ WIPE TOTAL MODAL ══ -->
+<div id="wipe-modal-overlay"
+    style="display:none; position:fixed; inset:0; z-index:9999998; background:rgba(0,0,0,0.88); backdrop-filter:blur(8px); justify-content:center; align-items:center;">
+    <div
+        style="background:linear-gradient(145deg,#1a0a0a,#1e1218); border:1px solid rgba(239,68,68,0.5); border-radius:16px; padding:32px; width:90%; max-width:460px; box-shadow:0 24px 80px rgba(220,38,38,0.3); animation:wipeSlideIn 0.2s ease;">
+        <div style="text-align:center; margin-bottom:20px; font-size:48px;" id="wipe-modal-icon">🧨</div>
+        <div id="wipe-modal-title"
+            style="font-size:18px; font-weight:800; color:#f87171; text-align:center; margin-bottom:10px;">WIPE TOTAL
+        </div>
+        <div id="wipe-modal-body"
+            style="font-size:12px; color:#9ca3af; text-align:center; margin-bottom:24px; line-height:1.8;">
+            Esto borrará <strong style="color:#fca5a5;">permanentemente</strong>:<br>
+            <span style="color:#f87171;">●</span> Red Neuronal <code
+                style="color:#fbbf24; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">neural_model.joblib</code><br>
+            <span style="color:#f87171;">●</span> Dataset ML <code
+                style="color:#fbbf24; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">ml_dataset.csv</code><br>
+            <span style="color:#f87171;">●</span> Historial de trades <code
+                style="color:#fbbf24; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">trade_journal.csv</code><br>
+            <span style="color:#f87171;">●</span> Estado live <code
+                style="color:#fbbf24; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">state_live.json</code><br><br>
+            <strong style="color:white;">La IA empezará desde cero (cold-start).</strong>
+        </div>
+        <div
+            style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:8px; padding:10px 14px; margin-bottom:22px; font-size:11px; color:#fca5a5; text-align:center;">
+            ⚠️ Esta acción <strong>NO se puede deshacer</strong>
+        </div>
+        <div id="wipe-modal-buttons" style="display:flex; gap:10px;">
+            <button onclick="closeWipeModal()"
+                style="flex:1; background:#1e2030; border:1px solid #3c404b; color:#9ca3af; padding:12px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"
+                onmouseover="this.style.background='#2a2f45'"
+                onmouseout="this.style.background='#1e2030'">Cancelar</button>
+            <button onclick="executeWipeTotal()" id="wipe-confirm-btn"
+                style="flex:1; background:linear-gradient(135deg,#991b1b,#dc2626); border:1px solid rgba(239,68,68,0.4); color:white; padding:12px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer;"
+                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">🧨 SÍ, BORRAR TODO</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes wipeSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.92) translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+</style>
+
+<script>
+    function wipeNeuralTotal() {
+        document.getElementById('wipe-modal-overlay').style.display = 'flex';
+        document.getElementById('wipe-modal-icon').textContent = '🧨';
+        document.getElementById('wipe-modal-title').textContent = 'WIPE TOTAL';
+        document.getElementById('wipe-modal-title').style.color = '#f87171';
+        document.getElementById('wipe-modal-body').innerHTML = `
+            Esto borrará <strong style="color:#fca5a5;">permanentemente</strong>:<br>
+            <span style="color:#f87171;">●</span> Red Neuronal <code style="color:#fbbf24;">neural_model.joblib</code><br>
+            <span style="color:#f87171;">●</span> Dataset ML <code style="color:#fbbf24;">ml_dataset.csv</code><br>
+            <span style="color:#f87171;">●</span> Historial <code style="color:#fbbf24;">trade_journal.csv</code><br>
+            <span style="color:#f87171;">●</span> Estado live <code style="color:#fbbf24;">state_live.json</code><br>
+            <br>
+            <div style="background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:10px; margin-top:4px; font-size:12px;">
+                ⚠️ <strong style="color:#fbbf24;">El bot live se detendrá automáticamente</strong> para evitar que escriba datos nuevos durante el borrado.<br>
+                <span style="color:#9ca3af;">Deberás presionar <strong>LIVE PAPER</strong> para relanzarlo desde cero.</span>
+            </div>`;
+        document.getElementById('wipe-modal-buttons').innerHTML = `<button onclick="closeWipeModal()" style="flex:1; background:#1e2030; border:1px solid #3c404b; color:#9ca3af; padding:12px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Cancelar</button><button onclick="executeWipeTotal()" id="wipe-confirm-btn" style="flex:1; background:linear-gradient(135deg,#991b1b,#dc2626); border:1px solid rgba(239,68,68,0.4); color:white; padding:12px; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer;">🧨 SÍ, BORRAR TODO</button>`;
+    }
+
+    function closeWipeModal() {
+        document.getElementById('wipe-modal-overlay').style.display = 'none';
+    }
+
+    async function executeWipeTotal() {
+        const btn = document.getElementById('wipe-confirm-btn');
+        if (btn) { btn.innerHTML = '⏳ Borrando...'; btn.disabled = true; btn.style.opacity = '0.6'; }
+
+        try {
+            const res = await fetch('/api/wipe_neural', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.status === 'success' || data.status === 'partial') {
+                document.getElementById('wipe-modal-icon').textContent = '✅';
+                document.getElementById('wipe-modal-title').textContent = 'WIPE Completado';
+                document.getElementById('wipe-modal-title').style.color = '#34d399';
+                document.getElementById('wipe-modal-body').innerHTML = `
+                    <div style="color:#6ee7b7; margin-bottom:10px; font-weight:600;">Archivos eliminados:</div>
+                    ${(data.deleted || []).map(f => `<div style="color:#a7f3d0; margin-bottom:3px;">✓ ${f}</div>`).join('')}
+                    <div style="background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:8px; padding:10px; margin-top:12px; font-size:12px;">
+                        🔴 <strong style="color:#fbbf24;">El bot live fue detenido.</strong><br>
+                        <span style="color:#9ca3af;">Presiona <strong style="color:white;">LIVE PAPER</strong> para relanzarlo desde cero con 0 muestras.</span>
+                    </div>
+                    <div style="color:#9ca3af; margin-top:12px; font-size:11px;">Recargando en <span id="wipe-countdown" style="color:white; font-weight:bold;">4</span>s...</div>`;
+                document.getElementById('wipe-modal-buttons').innerHTML = '';
+                let count = 4;
+                const iv = setInterval(() => { count--; const el = document.getElementById('wipe-countdown'); if (el) el.textContent = count; if (count <= 0) { clearInterval(iv); location.reload(); } }, 1000);
+            } else {
+                document.getElementById('wipe-modal-body').innerHTML = `<div style="color:#f87171;">❌ Error: ${data.message || 'Desconocido'}</div>`;
+                if (btn) { btn.innerHTML = '🧨 Reintentar'; btn.disabled = false; btn.style.opacity = '1'; }
+            }
+        } catch (e) {
+            document.getElementById('wipe-modal-body').innerHTML = `<div style="color:#f87171;">❌ Error de red: ${e.message}</div>`;
+            if (btn) { btn.innerHTML = '🧨 Reintentar'; btn.disabled = false; btn.style.opacity = '1'; }
+        }
+    }
+</script>
 
 </html>

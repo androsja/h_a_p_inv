@@ -176,8 +176,11 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             log.info(f"data | {symbol} | Caché Alpaca actualizada ({len(df)} velas).")
             
         except Exception as exc:
-            log.error(f"data | {symbol} | Error descargando desde Alpaca: {exc}")
+            # Truncar el mensaje (puede ser HTML de error 500 de nginx/Alpaca)
+            exc_msg = str(exc).replace("\n", " ").replace("\r", " ").strip()[:120]
+            log.error(f"data | {symbol} | Error descargando desde Alpaca: {exc_msg}")
             raise
+
             
     # 2. Recorte Dinámico (Modo Mock Time)
     if _is_mock_time_active():

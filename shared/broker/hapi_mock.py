@@ -343,8 +343,17 @@ class HapiMock(BrokerInterface):
         filled: list[PendingOrder] = []
         bar_low  = float(bar["Low"])
         bar_high = float(bar["High"])
+        bar_vol  = float(bar.get("Volume", 0))
+
+        # Requisito de simulación realista: la orden no puede tomar más del 10% del volumen del minuto.
+        # En caso de no haber datos de volumen (0), permitimos que pase para evitar bloquear ETFs raros o testing.
+        max_fillable_qty = bar_vol * 0.10 if bar_vol > 0 else float('inf')
 
         for order in self._pending_orders:
+            # Control de liquidez:
+            if order.qty > max_fillable_qty:
+                log.debug(f"HapiMock | Orden por {order.qty} ignorada en vela por falta de liquidez (max {max_fillable_qty})")
+                continue
             if order.side == "BUY" and bar_low <= order.limit_price:
                 self._execute_buy(order, fill_price=order.limit_price, timestamp=str(bar.name))
                 filled.append(order)

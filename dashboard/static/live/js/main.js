@@ -88,8 +88,11 @@ function renderTags() {
     </div>
     `).join('');
     }
-    document.getElementById('selected-count-badge').textContent = selectedSymbols.length;
+    // Null-check: el badge no existe en la página live, solo en la sim
+    const badge = document.getElementById('selected-count-badge');
+    if (badge) badge.textContent = selectedSymbols.length;
 }
+
 
 function toggleSymbol(sym) {
     sym = sym.toUpperCase().trim();
@@ -483,6 +486,17 @@ async function runAITraining() {
 // ═══════════════════════════════════════════════════════
 // loadActiveSymbols has been removed - using loadSuggestions now.
 
+function _showToastMsg(msg, color = '#00c781') {
+    const t = document.createElement('div');
+    t.style.cssText = `position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:99999;
+        background:#161b22;border:1px solid ${color}55;border-radius:10px;padding:14px 22px;
+        color:white;box-shadow:0 8px 32px rgba(0,0,0,0.7);font-size:13px;font-weight:600;
+        pointer-events:none;animation:wipeSlideIn 0.2s ease;max-width:460px;text-align:center;`;
+    t.innerHTML = `<span style="color:${color};">${msg}</span>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
 function _showLoadingOverlay(msg) {
     let overlay = document.getElementById('global-loader');
     if (!overlay) {
@@ -541,15 +555,18 @@ async function startPaperTrade() {
     }
     _hideLoadingOverlay();
 
-    // Obtener los símbolos activos del Gestor de Símbolos (assets_live.json)
-    if (!window.configAssets || !window.configAssets.assets) return alert("Cargando activos... intenta de nuevo.");
+    // Obtener los símbolos activos del Gestor de Símbolos
+    if (!window.configAssets || !window.configAssets.assets) {
+        _showToastMsg('⚠️ Error cargando activos. Recarga la página e intenta de nuevo.', '#ff9800');
+        return;
+    }
 
     const activeAssets = window.configAssets.assets.filter(a => a.enabled).map(a => a.symbol);
 
     if (activeAssets.length === 0) {
         return _showConfirmModal(
             "Agrega Símbolos",
-            "Debes habilitar al menos un símbolo en el GESTOR DE SÍMBOLOS antes de iniciar Live con Alpaca Paper.",
+            "Debes habilitar al menos un símbolo en el <strong>GESTOR DE SÍMBOLOS</strong> antes de iniciar Live con Alpaca Paper.",
             "Entendido",
             () => { }
         );
@@ -577,16 +594,17 @@ async function startPaperTrade() {
                 if (data.status === 'success') {
                     setTimeout(() => location.reload(), 800);
                 } else {
-                    document.getElementById('global-loader').style.display = 'none';
-                    alert("Error: " + data.message);
+                    _hideLoadingOverlay();
+                    _showToastMsg('❌ Error: ' + (data.message || 'desconocido'), '#ff3d5a');
                 }
             } catch (e) {
-                document.getElementById('global-loader').style.display = 'none';
-                alert("Error conectando. ¿Está corriendo el contenedor trading-bot-live-alpaca?");
+                _hideLoadingOverlay();
+                _showToastMsg('❌ Error de red. ¿Está corriendo el contenedor trading-bot-live-alpaca?', '#ff3d5a');
             }
         }
     );
 }
+
 
 async function stopPaperTrade() {
     _showConfirmModal(
@@ -929,8 +947,9 @@ function updateUI(fullState) {
     let state = fullState[focusSymbol] || fullState._main || fullState;
 
     // Si el estado seleccionado no es válido (ej. focusSymbol viejo), buscar el primero disponible
+    const RESERVED_KEYS = new Set(['force_symbols', '_main', 'logs']);
     if (!state.symbol || state.symbol === '─') {
-        const availableSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
+        const availableSyms = Object.keys(fullState).filter(k => !RESERVED_KEYS.has(k) && fullState[k] && fullState[k].symbol);
         if (availableSyms.length > 0) {
             state = fullState[availableSyms[0]];
             if (!manualFocus) focusSymbol = state.symbol;
@@ -978,9 +997,9 @@ function updateUI(fullState) {
     // Ignoramos claves genéricas y extraemos solo los estados de símbolos individuales
     const activeStates = Object.entries(fullState)
         .filter(([k, v]) => {
-            return k !== 'force_symbols' && k !== '_main' &&
-                v && v.symbol && v.symbol !== '─' &&
-                (v.mode === 'LIVE_ALPACA' || v.mode === 'LIVE_REAL' || (v.mode && v.mode.startsWith('LIVE')));
+            return !RESERVED_KEYS.has(k) &&
+                v && typeof v === 'object' && v.symbol && v.symbol !== '─' &&
+                (v.mode === 'LIVE_ALPACA' || v.mode === 'LIVE_REAL' || v.mode === 'LIVE_PAPER' || (v.mode && v.mode.startsWith('LIVE')));
         })
         .map(([k, v]) => v);
 
@@ -1111,7 +1130,7 @@ function updateUI(fullState) {
         // Símbolo en header (Combobox)
         const symDisplay = document.getElementById('hdr-sym');
         if (symDisplay && symDisplay.tagName === 'SELECT') {
-            const activeSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main' && k !== 'logs');
+            const activeSyms = Object.keys(fullState).filter(k => !RESERVED_KEYS.has(k) && fullState[k] && typeof fullState[k] === 'object' && fullState[k].symbol);
 
             const currentOptions = Array.from(symDisplay.options).map(o => o.value);
             if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
@@ -1146,7 +1165,7 @@ function updateUI(fullState) {
 
     // Iteramos por TODOS los símbolos cargados para construir el balance real
     for (const [k, v] of Object.entries(fullState)) {
-        if (k === 'force_symbols' || k === '_main' || k === 'logs') continue;
+        if (RESERVED_KEYS.has(k) || !v || typeof v !== 'object') continue;
         if (v && v.symbol && v.symbol !== '─') {
             const sg = (v.gross_profit || 0) - Math.abs(v.gross_loss || 0);
             let sf = (v.total_fees || 0);

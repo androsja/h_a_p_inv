@@ -450,10 +450,12 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     # ── Diagnóstico de datos ──────────────────────────────────────────────────
     from shared.utils.logger import log as _log
     if symbol:
-        _log.info(f"[{symbol}] Analizando {len(df)} barras históricas (requiere {MIN_BARS})")
+        _log.info(f"[{symbol}] 📊 Analizando {len(df)} barras históricas (requiere {MIN_BARS})")
 
     # ── Inicializar resultado neutro si no hay suficientes datos ─────────────
     if len(df) < MIN_BARS:
+        if symbol:
+            _log.warning(f"[{symbol}] ⏳ Datos insuficientes: {len(df)}/{MIN_BARS} barras. Esperando más historia...")
         return SignalResult(
             signal=SIGNAL_HOLD,
             ema_fast=0.0, ema_slow=0.0, ema_200=0.0,
@@ -493,7 +495,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     macd_now    = float(macd_hist.iloc[-1])
     atr_now     = float(atr_vals.iloc[-1])
     vwap_now    = float(vwap_vals.iloc[-1])
+    zscore_now  = float(zscore_vals.iloc[-1]) if not pd.isna(zscore_vals.iloc[-1]) else 0.0
+    open_now    = float(df["Open"].iloc[-1])
+    low_now     = float(df["Low"].iloc[-1])
     close_now   = float(closes.iloc[-1])
+    
+    ema_20_series = ema(closes, 20)
+    ema_20_now    = float(ema_20_series.iloc[-1])
+    
     has_vol     = bool(vol_spike.iloc[-1])
     is_hammer   = bool(hammers.iloc[-1])
     is_engulf   = bool(engulfings.iloc[-1])
@@ -524,7 +533,31 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     regime_label = REGIMEN_LABELS.get(current_regime, current_regime)
     from shared.utils.logger import log as _log
     sym_prefix = f"[{symbol}] " if symbol else ""
-    _log.info(f"{sym_prefix}🌍 RÉGIMEN DETECTADO: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
+    _log.info(f"{sym_prefix}🌍 RÉGIMEN: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | VolRatio={vol_ratio:.1f}x")
+
+    # ── LOG TABLERO COMPLETO DE INDICADORES ──────────────────────────────────
+    if symbol:
+        _log.info(
+            f"{sym_prefix}📋 INDICADORES |"
+            f" Precio=${close_now:.2f}"
+            f" | EMA20={ema_20_now:.2f} ({'✅ precio>EMA20' if close_now > ema_20_now else '❌ precio<EMA20'})"
+            f" | EMA200={ema_200_now:.2f} ({'✅ alcista' if close_now > ema_200_now else '❌ bajista'})"
+            f" | RSI={rsi_now:.1f} ({'⚠️ sobrecompra' if rsi_now > 70 else '⚠️ sobreventa' if rsi_now < 30 else '✅ normal'})"
+            f" | MACD_hist={macd_now:.4f} ({'📈 alcista' if macd_now > 0 else '📉 bajista'})"
+            f" | MACD_δ={'↑subiendo' if macd_now > macd_prev else '↓cayendo'}"
+            f" | VWAP={vwap_now:.2f} Z={zscore_now:.2f}"
+        )
+        # Log patrones de vela
+        patterns_found = []
+        if is_hammer: patterns_found.append("🔨 Hammer")
+        if is_engulf: patterns_found.append("🕯️ Engulfing")
+        if bool(vol_spike.iloc[-1]): patterns_found.append("🔊 VolSpike")
+        _log.info(
+            f"{sym_prefix}🕯️ VELA |"
+            f" O={open_now:.2f} H={float(df['High'].iloc[-1]):.2f} L={float(df['Low'].iloc[-1]):.2f} C={close_now:.2f}"
+            f" | Patrones: {', '.join(patterns_found) if patterns_found else 'Ninguno'}"
+            f" | ADX {'📈subiendo' if is_adx_rising else '📉bajando'}"
+        )
 
     # KAMA: cruce adaptativo
     kama_prev   = kama_vals.iloc[-2] if not pd.isna(kama_vals.iloc[-2]) else close_now
@@ -537,9 +570,6 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     ss_now  = ss_vals.iloc[-1] if not pd.isna(ss_vals.iloc[-1]) else close_now
     ss_rising = float(ss_now) > float(ss_prev)   # tendencia alcista suavizada
 
-    # Z-Score vs VWAP
-    zscore_now = float(zscore_vals.iloc[-1]) if not pd.isna(zscore_vals.iloc[-1]) else 0.0
-
     # ════════════════════════════════════════════════════════════════════════
     #  NUEVO ESCUADRÓN DE MÚLTIPLES ESTRATEGIAS (Lógica OR - Francotiradores)
     # ════════════════════════════════════════════════════════════════════════
@@ -548,147 +578,142 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     confirmations_sell = []
     blocks_buy         = [] # Se mantiene por compatibilidad del constructor
     
-    open_now = float(df["Open"].iloc[-1])
-    low_now = float(df["Low"].iloc[-1])
-    
-    # Calcular media móvil de 20 periodos ("La 20" de Oliver Vélez)
-    ema_20_series = ema(closes, 20)
-    ema_20_now = float(ema_20_series.iloc[-1])
-    
     # ── ESTRATEGIA A: "Juego a la 20" (Estilo Oliver Vélez) ───────────────
-    # Tendencia alcista clara (EMA 20 > EMA 200). El precio hace un pullback (retroceso)
-    # tocando la EMA 20 (Low <= EMA 20), pero los toros defienden y sacan el precio arriba (Close > EMA 20, vela verde).
     velez_trend_ok = ema_20_now > ema_200_now
     velez_pullback = low_now <= (ema_20_now * 1.002)  # Toca o casi toca la 20 (margen 0.2%)
     velez_bounce = (close_now > ema_20_now) and (close_now > open_now) # Rebotó y cerró verde
-    
     is_velez_setup = velez_trend_ok and velez_pullback and velez_bounce
 
     # ── ESTRATEGIA B: Rebote Institucional (Estilo SMB Capital) ───────────
-    # El precio colapsa irracionalmente separándose del VWAP (Z-Score < -2.0).
     vwap_oversold = zscore_now < -2.0
     vwap_extreme  = zscore_now < -3.0
     vwap_reversal = (close_now > open_now) or is_hammer
     macro_bullish = close_now > ema_200_now
-    
     is_vwap_bounce = (vwap_oversold and vwap_reversal and macro_bullish) or (vwap_extreme and vwap_reversal)
-    
+
     # ── ESTRATEGIA C: Reversión de Bandas de Bollinger ────────────────────
-    # El precio perfora la banda inferior de Bollinger (Pánico) y luego 
-    # recupera con un cierre superior al Low anterior o media de las bandas.
     bb_upper, bb_mid, bb_lower = bollinger_bands(closes)
     bb_low_now = float(bb_lower.iloc[-1]) if not pd.isna(bb_lower.iloc[-1]) else 0.0
-    
     is_bb_reversal = (low_now <= bb_low_now) and (close_now > open_now) # Touch + Green Close
-    
+
+    # ── ESTRATEGIA D: Cruce de Medias Móviles ────────────────────────────
+    ema_crossover = (ema_f_prev < ema_s_prev) and (ema_f_now > ema_s_now)
+
     # ── Determinar si es un activo invertido (Inverse ETF) ────────────────────
     is_inverted = asset_type == "inverted"
-    
+
+    # ── LOG EVALUACIÓN DE ESTRATEGIAS ────────────────────────────────────────
+    if symbol:
+        _log.info(
+            f"{sym_prefix}🔬 ESTRATEGIAS |"
+            f" A(Vélez)={'✅' if is_velez_setup else '❌'}[trend={'✅' if velez_trend_ok else '❌'} pull={'✅' if velez_pullback else '❌'} bounce={'✅' if velez_bounce else '❌'}]"
+            f" | B(VWAP)={'✅' if is_vwap_bounce else '❌'}[Z={zscore_now:.2f} ovs={'✅' if vwap_oversold else '❌'} rev={'✅' if vwap_reversal else '❌'} macro={'✅' if macro_bullish else '❌'}]"
+            f" | C(BB)={'✅' if is_bb_reversal else '❌'}[L={low_now:.2f}≤BB={bb_low_now:.2f}?{'✅' if low_now<=bb_low_now else '❌'}]"
+            f" | D(EMA-X)={'✅' if ema_crossover else '❌'}[{config.EMA_FAST}/{config.EMA_SLOW} cruce={'✅' if ema_crossover else '❌'} macro={'✅' if macro_bullish else '❌'} RSI={rsi_now:.0f}∈[35-70]?{'✅' if 35<rsi_now<70 else '❌'}]"
+        )
+
     # ── EVALUACIÓN POR RÉGIMEN ═ El sistema elige la estrategia óptima ══
-    
-    # LÓGICA ESPECIAL PARA ETFs INVERSOS: El bot gana cuando el mercado general baja.
-    # Por lo tanto, si el mercado está en TREND_DOWN, para el ETF inverso esto es una oportunidad.
     effective_regime = current_regime
     if is_inverted:
         if current_regime == "TREND_DOWN":
-            effective_regime = "TREND_UP"     # Invertimos la percepción
+            effective_regime = "TREND_UP"
         elif current_regime == "TREND_UP":
-            effective_regime = "TREND_DOWN"   # Evitamos comprar si el mercado sube
-            
+            effective_regime = "TREND_DOWN"
+
     if effective_regime in ("TREND_UP", "MOMENTUM", "NEUTRAL"):
         if is_velez_setup:
             signal = SIGNAL_BUY
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia A: Rebote Oliver Vélez en la EMA 20.")
+            if symbol:
+                _log.info(f"{sym_prefix}✅ SEÑAL BUY activada por Estrategia A (Vélez) en régimen {regime_label}")
 
     if effective_regime in ("RANGE", "NEUTRAL"):
         if signal != SIGNAL_BUY and is_vwap_bounce:
             signal = SIGNAL_BUY
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia B: Anomalía VWAP (Z={zscore_now:.2f}) con rechazo alcista.")
-        
+            if symbol:
+                _log.info(f"{sym_prefix}✅ SEÑAL BUY activada por Estrategia B (VWAP Bounce) | Z={zscore_now:.2f}")
+
         if signal != SIGNAL_BUY and is_bb_reversal:
             signal = SIGNAL_BUY
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia C: Reversión de Bandas de Bollinger (Toque Inferior).")
+            if symbol:
+                _log.info(f"{sym_prefix}✅ SEÑAL BUY activada por Estrategia C (BB Reversal) | L={low_now:.2f} BB_low={bb_low_now:.2f}")
 
-        # ── ESTRATEGIA D: Cruce de Medias Móviles (Clásica) ────────────────────
-        ema_crossover = (ema_f_prev < ema_s_prev) and (ema_f_now > ema_s_now)
-        # Filtro adicional: Solo si precio > EMA 200 y RSI saludable
         if signal != SIGNAL_BUY and ema_crossover and macro_bullish and (35 < rsi_now < 70):
             signal = SIGNAL_BUY
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🎯 {prefix}[{regime_label}] Estrategia D: Cruce EMA Clásico ({config.EMA_FAST}/{config.EMA_SLOW}).")
+            if symbol:
+                _log.info(f"{sym_prefix}✅ SEÑAL BUY activada por Estrategia D (EMA Crossover) | EMA_F={ema_f_now:.2f} EMA_S={ema_s_now:.2f}")
 
     if effective_regime in ("TREND_DOWN", "CHAOS"):
-        # AGRESIVO V3: Permitimos compras en tendencia bajista SOLO SI es un "Flash Crash"
-        # detectado por un Z-Score extremo o una desviación gigante de BB.
         if (zscore_now < -2.5) and (is_hammer or is_engulf or is_bb_reversal):
             signal = SIGNAL_BUY
             prefix = "📉⚡ LÓGICA INVERSA | " if is_inverted else ""
             confirmations_buy.append(f"🔥 {prefix}[{regime_label}] COMPRA DE CAPITULACIÓN: Z-Score={zscore_now:.2f} con patrón de reversión.")
+            if symbol:
+                _log.info(f"{sym_prefix}🔥 SEÑAL BUY de CAPITULACIÓN (Flash Crash) | Régimen={regime_label} Z={zscore_now:.2f}")
         else:
             signal = SIGNAL_HOLD
             confirmations_buy.clear()
+            if symbol:
+                _log.info(f"{sym_prefix}🚫 Régimen {regime_label}: no hay Flash Crash (Z={zscore_now:.2f} > -2.5) → HOLD")
         
-    # ── FILTRO INTELIGENTE BASADO EN MACHINE LEARNING HISTÓRICO ───────────
-    # AGRESIVO: Reducimos la zona de bloqueo del RSI (antes 40-50).
+    # ── FILTROS DE CALIDAD ─────────────────────────────────────────────────
     is_whipsaw_zone = (rsi_now > 43.0) and (rsi_now < 47.0)
-    
-    # Filtro ADX: Evitamos laterales sin dirección.
-    # AGRESIVO V3: Bajamos el umbral a 10.
     is_low_trend = adx_now < 10.0 and not (is_hammer or is_engulf or is_bb_reversal)
-    
+
     if signal == SIGNAL_BUY and (is_whipsaw_zone or is_low_trend):
-        # EXCEPCIÓN: Si es una compra de CAPITULACIÓN extrema, ignoramos el ADX (porque el ADX suele ser bajo en giros rápidos)
-        if zscore_now < -2.3: 
-            pass 
+        if zscore_now < -2.3:
+            if symbol:
+                _log.info(f"{sym_prefix}⚡ Excepción capitulación: Z={zscore_now:.2f} < -2.3 → ignoramos filtro RSI/ADX")
         else:
-            signal = SIGNAL_HOLD
+            reasons = []
             if is_whipsaw_zone:
+                reasons.append(f"RSI zona muerta ({rsi_now:.1f} ∈ [43-47])")            
                 blocks_buy.append(f"Filtro ML: RSI en zona muerta ({rsi_now:.1f})")
             if is_low_trend:
+                reasons.append(f"ADX muy bajo ({adx_now:.1f} < 10)")
                 blocks_buy.append(f"Filtro ADX: Tendencia débil ({adx_now:.1f} < 10)")
-            from shared.utils.logger import log as _log
-            _log.warning(f"{sym_prefix}🎯🛑 OPORTUNIDAD EVITADA: Momentum RSI/ADX insuficiente.")
+            _log.warning(f"{sym_prefix}🛑 FILTRO RSI/ADX bloqueó BUY → {' | '.join(reasons)}")
+            signal = SIGNAL_HOLD
             confirmations_buy.clear()
 
-    # ── REGLA TREND_UP: Eliminamos el bloqueo de RSI > 68 para permitir momentum ──
-    # En una tendencia fuerte alcista, el RSI puede mantenerse alto mucho tiempo.
-    pass 
-
-    # ── NUEVA REGLA: RANGE + Z-Score débil → señal falsa en mercado lateral ──
-    # AGRESIVO: Excepción Pro: Si el Z-Score es suficientemente bajo (< -1.8), permitimos la entrada.
     if signal == SIGNAL_BUY and current_regime == "RANGE" and zscore_now > -1.8:
+        msg = f"Z-Score={zscore_now:.2f} insuficiente para RANGE (requiere < -1.8)"
+        blocks_buy.append(f"RANGE: {msg}")
+        _log.warning(f"{sym_prefix}🛑 FILTRO RANGE bloqueó BUY → {msg}")
         signal = SIGNAL_HOLD
-        msg = f"RANGE: Z-Score insuficiente ({zscore_now:.2f} > -1.8)"
-        blocks_buy.append(msg)
         confirmations_buy.clear()
-        from shared.utils.logger import log as _log
-        _log.warning(f"{sym_prefix}🎯� OPORTUNIDAD EVITADA: {msg}")
 
     if signal == SIGNAL_BUY and (20.0 < adx_now < 30.0) and is_adx_rising:
         if current_regime in ("NEUTRAL", "RANGE"):
-            pass
             if not (is_hammer or is_engulf):
+                msg = f"ADX zona de duda ({adx_now:.1f}) sin patrón de vela"
+                blocks_buy.append(f"SMART FILTER: {msg}")
+                _log.warning(f"{sym_prefix}🛑 SMART FILTER bloqueó BUY → {msg}")
                 signal = SIGNAL_HOLD
-                msg = f"SMART FILTER: ADX en zona de duda ({adx_now:.1f}) y sin patrón de vela."
-                blocks_buy.append(msg)
                 confirmations_buy.clear()
-                from shared.utils.logger import log as _log
-                _log.warning(f"{sym_prefix}🎯� OPORTUNIDAD EVITADA: {msg}")
         
     # ── LÓGICA DE VENTA DE EMERGENCIA ─────────────────────────────────────
-    # Tu Take Profit (3%) o Trailing Stop harán el 90% del trabajo de salida. 
-    # Pero forzamos venta de pánico solo si perfora severamente la EMA 20 + MACD se torna bajista agresivo
     force_sell = (close_now < ema_20_now) and (macd_now < macd_prev) and (macd_now < 0)
-    
+
     if force_sell and signal == SIGNAL_HOLD:
         signal = SIGNAL_SELL
         reason = "Estructura deteriorada (perdió EMA 20 + MACD bajista)"
         confirmations_sell.append(f"🛡️ Venta forzada: {reason}")
         blocks_buy.append(f"CRÍTICO: {reason}")
-        
+        if symbol:
+            _log.info(
+                f"{sym_prefix}⚠️ ALERTA VENTA |  precio ${close_now:.2f} < EMA20 ${ema_20_now:.2f}"
+                f" | MACD {macd_now:.4f} < {macd_prev:.4f} (bajista)"
+                f" | (Solo activa si hay posición abierta)"
+            )
+
     if signal == SIGNAL_HOLD and not blocks_buy:
         if current_regime == "TREND_DOWN":
             blocks_buy.append("Bloqueo: Tendencia bajista macro")
@@ -696,6 +721,15 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             blocks_buy.append("Riesgo: Volatilidad extrema (Caos)")
         else:
             blocks_buy.append("Sin señal clara (Wait)")
+
+    # ── RESUMEN PREVIO A LA IA ────────────────────────────────────────────
+    if symbol:
+        _log.info(
+            f"{sym_prefix}📝 PRE-IA | Señal técnica: {signal}"
+            f" | Confirmaciones: {len(confirmations_buy)}"
+            f" | Bloques: {len(blocks_buy)}"
+            f" | {'; '.join(confirmations_buy) if confirmations_buy else '; '.join(blocks_buy[:2])}"
+        )
 
     # ── GENERACIÓN DE FEATURES PARA MACHINE LEARNING ──────────────────────────
     ml_features = {
@@ -716,7 +750,6 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     }
 
     # 🤖 EJECUCIÓN DEL MODELO DE INTELIGENCIA ARTIFICIAL EN VIVO
-    # Consulta al oráculo del Machine Learning antes de abrir fuego.
     if signal == SIGNAL_BUY:
         # 1. Modelo RandomForest heredado (si existe)
         ai_model = get_ai_model()
@@ -724,12 +757,18 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             try:
                 expected_cols = ai_model.feature_names_in_
                 X_live = pd.DataFrame([ml_features])[expected_cols]
-                if ai_model.predict(X_live)[0] == 0:
+                rf_decision = ai_model.predict(X_live)[0]
+                if symbol:
+                    _log.info(
+                        f"{sym_prefix}🤖 RandomForest | Decisión: {'✅ APROBAR' if rf_decision == 1 else '❌ BLOQUEAR'}"
+                        f" | Features: RSI={rsi_now:.1f} MACD={macd_now:.4f} ADX={adx_now:.1f} VOL={vol_ratio:.1f}x"
+                    )
+                if rf_decision == 0:
                     signal = SIGNAL_HOLD
                     confirmations_buy.clear()
+                    blocks_buy.append("🤖 RandomForest bloqueó la entrada")
             except Exception as e:
-                from shared.utils.logger import log
-                log.error(f"Error AI prediction: {e}")
+                _log.error(f"{sym_prefix}Error RandomForest prediction: {e}")
 
     # 2. Red Neuronal MLP (filtro de pre-aprobación adaptativo)
     if signal == SIGNAL_BUY:
@@ -737,7 +776,8 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter()
             from shared.config import CONFIDENCE_THRESHOLD as _MIN_CONF
-            
+            nf_stats = nf.get_stats()
+
             features_vec = nf.build_features(
                 rsi          = rsi_now,
                 macd_hist    = macd_now,
@@ -754,28 +794,59 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             )
             proba, reason = nf.predict(features_vec)
 
-            from shared.utils.logger import log as _log
-            _log.info(f"🧠 Red Neuronal: {reason}")
+            # ── LOG DETALLADO DE LO QUE SE LE PASA A LA IA ─────────────────
+            if symbol:
+                _log.info(
+                    f"{sym_prefix}🧠 RED NEURONAL [{nf_stats['mode'].upper()} | {nf_stats['total_samples']} trades | win_rate={nf_stats['win_rate_hist']}%] |"
+                    f" Umbral={_MIN_CONF:.0%} | P(win)={proba:.0%} → {'✅ APROBAR' if proba >= _MIN_CONF else '❌ BLOQUEAR'}"
+                )
+                _log.info(
+                    f"{sym_prefix}🧠 FEATURES→IA |"
+                    f" RSI={rsi_now:.1f}({features_vec[0]:.2f})"
+                    f" MACD={macd_now:.4f}({features_vec[1]:.2f})"
+                    f" ATR%={atr_pct:.2f}({features_vec[2]:.2f})"
+                    f" VOL={vol_ratio:.1f}x({features_vec[3]:.2f})"
+                    f" EMA_spread({features_vec[4]:.2f})"
+                    f" Z-Score={zscore_now:.2f}({features_vec[5]:.2f})"
+                    f" Régimen={current_regime}({features_vec[6]:.2f})"
+                    f" Confirmas={len(confirmations_buy)}({features_vec[7]:.2f})"
+                    f" ADX={adx_now:.1f}({features_vec[8]:.2f})"
+                    f" Patrón={'✅' if ml_features['has_pattern'] else '❌'}"
+                    f" ADX↑={'✅' if is_adx_rising else '❌'}"
+                )
+                _log.info(f"{sym_prefix}🧠 RAZONAMIENTO IA: {reason}")
 
-            if proba < _MIN_CONF:   
+            if proba < _MIN_CONF:
                 signal = SIGNAL_HOLD
                 confirmations_buy.clear()
-                blocks_buy.append(f"🧠 Red Neuronal bloqueó la entrada: {reason}")
+                blocks_buy.append(f"🧠 Red Neuronal bloqueó: P(win)={proba:.0%} < umbral {_MIN_CONF:.0%}")
             else:
-                confirmations_buy.append(f"🧠 Red Neuronal: aprobado (P={proba:.0%})")
+                confirmations_buy.append(f"🧠 Red Neuronal: ✅ aprobado (P={proba:.0%} ≥ {_MIN_CONF:.0%})")
 
         except Exception as e:
-            from shared.utils.logger import log as _log
-            _log.warning(f"Error en filtro neuronal, omitiendo: {e}")
+            _log.warning(f"{sym_prefix}⚠️ Error en filtro neuronal, omitiendo: {e}")
 
 
-    # Logeamos la ejecución del escuadrón (con RÉGIMEN)
+    # ── RESULTADO FINAL ────────────────────────────────────────────────────
     if signal == SIGNAL_BUY:
-        from shared.utils.logger import log
-        log.info(f"🔫 COMPRA PERMITIDA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_buy))
+        _log.info(
+            f"{sym_prefix}🟢════ DECISIÓN FINAL: ✅ COMPRAR ════"
+            f" Precio=${close_now:.2f} | {regime_label} | ADX={adx_now:.1f}"
+            f" | " + " | ".join(confirmations_buy)
+        )
     elif signal == SIGNAL_SELL:
-        from shared.utils.logger import log
-        _log.info(f"{sym_prefix}🔴 VENTA ALERTA TÁCTICA | [{regime_label}] | [ADX={adx_now:.1f}] | " + " | ".join(confirmations_sell))
+        _log.info(
+            f"{sym_prefix}🔴════ ALERTA VENTA (solo activa si hay posición) ════"
+            f" Precio=${close_now:.2f} < EMA20=${ema_20_now:.2f}"
+            f" | {regime_label} | MACD={macd_now:.4f}"
+        )
+    else:
+        if symbol:
+            _log.info(
+                f"{sym_prefix}⏸️ HOLD | {regime_label}"
+                f" | ${close_now:.2f} | RSI={rsi_now:.1f} | ADX={adx_now:.1f}"
+                f" | Razón: {blocks_buy[0] if blocks_buy else 'Sin confluencia suficiente'}"
+            )
 
     return SignalResult(
         signal=signal,

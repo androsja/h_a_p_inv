@@ -297,6 +297,22 @@ class NeuralTradeFilter:
         return score, reason_str
 
 
+    def reset(self) -> None:
+        """🧨 Borra TODO en memoria y en disco. La IA vuelve a cold-start."""
+        with self._lock:
+            self._model  = None
+            self._X      = []
+            self._y      = []
+            self._frozen = False
+            # Borrar archivo en disco también
+            try:
+                if MODEL_PATH.exists():
+                    MODEL_PATH.unlink()
+            except Exception as e:
+                log.warning(f"No se pudo borrar neural_model.joblib: {e}")
+            log.info("🧨 [NeuralFilter] RESET TOTAL — modelo y datos borrados de memoria y disco.")
+
+
 # ── Singleton global ──────────────────────────────────────────────────────────
 _filter_instance: NeuralTradeFilter | None = None
 _filter_lock = threading.Lock()
@@ -310,3 +326,23 @@ def get_neural_filter() -> NeuralTradeFilter:
             if _filter_instance is None:
                 _filter_instance = NeuralTradeFilter()
     return _filter_instance
+
+
+def reset_neural_filter() -> None:
+    """🧨 Resetea el singleton en memoria y borra el archivo en disco.
+    Llamar cuando el usuario hace WIPE TOTAL desde el dashboard."""
+    global _filter_instance
+    with _filter_lock:
+        if _filter_instance is not None:
+            _filter_instance.reset()
+            _filter_instance = None   # Forzar re-instanciación limpia
+            log.info("🧨 [NeuralFilter] Singleton destruido — próxima llamada creará instancia limpia.")
+        else:
+            # Aun así, borrar el archivo por si existe
+            try:
+                if MODEL_PATH.exists():
+                    MODEL_PATH.unlink()
+            except Exception:
+                pass
+            log.info("🧨 [NeuralFilter] No había singleton activo — archivo borrado de disco.")
+

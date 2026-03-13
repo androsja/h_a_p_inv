@@ -96,31 +96,50 @@ def read_state(mode: str = "sim") -> dict:
 
 
 def read_last_logs(n: int = 50) -> list[str]:
-    """Lee las últimas n líneas del log principal y logs de símbolos específicos."""
+    """Lee las últimas n líneas del log principal y logs de símbolos específicos.
+    Filtra líneas HTML crudas (ej. respuestas de error 500 de Alpaca/nginx)."""
+
+    # Tokens que indican que la línea es HTML de un servidor externo, no un log real
+    HTML_NOISE = ("<html>", "<head>", "<body>", "</html>", "</head>", "</body>",
+                  "<center>", "</center>", "<hr>", "<h1>", "nginx", "<!DOCTYPE")
+
+    def _is_valid_log_line(line: str) -> bool:
+        s = line.strip()
+        if not s:
+            return False
+        # Excluir líneas que empiecen/contengan HTML puro
+        sl = s.lower()
+        if any(token.lower() in sl for token in HTML_NOISE):
+            return False
+        return True
+
     all_lines = []
     try:
-        # 1. Leer log principal con robustez ante errores de encoding
+        # 1. Leer log principal
         if LOG_FILE.exists():
             with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
                 all_lines.extend(f.readlines())
-        
-        # 2. Descubrir logs de hilos específicos (historial_SYMBOL.log)
+
+        # 2. Logs de hilos específicos (historial_SYMBOL.log)
         log_dir = LOG_FILE.parent
         for symbol_log in log_dir.glob("historial_*.log"):
             try:
                 with open(symbol_log, "r", encoding="utf-8", errors="replace") as f:
                     all_lines.extend(f.readlines())
-            except: pass
-            
+            except:
+                pass
+
         if not all_lines:
             return ["(Esperando logs del bot...)"]
 
-        # Ordenar por tiempo (asumiendo formato ISO al inicio) y tomar las últimas n
+        # Ordenar por timestamp y tomar las últimas n líneas válidas (sin HTML)
         all_lines.sort()
-        return [l.strip() for l in all_lines[-n:] if l.strip()]
-        
+        return [l.strip() for l in all_lines[-n * 3:] if _is_valid_log_line(l)][-n:]
+
     except Exception as e:
         return [f"Error leyendo logs: {str(e)}"]
+
+
 
 
 # ─── Broadcaster en background ────────────────────────────────────────────────
@@ -397,39 +416,62 @@ async def get_trades_history(limit: int = 100):
 
 @app.get("/api/neural_stats")
 async def get_neural_stats():
-    """Estadísticas de la Red Neuronal MLP adaptativa."""
+    """Estadísticas de la Red Neuronal MLP adaptativa.
+    Lee desde ml_dataset.csv (fuente real) para evitar que el modelo en RAM
+    del bot regenere el .joblib con datos viejos tras un WIPE."""
     try:
         import joblib
         import numpy as np
-        if not NEURAL_MODEL_FILE.exists():
-            return {"status": "ok", "total_samples": 0, "wins": 0, "losses": 0,
-                    "win_rate_hist": 0.0, "model_accuracy": 0.0, "mode": "cold-start",
-                    "threshold": 0.55}
 
-        bundle = joblib.load(NEURAL_MODEL_FILE)
-        X_list = bundle.get("X", [])
-        y_list = bundle.get("y", [])
-        model  = bundle.get("model")
-        n      = len(y_list)
-        wins   = sum(y_list)
-        acc    = 0.0
-        if model is not None and n > 0:
+        # ── 1. Leer muestras desde ml_dataset.csv (fuente de verdad) ──────────
+        n, wins, losses = 0, 0, 0
+        if ML_DATASET_FILE.exists():
             try:
-                acc = float(model.score(np.array(X_list), np.array(y_list)))
+                import csv
+                with open(ML_DATASET_FILE, newline="", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        label = int(float(row.get("label", 0)))
+                        wins   += label
+                        n      += 1
+                losses = n - wins
+            except Exception:
+                # Fallback: si el CSV está corrupto, mostrar 0
+                n = wins = losses = 0
+
+        # ── 2. Precisión del modelo (desde .joblib si existe) ─────────────────
+        acc  = 0.0
+        mode = "cold-start"
+        if NEURAL_MODEL_FILE.exists() and n > 0:
+            try:
+                bundle = joblib.load(NEURAL_MODEL_FILE)
+                model  = bundle.get("model")
+                X_list = bundle.get("X", [])
+                y_list = bundle.get("y", [])
+                if model is not None and len(X_list) > 0:
+                    # Usar las muestras del CSV (más confiables) para puntuar
+                    score_X = X_list[:n]
+                    score_y = y_list[:n]
+                    if len(score_X) >= n:
+                        acc  = float(model.score(np.array(score_X), np.array(score_y)))
+                    mode = "MLP"
             except Exception:
                 pass
+
         return {
             "status":         "ok",
             "total_samples":  n,
             "wins":           wins,
-            "losses":         n - wins,
+            "losses":         losses,
             "win_rate_hist":  round(wins / n * 100, 1) if n > 0 else 0.0,
             "model_accuracy": round(acc * 100, 1),
-            "mode":           "MLP" if model is not None else "cold-start",
+            "mode":           mode,
             "threshold":      0.55,
         }
     except Exception as e:
         return {"status": "error", "message": str(e), "total_samples": 0, "mode": "unavailable"}
+
+
 
 @app.get("/api/checkpoint_info")
 async def get_checkpoint_info():
@@ -482,6 +524,96 @@ async def set_live_paper_symbol(symbol: str, enabled: bool):
         return {"status": "error", "message": str(e)}
 
 
+@app.post("/api/wipe_neural")
+async def wipe_neural():
+    """Borra todo lo que aprendió la Red Neuronal + historial live.
+    Pasos:
+    1. Envía live_stop al watcher del bot
+    2. Borra los archivos inmediatamente (sin espera que causa timeouts)
+    3. Envía reset_neural para limpiar la RAM
+    """
+    import json
+    deleted = []
+    errors  = []
+    not_found = []
+
+    # ── PASO 1: Detener el live Y pausar la simulación ─────────────────────────
+    try:
+        cmd_data = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                cmd_data = json.load(f)
+        cmd_data["live_stop"]    = True
+        cmd_data["live_start"]   = False
+        cmd_data["reset_neural"] = False
+        # Pausa la sim para que no escriba datos nuevos durante el borrado
+        cmd_data["strategy_frozen"] = True
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(cmd_data, f)
+    except Exception as e:
+        errors.append(f"stop_cmd: {str(e)}")
+
+    # ── PASO 2: Borrar archivos del volumen compartido ─────────────────────────
+    # Borramos directamente con Path.unlink() — no hay sleep que cause timeout.
+    files_to_delete = [
+        ("neural_model.joblib", NEURAL_MODEL_FILE),
+        ("ml_dataset.csv",      ML_DATASET_FILE),
+        ("trade_journal.csv",   config.TRADE_JOURNAL_FILE),
+        ("state_live.json",     config.STATE_FILE_LIVE),
+    ]
+    for name, path in files_to_delete:
+        try:
+            if path.exists():
+                path.unlink()
+                deleted.append(name)
+            else:
+                not_found.append(name)
+        except Exception as e:
+            errors.append(f"{name}: {str(e)}")
+
+    # ── PASO 3: Limpiar logs ───────────────────────────────────────────────────
+    try:
+        if LOG_FILE.exists():
+            LOG_FILE.write_text("")
+    except Exception:
+        pass
+
+    # ── PASO 4: Enviar reset_neural + descongelar sim ─────────────────────────
+    try:
+        cmd_data = {}
+        if COMMAND_FILE.exists():
+            with open(COMMAND_FILE) as f:
+                cmd_data = json.load(f)
+        cmd_data["reset_neural"]    = True
+        cmd_data["live_stop"]       = False
+        cmd_data["live_start"]      = False
+        cmd_data["strategy_frozen"] = False   # Descongelar sim
+        with open(COMMAND_FILE, "w") as f:
+            json.dump(cmd_data, f)
+    except Exception as e:
+        errors.append(f"reset_cmd: {str(e)}")
+
+    # ── Verificar que realmente se borró ml_dataset.csv ───────────────────────
+    verify_ok = not ML_DATASET_FILE.exists()
+
+    if errors:
+        return {"status": "partial", "deleted": deleted, "errors": errors,
+                "message": f"Se borraron {len(deleted)} archivos con {len(errors)} error(es). verify_csv={verify_ok}"}
+
+    return {
+        "status":    "success",
+        "deleted":   deleted,
+        "not_found": not_found,
+        "verify":    verify_ok,
+        "message": (
+            f"✅ WIPE TOTAL completado. {len(deleted)} archivos eliminados. "
+            "El bot live fue detenido — presiona LIVE PAPER para relanzarlo desde cero."
+        )
+    }
+
+
+
+
 @app.post("/api/train_ai")
 async def train_ai():
     import subprocess
@@ -495,9 +627,9 @@ async def train_ai():
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/config")
-async def get_config(mode: str = "sim"):
+async def get_config():
     import json
-    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
+    path = config.ASSETS_FILE
     try:
         total_syms = 0
         if path.exists():
@@ -520,9 +652,9 @@ async def get_config(mode: str = "sim"):
         return {"total_symbols": 0, "max_risk_pct": 2.5}
 
 @app.get("/api/active_symbols")
-async def get_active_symbols(mode: str = "sim"):
+async def get_active_symbols():
     import json
-    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
+    path = config.ASSETS_FILE
     try:
         if path.exists():
             with open(path) as f:
@@ -534,9 +666,9 @@ async def get_active_symbols(mode: str = "sim"):
         return {"status": "error", "symbols": []}
 
 @app.get("/api/all_symbols")
-async def get_all_symbols(mode: str = "sim"):
+async def get_all_symbols():
     import json
-    path = config.ASSETS_FILE_SIM if mode == "sim" else config.ASSETS_FILE_LIVE
+    path = config.ASSETS_FILE
     try:
         if path.exists():
             with open(path) as f:
@@ -549,12 +681,11 @@ async def get_all_symbols(mode: str = "sim"):
 class ToggleRequest(BaseModel):
     symbol: str
     enabled: bool
-    mode: str = "sim"
 
 @app.post("/api/toggle_symbol")
 async def toggle_symbol(req: ToggleRequest):
     import json
-    path = config.ASSETS_FILE_SIM if req.mode == "sim" else config.ASSETS_FILE_LIVE
+    path = config.ASSETS_FILE
     try:
         if path.exists():
             with open(path, "r") as f:
@@ -642,15 +773,22 @@ async def live_alpaca_start(req: LiveAlpacaStartRequest):
         if not symbol_list:
             return {"status": "error", "message": "No se proporcionaron símbolos válidos."}
 
+        # Cargar base desde assets.json
+        base_assets = []
+        if config.ASSETS_FILE.exists():
+            with open(config.ASSETS_FILE, "r") as f:
+                base_data = json.load(f)
+                base_assets = base_data.get("assets", [])
+
         # Actualizar assets_live.json: habilitar solo los seleccionados
         path = config.ASSETS_FILE_LIVE
-        if path.exists():
-            with open(path, "r") as f:
-                data = json.load(f)
-            for asset in data.get("assets", []):
-                asset["enabled"] = asset.get("symbol", "").upper() in symbol_list
-            with open(path, "w") as f:
-                json.dump(data, f, indent=4)
+        data = {"assets": base_assets} # Empezamos con todos
+        
+        for asset in data.get("assets", []):
+            asset["enabled"] = asset.get("symbol", "").upper() in symbol_list
+        
+        with open(path, "w") as f:
+            json.dump(data, f, indent=4)
 
         # Enviar comando live_start al watcher (trading-bot-live-alpaca)
         data_cmd = {}
