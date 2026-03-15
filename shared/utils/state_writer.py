@@ -4,6 +4,8 @@ from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 
+from shared.utils.state_models import TradeRecord, BotState
+
 from shared import config
 _state_path = config.STATE_FILE
 _state_lock = threading.Lock()
@@ -13,78 +15,8 @@ def set_state_file(path: Path) -> None:
     with _state_lock:
         _state_path = path
 
-@dataclass
-class TradeRecord:
-    symbol: str
-    side:  str
-    price: float
-    qty:   float
-    pnl:   float
-    time:  str = ""
-    reason: str = ""
-    confirmations: list = field(default_factory=list)
-    ml_prob: float = 0.0
-    conf_mult: float = 1.0
-    entry_reason: str = ""
-    entry_price: float = 0.0
-    date: str = ""
-    fees: float = 0.0
 
-@dataclass
-class BotState:
-    # Identificación
-    mode:    str = "SIMULATED"
-    symbol:  str = "─"
-    session: int = 1
-    iteration: int = 0
-    timestamp: str = ""
-
-    # Precios
-    bid: float = 0.0
-    ask: float = 0.0
-
-    # Señal
-    signal:   str   = "HOLD"
-    regime:   str   = "NEUTRAL"  # Régimen de mercado detectado
-    rsi:      float = 50.0
-    ema_fast: float = 0.0
-    ema_slow: float = 0.0
-    ema_200:  float = 0.0
-    macd_hist: float = 0.0
-    vwap:     float = 0.0
-    atr:      float = 0.0
-    confirmations: list = field(default_factory=list)
-
-    # Cuenta
-    initial_cash:   float = 10_000.0
-    available_cash: float = 10_000.0
-    settlement:     float = 0.0
-
-    # Estadísticas
-    win_rate:       float = 0.0
-    total_trades:   int   = 0
-    winning_trades: int   = 0
-    gross_profit:   float = 0.0
-    gross_loss:     float = 0.0
-    total_fees:     float = 0.0
-    total_slippage: float = 0.0
-    # Estadísticas Acumuladas (para simulaciones de múltiples activos)
-    total_sim_trades: int = 0
-    total_sim_wins:   int = 0
-    total_sim_pnl:    float = 0.0
-
-    # Posición abierta
-    position: dict | None = None
-    trades: list = field(default_factory=list)
-    candles: list = field(default_factory=list)
-
-    status: str = "running"
-    next_scan_in: int = 0
-    is_waiting: bool = False
-    mock_time_930: bool = False
-    blocks: list[str] = None
-    sim_start: str = ""   # Fecha de inicio de los datos
-    sim_end:   str = ""   # Fecha de fin de los datos
+# ─── GESTIÓN DE ESTADO ──────────────────────────────────────────────────────
 
 # Almacenamiento global multinivel
 _symbol_states: dict[str, BotState] = {}
@@ -264,6 +196,10 @@ def update_state(
     sim_start: str = "",
     sim_end: str = "",
     status: str = "running",
+    ai_win_prob: float = 0.0,
+    ai_recommendation: str = "",
+    ai_expected_up: float = 0.0,
+    ai_expected_down: float = 0.0,
     **kwargs
 ) -> None:
     global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl
@@ -313,7 +249,11 @@ def update_state(
         mock_time_930=mock_time_930,
         blocks=blocks or [],
         sim_start=sim_start,
-        sim_end=sim_end
+        sim_end=sim_end,
+        ai_win_prob=ai_win_prob,
+        ai_recommendation=ai_recommendation,
+        ai_expected_up=ai_expected_up,
+        ai_expected_down=ai_expected_down
     )
     
     with _state_lock:

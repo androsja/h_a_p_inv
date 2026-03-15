@@ -5,15 +5,17 @@ Carga variables del .env y provee constantes globales.
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# ─── Cargar .env ────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent
-# Si este archivo está dentro de 'shared/', subir un nivel para encontrar el root
-if BASE_DIR.name == "shared":
-    BASE_DIR = BASE_DIR.parent
-
-load_dotenv(BASE_DIR / ".env")
+try:
+    from dotenv import load_dotenv
+    BASE_DIR = Path(__file__).resolve().parent
+    if BASE_DIR.name == "shared":
+        BASE_DIR = BASE_DIR.parent
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    # Si no está instalado, simplemente ignoramos. El bot usará variables de entorno de shell si hay.
+    BASE_DIR = Path(__file__).resolve().parent
+    if BASE_DIR.name == "shared":
+        BASE_DIR = BASE_DIR.parent
 
 # URL base de la API de Hapi Trade
 HAPI_BASE_URL   = "https://api.hapitrade.com/v1"
@@ -45,8 +47,8 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # ─── Estrategia Intraday (velas de 5 minutos) ────────────────────────────────
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
-# Hyper-Aggressive V3: Ajustado a 0.35 para permitir investigación de trades bloqueados.
-CONFIDENCE_THRESHOLD = 0.55
+# Restaurado tras modo agresivo fallido. Volvemos a 0.45.
+CONFIDENCE_THRESHOLD = 0.45
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
 RSI_OVERBOUGHT = 75     # Más agresivo: permite tendencias fuertes (antes 70)
@@ -55,7 +57,7 @@ RSI_OVERSOLD   = 40     # Más agresivo: entra más temprano en rebotes (antes 3
 # ─── Datos de mercado ────────────────────────────────────────────────────────
 # Intervalo y período para yfinance (intraday en lugar de scalping)
 DATA_INTERVAL  = "5m"   # Regresando a 5m para mayor estabilidad, manteniendo 20 activos.
-DATA_PERIOD    = "60d"  # 60 días de historial → ~7,800 velas por símbolo
+DATA_PERIOD    = "180d" # 180 días de historial (6 meses) para entrenar a la IA a profundidad
 
 # ─── Ventana de trading: apertura de NY (mayor liquidez intraday) ────────────
 # 🕒 Ventana de Trading (Horario NY)
@@ -83,11 +85,13 @@ CHECKPOINT_DB    = DATA_DIR / "checkpoint.db"
 MOCK_ANCHOR_FILE = DATA_DIR / "mock_anchor.json"
 TRADE_JOURNAL_FILE = DATA_DIR / "trade_journal.csv"
 DATA_CACHE_DIR   = DATA_DIR / "cache"
+TRAINING_LOG_FILE = DATA_DIR / "training_history.csv"
 MODEL_SNAPSHOTS_DIR = DATA_DIR / "model_snapshots"   # ❄️ Versiones guardadas de la IA
 
 # ─── Timing del bot ─────────────────────────────────────────────────────────
 SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)
 REST_INTERVAL_SEC  = 60   # Descanso fuera de ventana de trading
+SESSION_PAUSE      = 10   # Segundos entre sesiones de simulación
 
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1

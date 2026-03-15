@@ -88,9 +88,9 @@ def record_trade(
     qty: float,
     stop_loss: float,
     take_profit: float,
-    hold_bars: int,
     exit_reason: str,
     ml_features: dict,
+    hold_bars: int = 0,
     timestamp: str | None = None,
 ):
     """

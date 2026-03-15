@@ -51,6 +51,8 @@ class MLPredictor:
             
             # Evaluar precisión en su propio set de entrenamiento (básico)
             acc = self.model.score(X, y)
+            from shared.utils.logger import log_training
+            log_training("MLPredictor_RF", len(df), float(acc), extra="Initial_load")
             log.info(f"🧠 Modelo ML entrenado con {len(df)} ejemplos (Precisión interna: {acc*100:.1f}%)")
             
         except Exception as e:

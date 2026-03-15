@@ -1,84 +1,23 @@
 {
     "assets": [
-        {
-            "symbol": "AAPL",
-            "enabled": true
-        },
-        {
-            "symbol": "MSFT",
-            "enabled": true
-        },
-        {
-            "symbol": "AMZN",
-            "enabled": true
-        },
-        {
-            "symbol": "GOOGL",
-            "enabled": true
-        },
-        {
-            "symbol": "NVDA",
-            "enabled": true
-        },
-        {
-            "symbol": "TSLA",
-            "enabled": true
-        },
-        {
-            "symbol": "META",
-            "enabled": true
-        },
-        {
-            "symbol": "NFLX",
-            "enabled": true
-        },
-        {
-            "symbol": "AMD",
-            "enabled": true
-        },
-        {
-            "symbol": "DIS",
-            "enabled": true
-        },
-        {
-            "symbol": "PYPL",
-            "enabled": true
-        },
-        {
-            "symbol": "JPM",
-            "enabled": true
-        },
-        {
-            "symbol": "V",
-            "enabled": true
-        },
-        {
-            "symbol": "WMT",
-            "enabled": true
-        },
-        {
-            "symbol": "KO",
-            "enabled": true
-        },
-        {
-            "symbol": "PEP",
-            "enabled": true
-        },
-        {
-            "symbol": "NKE",
-            "enabled": true
-        },
-        {
-            "symbol": "SBUX",
-            "enabled": true
-        },
-        {
-            "symbol": "COST",
-            "enabled": true
-        },
-        {
-            "symbol": "CRM",
-            "enabled": true
-        }
+        { "symbol": "CVX", "enabled": true },
+        { "symbol": "CL", "enabled": true },
+        { "symbol": "C", "enabled": true },
+        { "symbol": "BTI", "enabled": true },
+        { "symbol": "BRK.B", "enabled": true },
+        { "symbol": "AXP", "enabled": true },
+        { "symbol": "AMT", "enabled": true },
+        { "symbol": "CRM", "enabled": true },
+        { "symbol": "AAPL", "enabled": true },
+        { "symbol": "MSFT", "enabled": true },
+        { "symbol": "NVDA", "enabled": true },
+        { "symbol": "PYPL", "enabled": true },
+        { "symbol": "JPM", "enabled": true },
+        { "symbol": "KO", "enabled": true },
+        { "symbol": "WMT", "enabled": true },
+        { "symbol": "NFLX", "enabled": true },
+        { "symbol": "GOOGL", "enabled": true },
+        { "symbol": "AMZN", "enabled": true },
+        { "symbol": "TSLA", "enabled": true }
     ]
 }

@@ -211,6 +211,8 @@ class NeuralTradeFilter:
 
                     self._model.fit(X_arr, y_arr)
                     acc = self._model.score(X_arr, y_arr)
+                    from shared.utils.logger import log_training
+                    log_training("NeuralFilter_MLP", n, float(acc), extra=f"last_won={won}")
                     log.info(f"🧠 MLP re-entrenado. Accuracy en train: {acc:.0%} ({n} muestras)")
                 except Exception as e:
                     log.warning(f"Error entrenando MLP: {e}")

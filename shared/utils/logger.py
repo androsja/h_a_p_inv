@@ -11,10 +11,20 @@ import logging
 import logging.handlers
 import sys
 from pathlib import Path
-from colorama import Fore, Style, init as colorama_init
 from shared import config
 
-colorama_init(autoreset=True)
+try:
+    from colorama import Fore, Style, init as colorama_init
+    colorama_init(autoreset=True)
+    HAS_COLORAMA = True
+except ImportError:
+    HAS_COLORAMA = False
+    # Mock Fore/Style to avoid errors
+    class MockColor:
+        def __getattr__(self, name): return ""
+    Fore = MockColor()
+    Style = MockColor()
+    def colorama_init(*args, **kwargs): pass
 
 
 # ─── Formateador con colores para la consola ────────────────────────────────
@@ -153,3 +163,30 @@ def log_settlement_block(symbol: str, needed: float, available: float) -> None:
 def log_market_closed(next_open: str) -> None:
     """Registra que el mercado NYSE está cerrado."""
     log.info(f"MARKET_CLOSED | Próxima apertura estimada: {next_open}")
+
+
+def log_training(model_name: str, samples: int, accuracy: float, extra: str = "") -> None:
+    """Registra un ciclo de entrenamiento en un archivo CSV dedicado para seguimiento de la IA."""
+    import csv
+    from datetime import datetime
+    file_path = config.TRAINING_LOG_FILE
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    header = ["timestamp", "model", "samples", "accuracy", "extra"]
+    exists = file_path.exists()
+    
+    try:
+        with open(file_path, mode="a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not exists:
+                writer.writerow(header)
+            writer.writerow([
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                model_name,
+                samples,
+                f"{accuracy:.2f}",
+                extra
+            ])
+        log.info(f"🧠 [LOG_TRAINING] {model_name} | n={samples} | acc={accuracy:.1%} | {extra}")
+    except Exception as e:
+        log.error(f"Error escribiendo en training_history.csv: {e}")

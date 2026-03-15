@@ -46,7 +46,7 @@
         },
         {
             "symbol": "AMT",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "AMZN",
@@ -66,7 +66,7 @@
         },
         {
             "symbol": "AXP",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "BA",
@@ -82,15 +82,15 @@
         },
         {
             "symbol": "BRK.B",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "BTI",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "C",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "CAT",
@@ -106,7 +106,7 @@
         },
         {
             "symbol": "CL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "COIN",
@@ -134,7 +134,7 @@
         },
         {
             "symbol": "CVX",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "D",

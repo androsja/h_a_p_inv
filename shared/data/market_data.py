@@ -1,11 +1,10 @@
 """
-data/market_data.py ─ Descarga y caché de datos de mercado con yfinance.
+data/market_data.py ─ Descarga y caché de datos de mercado desde Alpaca API.
 
-Estrategia intraday: velas de 5 minutos, últimos 60 días (gratis con yfinance).
-Filtradas al horario de alta liquidez: 9:30–11:30 AM ET (apertura de NYSE).
+Responsabilidad única: descargar velas OHLCV, cachearlas localmente
+y proveer la lista de símbolos activos.
 
-En modo SIMULATED el MockBroker usa estos datos para "reproducir" el mercado
-como si fuera en vivo, vela a vela.
+Los reproductores de datos (MarketReplay, LivePaperReplay) viven en replay.py.
 """
 
 import json
@@ -131,9 +130,14 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             update_state(symbol=symbol, status="downloading")
             client = get_alpaca_client()
             
-            # Calcular ventana de tiempo (60 días atrás)
+            # Calcular ventana de tiempo dinámica basada en DATA_PERIOD
+            try:
+                days_to_fetch = int(config.DATA_PERIOD.replace('d', ''))
+            except:
+                days_to_fetch = 180
+                
             end_time = datetime.now(pytz.UTC)
-            start_time = end_time - timedelta(days=60)
+            start_time = end_time - timedelta(days=days_to_fetch)
             
             # Configurar timeframe (5m -> TimeFrame(5, TimeFrameUnit.Minute))
             val = int(config.DATA_INTERVAL.replace("m", ""))
@@ -228,129 +232,10 @@ def download_all(force_refresh: bool = False) -> dict[str, pd.DataFrame]:
     return result
 
 
-# ─── Reproductor de datos para modo simulado ────────────────────────────────
-class MarketReplay:
-    """
-    Reproduce los datos históricos de 5 minutos (ventana 9:30–11:30 ET)
-    como si fueran datos en vivo vela a vela.
-    El MockBroker usa esta clase para simular el mercado intraday.
-    """
+# ─── Re-exports de compatibilidad eliminados para evitar importación circular ─────
+# Si se requieren los reproductores, importarlos directamente desde shared.data.replay
 
-    def __init__(self, symbol: str | None = None, start_date: str | None = None):
-        """
-        Si symbol es None, elige uno al azar de assets.json.
-        start_date: Formato "YYYY-MM-DD" para filtrar el inicio de la simulación.
-        """
-        if symbol is None:
-            symbols = get_symbols()
-            symbol = random.choice(symbols)
-            log.info(f"replay | Símbolo elegido al azar para simulación: {symbol}")
-
-        self.symbol = symbol
-        self.df: pd.DataFrame = download_bars(symbol)   # 5min × 60d
-
-        # Aplicar filtro de fecha de inicio si se proporciona
-        min_bars = max(config.EMA_SLOW, config.RSI_PERIOD) + 5
-        if start_date:
-            try:
-                # Convertir start_date a datetime UTC para comparar con el índice
-                start_dt = pd.to_datetime(start_date).tz_localize(ET).tz_convert("UTC")
-                df_filtered = self.df[self.df.index >= start_dt].copy()
-                # Si la fecha está en el futuro o no hay datos suficientes, usar todos los datos
-                if len(df_filtered) < min_bars:
-                    last_available = self.df.index[-1].strftime("%Y-%m-%d") if len(self.df) > 0 else "N/A"
-                    log.warning(
-                        f"replay | {symbol} | Fecha {start_date} fuera de rango o sin datos suficientes "
-                        f"(último dato: {last_available}). Usando todos los datos disponibles."
-                    )
-                else:
-                    self.df = df_filtered
-                    log.info(f"replay | {symbol} | Filtro de fecha aplicado: desde {start_date}")
-            except Exception as e:
-                log.error(f"replay | {symbol} | Error al aplicar filtro de fecha {start_date}: {e}")
-
-        self._index: int = 0
-
-        if len(self.df) < min_bars:
-            raise ValueError(
-                f"No hay suficientes datos para {symbol}: "
-                f"se necesitan {min_bars} velas, hay {len(self.df)}."
-            )
-
-        log.info(
-            f"replay | {symbol} | "
-            f"{len(self.df)} velas de {config.DATA_INTERVAL} disponibles | "
-            f"Desde {self.df.index[0].strftime('%Y-%m-%d')} "
-            f"hasta {self.df.index[-1].strftime('%Y-%m-%d')} | "
-            f"Horario: 9:30–11:30 AM ET"
-        )
-
-    def has_next(self) -> bool:
-        return self._index < len(self.df)
-
-    def next_bar(self) -> pd.Series:
-        """Devuelve la siguiente vela y avanza el cursor."""
-        bar = self.df.iloc[self._index]
-        self._index += 1
-        return bar
-
-    def current_slice(self, window: int = 50) -> pd.DataFrame:
-        """
-        Devuelve las últimas `window` velas hasta la posición actual.
-        Necesario para calcular indicadores técnicos.
-        """
-        end = self._index
-        start = max(0, end - window)
-        return self.df.iloc[start:end].copy()
-
-    def reset(self) -> None:
-        self._index = 0
-
-    def progress_pct(self) -> float:
-        return (self._index / len(self.df)) * 100
-
-class LivePaperReplay:
-    """
-    Simula datos reales consultando Alpaca API.
-    - En modo REAL: Consulta cada 60s (con throttle).
-    - En modo MOCK (Acelerado): Replay de la historia cacheada en memoria.
-    """
-    def __init__(self, symbol: str):
-        self.symbol = symbol
-        log.info(f"replay | 🚀 Iniciando Live Paper Trading (Broker Sombra) para {symbol}")
-        # Descarga historia base para contexto inicial y la mantenemos en memoria para velocidad
-        self.full_df = download_bars(symbol, force_refresh=True)
-        self.df = self.full_df.copy() # Slice actual
-        self.window = 220
-        self._last_download_time = time.time()
-        
-    def has_next(self) -> bool:
-        return True # Siempre hay una siguiente vela en modo vivo
-        
-    def next_bar(self) -> pd.Series | None:
-        """Devuelve la vela actual (real o simulada)"""
-        from shared.utils.market_hours import _is_mock_time_active, now_nyc
-        import pytz
-        
-        is_mock = _is_mock_time_active()
-        
-        if not is_mock:
-            now = time.time()
-            # Refrescar solo cada 30s en modo real para ser amables con Alpaca
-            if (now - self._last_download_time) > 30:
-                self.full_df = download_bars(self.symbol, force_refresh=True)
-                self._last_download_time = now
-            self.df = self.full_df.copy()
-        else:
-            # En modo MOCK (Acelerado), recortamos la historia en memoria según el reloj simulado
-            current_mock_time = now_nyc().astimezone(pytz.UTC)
-            self.df = self.full_df[self.full_df.index <= current_mock_time].copy()
-            
-        if self.df is None or self.df.empty:
-            return None
-            
-        return self.df.iloc[-1]
-        
-    def current_slice(self, window: int = 50) -> pd.DataFrame:
-        """Devuelve las últimas `window` velas."""
-        return self.df.tail(window).copy()
+__all__ = [
+    "download_bars", "download_1m", "download_all",
+    "get_symbols", "set_assets_file",
+]
