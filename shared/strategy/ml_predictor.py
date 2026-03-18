@@ -27,6 +27,7 @@ class MLPredictor:
                 return  # No hay suficientes datos para un modelo estadísticamente relevante
                 
             # Solo queremos trades cerrados. Asumimos que todos en el CSV están cerrados.
+                
             # Variables predictoras (features):
             features = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct']
             target = 'is_win'
@@ -70,6 +71,7 @@ class MLPredictor:
         try:
             # Construir vector de entrada en el orden correcto
             feature_names = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct']
+            
             x_input = pd.DataFrame([features], columns=feature_names)
             
             # vector[0] es la clase predominante predicha, predict_proba da las probabilidaes [prob_0, prob_1]

@@ -35,6 +35,7 @@ class SessionStats:
     peak_balance:   float = 10_000.0   # Para calcular Max Drawdown
     max_drawdown:   float = 0.0        # Peor caída desde el máximo (%)
     _pnl_history:   list  = field(default_factory=list)  # PnL por trade
+    trade_history:  list  = field(default_factory=list)  # Lista de dicts con detalle de cada trade
 
     @property
     def win_rate(self) -> float:
@@ -71,10 +72,18 @@ class SessionStats:
         full_kelly = (rr_ratio * p - q) / rr_ratio
         return max(0.005, min(0.02, full_kelly * 0.25))
 
-    def record_trade(self, pnl: float, current_balance: float) -> None:
+    def record_trade(self, pnl: float, current_balance: float, price: float = 0.0, timestamp: str = "") -> None:
         self.total_trades += 1
         self.total_pnl    += pnl
         self._pnl_history.append(pnl)
+        
+        # Append to detailed history
+        self.trade_history.append({
+            "price": price,
+            "pnl": pnl,
+            "timestamp": timestamp or datetime.now(timezone.utc).isoformat()
+        })
+        
         if pnl > 0:
             self.winning_trades += 1
             self.gross_profit   += pnl

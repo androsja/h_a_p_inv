@@ -102,6 +102,7 @@ class RiskManager:
 
         # ── Multiplicador del usuario (UI → command.json) ──────────────────
         user_multiplier = self._read_user_multiplier()
+        
         # Seguridad crítica: no se puede superar lo que cubre el efectivo disponible
         qty = round(min(base_qty * user_multiplier, qty_by_cash) * confidence_multiplier, 4)
 

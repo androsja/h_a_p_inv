@@ -86,6 +86,7 @@ async def wipe_total():
         errors.append(f"config_reset: {e}")
 
     files_to_delete = [
+        # Reiniciar logs
         ("neural_model.joblib",   NEURAL_MODEL_FILE),
         ("ml_dataset.csv",        ML_DATASET_FILE),
         ("trade_journal.csv",     config.TRADE_JOURNAL_FILE),

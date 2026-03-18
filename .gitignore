@@ -22,4 +22,13 @@ data/*.joblib
 
 # OS Files
 .DS_Store
+
+# Shared Data & State
 shared/data/cache/
+shared/data/state*.json
+shared/data/*.csv
+shared/data/*.db
+shared/data/*.joblib
+shared/data/backtest_results.json
+shared/data/command.json
+shared/data/mock_anchor.json

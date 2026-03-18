@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         p.symbol = fixed
     return p
 
-def init_broker_callback(args: argparse.Namespace) -> BrokerInterface:
+def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     """Callback para inicializar el bróker (Mock) basado en comandos o args."""
     is_live_paper = False
     sim_start_date = None

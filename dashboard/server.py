@@ -140,7 +140,6 @@ def read_last_logs(n: int = 50) -> list[str]:
     except Exception as e:
         return [f"Error leyendo logs: {str(e)}"]
 
-
 # ─── Broadcaster en background ────────────────────────────────────────────────
 async def state_broadcaster():
     """Lee periódicamente los state files y los empuja a los WebSocket clientes."""

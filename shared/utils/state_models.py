@@ -86,3 +86,4 @@ class BotState:
     ai_recommendation: str = ""
     ai_expected_up: float = 0.0
     ai_expected_down: float = 0.0
+

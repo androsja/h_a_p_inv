@@ -16,7 +16,7 @@ de reglas heurísticas derivadas del análisis estadístico de las 14 sesiones.
 """
 
 from __future__ import annotations
-
+import hashlib
 import logging
 import os
 import threading
@@ -50,9 +50,9 @@ class NeuralTradeFilter:
     """
     Filtro neuronal online. Aprende con cada trade completado.
 
-    Features de entrada (11 valores normalizados):
-        [rsi, macd_hist, atr_pct, vol_ratio, ema_spread_pct,
-         zscore_vwap, regime_encoded, num_confirmations,
+    Features de entrada (14 valores normalizados):
+        [symbol_hash, h_norm, vwap_dist_pct, rsi, macd_hist, atr_pct, vol_ratio,
+         ema_spread_pct, zscore_vwap, regime_encoded, num_confirmations,
          adx, has_pattern, is_adx_rising]
     """
 
@@ -75,11 +75,13 @@ class NeuralTradeFilter:
                 self._y     = bundle.get("y", [])
                 
                 # Validación de arquitectura (si cambiamos el número de features, reseteamos)
-                if self._X and len(self._X[0]) != 11:
-                    log.warning("⚠️ Arquitectura de features cambió (8 -> 11). Reseteando modelo para nueva base de datos.")
-                    self._model = None
-                    self._X = []
-                    self._y = []
+                if self._X:
+                    n_features = len(self._X[0])
+                    if n_features != 14:
+                        log.warning(f"⚠️ Arquitectura de features cambió de {n_features} a 14. Reseteando modelo completamente para coherencia.")
+                        self._model = None
+                        self._X = []
+                        self._y = []
 
                 log.info(
                     f"🧠 Red Neuronal cargada — {len(self._y)} trades en memoria, "
@@ -119,6 +121,9 @@ class NeuralTradeFilter:
 
     def build_features(
         self,
+        symbol: str,
+        hour_of_day: float,
+        vwap_dist_pct: float,
         rsi: float,
         macd_hist: float,
         atr_pct: float,
@@ -135,8 +140,17 @@ class NeuralTradeFilter:
         """Construye el vector de features normalizado para el modelo."""
         ema_spread_pct = ((ema_fast - ema_slow) / ema_slow * 100) if ema_slow else 0.0
         regime_enc = REGIME_ENCODING.get(regime, 3)  # Default NEUTRAL=3
+        
+        # 1. Hashing el símbolo a representación numérica de 32 bits y normalizando a float 0-1
+        symbol_hash = int(hashlib.md5(symbol.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+        
+        # 2. Normalización de Hora Militar Cíclica (0-23)
+        h_norm = hour_of_day / 24.0
 
         return [
+            symbol_hash,                        # 0-1 Normalizado id contexto entidad
+            h_norm,                             # 0-1 Normalizado de hora del día
+            np.clip(vwap_dist_pct / 5.0, -1, 1),# -1–1 (cap al 5% distancia vwap)
             rsi / 100.0,                        # 0–1
             np.tanh(macd_hist),                 # -1–1
             min(atr_pct / 5.0, 1.0),           # 0–1 (cap 5%)
@@ -250,12 +264,12 @@ class NeuralTradeFilter:
         Reglas derivadas del análisis estadístico de 14 sesiones cuando
         aún no hay suficientes datos para el MLP.
         """
-        rsi_norm        = features[0]   # 0-1
-        macd_norm       = features[1]   # -1 a 1
-        atr_norm        = features[2]   # 0-1
-        vol_norm        = features[3]   # 0-1
-        regime_enc_norm = features[6]   # 0-1
-        num_conf_norm   = features[7]   # 0-1
+        rsi_norm        = features[3]   # 0-1
+        macd_norm       = features[4]   # -1 a 1
+        atr_norm        = features[5]   # 0-1
+        vol_norm        = features[6]   # 0-1
+        regime_enc_norm = features[9]   # 0-1
+        num_conf_norm   = features[10]  # 0-1
 
         rsi         = rsi_norm * 100
         regime_enc  = round(regime_enc_norm * 5)  # 0-5
@@ -263,6 +277,7 @@ class NeuralTradeFilter:
 
         score = 0.5  # Inicio neutro
         reasons = []
+
 
         # RSI > 72 en TREND_UP (antes 68) → penalizar si es extremo
         if regime_enc == 0 and rsi > 72:   # TREND_UP muy tardío

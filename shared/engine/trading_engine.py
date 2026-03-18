@@ -140,6 +140,8 @@ class TradingEngine:
             from shared.data.market_data import download_bars
             return download_bars(self.symbol)
 
+
+
     def _check_interrupts(self):
         """Verifica señales de interrupción desde el dashboard."""
         if not self.is_mock: return
@@ -148,7 +150,7 @@ class TradingEngine:
             if os.path.exists(cmd_file):
                 with open(cmd_file, "r") as f:
                     cmds = json.load(f)
-                if cmds.get("reset_all") or cmds.get("restart_sim") or cmds.get("force_paper_trading") is False:
+                if cmds.get("reset_all") or cmds.get("restart_sim"):
                     raise SessionInterrupted("Reinicio solicitado")
                 
                 new_sym = cmds.get("force_symbol")
@@ -282,11 +284,17 @@ class TradingEngine:
             nf = get_neural_filter()
             ml_f = self.position.ml_features
             f_vec = nf.build_features(
+                symbol=self.symbol,
+                hour_of_day=ml_f.get('hour_of_day', 10.0),
+                vwap_dist_pct=ml_f.get('vwap_dist_pct', 0.0),
                 rsi=ml_f.get('rsi', 50.0), macd_hist=ml_f.get('macd_hist', 0.0),
                 atr_pct=ml_f.get('atr_pct', 0.0), vol_ratio=ml_f.get('vol_ratio', 1.0),
                 ema_fast=ml_f.get('ema_diff_pct', 0.0) + 100, ema_slow=100.0,
                 zscore_vwap=ml_f.get('zscore_vwap', 0.0), regime=ml_f.get('regime', 'NEUTRAL'),
-                num_confirmations=ml_f.get('num_confirmations', 2)
+                num_confirmations=ml_f.get('num_confirmations', 2),
+                adx=ml_f.get('adx', 20.0),
+                has_pattern=ml_f.get('has_pattern', False),
+                is_adx_rising=ml_f.get('is_adx_rising', False)
             )
             nf.fit(f_vec, won=(pnl > 0))
         except Exception as e:

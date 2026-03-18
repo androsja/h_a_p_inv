@@ -673,10 +673,19 @@
         .tab-bar {
             display: flex;
             align-items: center;
+            flex-wrap: nowrap;
             gap: 0;
             background: rgba(13, 22, 38, 0.8);
             border-bottom: 1px solid var(--border);
             padding: 0 16px;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+        .tab-bar::-webkit-scrollbar {
+            height: 2px;
+        }
+        .tab-bar::-webkit-scrollbar-thumb {
+            background: var(--border);
         }
 
         .tab-btn {

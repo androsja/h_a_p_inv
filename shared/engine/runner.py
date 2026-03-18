@@ -224,6 +224,19 @@ class SimulationRunner:
             except: pass
             
             res_file = config.RESULTS_FILE
+            
+            # Extract last trade data from broker history
+            last_price = None
+            last_order_date = None
+            try:
+                broker_trades = getattr(stats, 'trade_history', None) or getattr(broker, 'trade_history', None) or []
+                if broker_trades:
+                    last_t = broker_trades[-1]
+                    last_price = last_t.get('price') or last_t.get('fill_price') or last_t.get('exit_price')
+                    last_order_date = last_t.get('timestamp') or last_t.get('timestamp_close') or datetime.now(timezone.utc).isoformat()
+            except Exception:
+                pass
+
             session_result = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "symbol": engine.symbol,
@@ -236,7 +249,7 @@ class SimulationRunner:
                 "pnl": round(pnl_val, 2),
                 "gross_pnl": round(pnl_val + total_fees, 2),
                 "total_fees": total_fees,
-                "slippage_est": round(trades_val * 0.10, 2), # Approx $0.10 per trade
+                "slippage_est": round(trades_val * 0.10, 2),
                 "gross_profit": round(getattr(stats, 'gross_profit', 0.0), 2),
                 "gross_loss": round(getattr(stats, 'gross_loss', 0.0), 2),
                 "drawdown": round(getattr(stats, 'max_drawdown', 0.0), 2),
@@ -244,7 +257,9 @@ class SimulationRunner:
                 "sim_start": engine.sim_start_date,
                 "sim_end": engine.sim_end_date,
                 "investment_style": engine.investment_style,
-                "blocking_summary": dict(engine.blocking_history or {})
+                "blocking_summary": dict(engine.blocking_history or {}),
+                "last_price": round(float(last_price), 2) if last_price else None,
+                "last_order_date": last_order_date,
             }
 
             results = []

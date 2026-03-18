@@ -440,6 +440,7 @@ async function loadResults() {
     }
 }
 
+
 async function runAITraining() {
     const btn = document.querySelector('button[onclick="runAITraining()"]');
     const originalText = btn ? btn.innerHTML : '🧠 Analizar mis Errores con IA (Live)';
@@ -585,7 +586,8 @@ async function startPaperTrade() {
         async () => {
             _showLoadingOverlay('INICIANDO ALPACA PAPER...');
             try {
-                const res = await fetch('/api/live_alpaca_start', {
+                // Notar que la UI usaba 'live_alpaca_start', deberíamos usar 'paper_trade_start' el cual ajustamos.
+                const res = await fetch('/api/paper_trade_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbols: symbolsList })
@@ -599,7 +601,7 @@ async function startPaperTrade() {
                 }
             } catch (e) {
                 _hideLoadingOverlay();
-                _showToastMsg('❌ Error de red. ¿Está corriendo el contenedor trading-bot-live-alpaca?', '#ff3d5a');
+                _showToastMsg('❌ Error de red.', '#ff3d5a');
             }
         }
     );
@@ -880,11 +882,14 @@ function renderConfirmations(confs) {
     }).join('');
 }
 
+
+
 async function setFocusSymbol(sym) {
     if (focusSymbol === sym) return;
     focusSymbol = sym;
     manualFocus = true;
     console.log("Focus changed to:", sym);
+
 
     // Si el símbolo no es el que el bot está procesando activamente,
     // traemos su historia vía API para mostrar el gráfico.
@@ -1072,9 +1077,25 @@ function updateUI(fullState) {
                 const grossPnl = grossPnlRaw;
                 const grossPnlColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
                 const grossPnlSign = grossPnl > 0 ? '+' : '';
+                
+                // Extraer el sentimiento de las variables globales que cargamos asíncronamente
+                let sentValue = 0.0;
+                let sentColor = 'var(--muted)';
+                let sentIcon = '⚪';
+                if (window._sentimentData && window._sentimentData[sSym]) {
+                    sentValue = parseFloat(window._sentimentData[sSym].score || 0);
+                    if (sentValue >= 0.3) {
+                        sentColor = 'var(--green)';
+                        sentIcon = '🟢';
+                    } else if (sentValue <= -0.3) {
+                        sentColor = 'var(--red)';
+                        sentIcon = '🔴';
+                    }
+                }
 
                 currentRow.innerHTML = `
                 <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
+                <td style="padding:10px; color:${sentColor}; font-weight:bold;">${sentIcon} ${sentValue > 0 ? '+' : ''}${sentValue.toFixed(2)}</td>
                 <td style="padding:10px; font-weight:bold; color:var(--green);">$${(sState.bid || 0).toFixed(2)}</td>
                 <td style="padding:10px; color:var(--muted);">#${sState.session || 0}</td>
                 <td style="padding:10px;">${sState.total_trades || 0}</td>
@@ -1298,6 +1319,9 @@ function updateUI(fullState) {
 
     // Confluencias
     renderConfirmations(state.confirmations);
+
+    // Sentimiento de Noticias (desde el estado del bot, se actualiza cada segundo)
+    renderSentimentFromState(state);
 
     // Posición
     renderPosition(state);

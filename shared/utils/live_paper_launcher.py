@@ -68,8 +68,8 @@ def launch_parallel_bots(args: argparse.Namespace, force_symbols: list[str], ses
             if os.path.exists(cmd_file):
                 with open(cmd_file) as f:
                     c = json.load(f)
-                if c.get("reset_all") or c.get("force_paper_trading") is False:
-                    log.info("🛑 Deteniendo todos los hilos paralelos...")
+                if c.get("reset_all") or c.get("restart_sim") or c.get("force_paper_trading") is False:
+                    log.info("🛑 Deteniendo todos los hilos paralelos (Reset/Restart solicitado)...")
                     stop_event.set()
                     break
     except KeyboardInterrupt:

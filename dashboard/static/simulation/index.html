@@ -1403,6 +1403,93 @@
             box-shadow: 0 0 10px rgba(253, 224, 71, 0.2);
         }
 
+        /* --- NEWS MODAL --- */
+        .news-modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .news-modal {
+            background: #0f111a;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .news-modal-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .news-modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .news-modal-close {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .news-modal-close:hover {
+            background: var(--red);
+            transform: rotate(90deg);
+        }
+
+        .news-headline-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 14px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+        }
+
+        .news-headline-item:hover {
+            border-color: var(--accent2);
+        }
+
+        .btn-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .hdr-btn.btn-purple {
             background: rgba(191, 149, 255, 0.15);
             border-color: rgba(191, 149, 255, 0.3);
@@ -1438,7 +1525,10 @@
             align-items: center;
             justify-content: center;
         }
-        #sim-history-modal.open { display: flex; }
+
+        #sim-history-modal.open {
+            display: flex;
+        }
 
         .hist-panel {
             background: linear-gradient(160deg, #0d1626, #111b30);
@@ -1448,7 +1538,7 @@
             width: min(90vw, 860px);
             max-height: 85vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(56,189,248,0.06);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(56, 189, 248, 0.06);
         }
 
         .hist-title {
@@ -1467,7 +1557,12 @@
             margin-bottom: 20px;
         }
 
-        .hist-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .hist-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
         .hist-table th {
             padding: 8px 12px;
             text-align: left;
@@ -1478,12 +1573,16 @@
             letter-spacing: 0.8px;
             border-bottom: 1px solid var(--border);
         }
+
         .hist-table td {
             padding: 12px 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
             vertical-align: middle;
         }
-        .hist-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+        .hist-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
 
         .hist-empty {
             text-align: center;
@@ -1491,8 +1590,17 @@
             padding: 40px;
             font-size: 13px;
         }
-        .hist-pnl-pos { color: var(--green); font-weight: 700; }
-        .hist-pnl-neg { color: var(--red); font-weight: 700; }
+
+        .hist-pnl-pos {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .hist-pnl-neg {
+            color: var(--red);
+            font-weight: 700;
+        }
+
         .hist-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -1764,8 +1872,6 @@
                         </div>
                         <div class="kv">
                             <span class="kv-key">🔼 Objetivo (Est.)</span>
-                            <span class="kv-val g" id="ai-target-up">$─.──</span>
-                        </div>
                         <div class="kv">
                             <span class="kv-key">🔽 Suelo (Est.)</span>
                             <span class="kv-val r" id="ai-target-down">$─.──</span>
@@ -2175,6 +2281,8 @@
                     <div class="log-terminal" id="log-terminal"></div>
                 </div>
 
+                <!-- ═══ TAB: NOTICIAS (HISTORIAL) ═══ -->
+
             </div>
         </div>
     </div>
@@ -2223,6 +2331,18 @@
                 if (tab === 'pnl') pnlChart.resize();
             });
         });
+
+        // Global check for background processing
+        let isProcessingAction = false;
+
+        function setProcessing(active) {
+            isProcessingAction = active;
+            const btns = document.querySelectorAll('.hdr-btn, .btn-primary, .btn-danger, .btn-warning');
+            btns.forEach(b => {
+                if (active) b.classList.add('btn-disabled');
+                else b.classList.remove('btn-disabled');
+            });
+        }
 
         // ═══════════════════════════════════════════════════════
         // ─── SYMBOL SELECTOR LOGIC ───
@@ -2854,38 +2974,38 @@
                                     _showCompletionToast(uniqueSymbolsCount, totalNet, globalWR);
                                 }
 
-                                    // Auto-guardar en el historial de simulaciones (una sola vez por run)
-                                    if (!window._simHistorySaved) {
-                                        window._simHistorySaved = true;
-                                        const symbolsList = Array.from(new Set(data.map(d => d.symbol)));
-                                        
-                                        // Aggregate date range
-                                        let minStart = null;
-                                        let maxEnd = null;
-                                        data.forEach(item => {
-                                            if (item.sim_start) {
-                                                const s = new Date(item.sim_start);
-                                                if (!minStart || s < minStart) minStart = s;
-                                            }
-                                            if (item.sim_end) {
-                                                const e = new Date(item.sim_end);
-                                                if (!maxEnd || e > maxEnd) maxEnd = e;
-                                            }
-                                        });
+                                // Auto-guardar en el historial de simulaciones (una sola vez por run)
+                                if (!window._simHistorySaved) {
+                                    window._simHistorySaved = true;
+                                    const symbolsList = Array.from(new Set(data.map(d => d.symbol)));
 
-                                        const style = data[0]?.investment_style || 'Normal';
+                                    // Aggregate date range
+                                    let minStart = null;
+                                    let maxEnd = null;
+                                    data.forEach(item => {
+                                        if (item.sim_start) {
+                                            const s = new Date(item.sim_start);
+                                            if (!minStart || s < minStart) minStart = s;
+                                        }
+                                        if (item.sim_end) {
+                                            const e = new Date(item.sim_end);
+                                            if (!maxEnd || e > maxEnd) maxEnd = e;
+                                        }
+                                    });
 
-                                        saveSimulationToHistory({
-                                            symbols_count: uniqueSymbolsCount,
-                                            trades_learned: totalTrades,
-                                            win_rate: parseFloat(globalWR),
-                                            pnl: totalNet,
-                                            symbols_list: symbolsList,
-                                            sim_start: minStart ? minStart.toISOString() : '─',
-                                            sim_end: maxEnd ? maxEnd.toISOString() : '─',
-                                            investment_style: style
-                                        });
-                                    }
+                                    const style = data[0]?.investment_style || 'Normal';
+
+                                    saveSimulationToHistory({
+                                        symbols_count: uniqueSymbolsCount,
+                                        trades_learned: totalTrades,
+                                        win_rate: parseFloat(globalWR),
+                                        pnl: totalNet,
+                                        symbols_list: symbolsList,
+                                        sim_start: minStart ? minStart.toISOString() : '─',
+                                        sim_end: maxEnd ? maxEnd.toISOString() : '─',
+                                        investment_style: style
+                                    });
+                                }
 
                             } else {
                                 // ── EN PROGRESO ──
@@ -3493,9 +3613,302 @@
         // ACTUALIZACIÓN PRINCIPAL
         // ═══════════════════════════════════════════════════════
         let prevBid = 0;
-        let currentSymbol = null;
-
         // Seleccionador manual de symbol eliminado: la estrategia corre en estricto modo secuencial.
+
+        let currentNewsView = 'grid'; // 'grid' | 'list'
+
+        function switchNewsView(view) {
+            currentNewsView = view;
+            const gridCont = document.getElementById('news-grid-container');
+            const listCont = document.getElementById('news-list-container');
+            const btnGrid = document.getElementById('btn-news-grid');
+            const btnList = document.getElementById('btn-news-list');
+
+            if (view === 'grid') {
+                gridCont.style.display = 'block';
+                listCont.style.display = 'none';
+                btnGrid.style.background = 'var(--accent)';
+                btnGrid.style.color = 'black';
+                btnList.style.background = 'transparent';
+                btnList.style.color = 'white';
+                loadGlobalNewsMatrix();
+            } else {
+                gridCont.style.display = 'none';
+                listCont.style.display = 'block';
+                btnGrid.style.background = 'transparent';
+                btnGrid.style.color = 'white';
+                btnList.style.background = 'var(--accent)';
+                btnList.style.color = 'black';
+                if (focusSymbol) loadNewsHistory(focusSymbol);
+            }
+        }
+
+        async function loadGlobalNewsMatrix() {
+            const body = document.getElementById('news-grid-body');
+            const head = document.getElementById('news-grid-head');
+            if (!body || !head) return;
+
+            try {
+                const res = await fetch('/api/all_news_history');
+                const data = await res.json();
+                if (data.status !== 'success') throw new Error(data.message);
+
+                const history = data.history || {};
+                // Extraer todas las fechas únicas
+                const datesSet = new Set();
+                Object.values(history).forEach(sHist => {
+                    if (sHist && typeof sHist === 'object') {
+                        Object.keys(sHist).forEach(d => datesSet.add(d));
+                    }
+                });
+                
+                const sortedDates = Array.from(datesSet).sort().reverse().slice(0, 10); // Últimas 10 fechas
+
+                // Render Head
+                head.innerHTML = `
+                    <tr>
+                        <th style="padding:12px; text-align:left; color:var(--muted); width:100px;">SÍMBOLO</th>
+                        ${sortedDates.map(d => `<th style="padding:12px; color:var(--muted); min-width:80px;">${d}</th>`).join('')}
+                    </tr>
+                `;
+
+                // Render Body - Asegurar que MARKET aparezca primero y con orden coherente
+                const allSymbols = Object.keys(history);
+                const otherSymbols = allSymbols.filter(s => s !== "MARKET").sort();
+                const symbols = allSymbols.includes("MARKET") ? ["MARKET", ...otherSymbols] : otherSymbols;
+
+                if (symbols.length === 0) {
+                    body.innerHTML = '<tr><td colspan="10" style="padding:40px; color:var(--muted);">No hay historial de noticias disponible.</td></tr>';
+                    return;
+                }
+
+                // Asegurar que MARKET aparezca primero si existe
+                if (history["MARKET"] && !symbols.includes("MARKET")) {
+                    symbols.unshift("MARKET");
+                }
+
+                body.innerHTML = symbols.map(sym => {
+                    const row = history[sym];
+                    return `
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03); transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:12px; text-align:left; font-weight:700; color:var(--accent);">${sym}</td>
+                            ${sortedDates.map(d => {
+                                const val = row[d];
+                                
+                                // Caso 1: No existe el registro en absoluto
+                                if (!val) {
+                                    return '<td style="padding:12px; color:rgba(255,255,255,0.05); font-weight:300;">0.00</td>';
+                                }
+                                
+                                // Caso 2: Pendiente de descargar (MARKET u otros)
+                                if (val.source === 'pending') {
+                                    return '<td style="padding:12px; color:rgba(255,255,255,0.1); font-style:italic; animation: pulse 1.5s infinite;">0.00</td>';
+                                }
+
+                                // Caso 3: Procesado pero sin noticias encontradas
+                                if (!val.headlines || val.headlines.length === 0) {
+                                    return '<td style="padding:12px; color:rgba(255,255,255,0.05);" title="Sin noticias encontradas">0.00</td>';
+                                }
+                                
+                                // Mostrar raw score -1.0 a 1.0
+                                const scoreDisplay = typeof val.score === 'number' ? val.score.toFixed(2) : '?.??';
+                                const color = val.score > 0.2 ? '#00ffa3' : (val.score < -0.2 ? '#ff2b5e' : '#9ca3af');
+                                const bg = val.score > 0.2 ? 'rgba(0,255,163,0.1)' : (val.score < -0.2 ? 'rgba(255,43,94,0.1)' : 'rgba(156,163,175,0.1)');
+                                
+                                // Escapar comillas para el tooltip para no romper el atributo 'title'
+                                const safeTitles = (val.headlines && val.headlines.length > 0) ? 
+                                    String(val.headlines[0]).replace(/"/g, '&quot;') : 'Sin titulares';
+                                const safeReason = String(val.reasoning || 'Sin detalle').replace(/"/g, '&quot;');
+                                const tooltip = `${safeTitles}\n---\nRazonamiento: ${safeReason}`;
+                                
+                                return `
+                                    <td style="padding:8px;">
+                                         <div onclick="openNewsModal('${sym}', '${d}')" 
+                                             title="${tooltip}"
+                                             style="cursor:pointer; background:${bg}; color:${color}; padding:6px; border-radius:6px; font-weight:800; border:1px solid ${color}33;">
+                                            ${scoreDisplay}
+                                        </div>
+                                    </td>
+                                `;
+                            }).join('')}
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                console.error("Error loading matrix", e);
+                body.innerHTML = `<tr><td colspan="10" style="padding:40px; color:var(--red);">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function drillDownNews(symbol, date) {
+            focusSymbol = symbol;
+            switchNewsView('list');
+            // Aquí podríamos filtrar por fecha si quisiéramos, pero por ahora mostramos todo el historial del símbolo
+            loadNewsHistory(symbol);
+        }
+
+        async function loadNewsHistory(symbol) {
+            if (!symbol) return;
+            const container = document.getElementById('news-history-container');
+            const label = document.getElementById('news-symbol-label');
+            if (label) label.textContent = symbol === 'GLOBAL' ? 'GLOBAL' : symbol;
+            if (!container) return;
+
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Cargando historial de noticias...</div>';
+
+            try {
+                // El router de simulación tiene este endpoint
+                const res = await fetch(`/api/news_history?symbol=${symbol}`);
+                const data = await res.json();
+
+                if (!data || data.history.length === 0) {
+                    container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:40px;">No hay noticias registradas para este símbolo en la simulación.</div>';
+                    return;
+                }
+
+                container.innerHTML = data.history.map(item => `
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:12px; padding:18px; transition:all 0.3s; cursor:pointer;"
+                         onclick="openNewsModal('${symbol}', '${item.date}')">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                            <div style="font-size:12px; color:var(--muted); font-family:'JetBrains Mono';">${item.date}</div>
+                            <div style="background:${item.score >= 0 ? 'rgba(0,255,163,0.1)' : 'rgba(255,43,94,0.1)'}; color:${item.score >= 0 ? 'var(--green)' : 'var(--red)'}; padding:4px 10px; border-radius:6px; font-weight:700; font-size:13px; border:1px solid ${item.score >= 0 ? 'rgba(0,255,163,0.2)' : 'rgba(255,43,94,0.2)'};">
+                                ${item.score > 0 ? '+' : ''}${item.score.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style="color:white; font-size:14px; line-height:1.6; font-weight:500; margin-bottom:10px;">
+                            ${item.headlines && item.headlines.length > 0 ? item.headlines[0] : 'Sin titulares'}
+                        </div>
+                        ${item.reasoning ? `
+                        <div style="color:var(--accent2); font-size:12.5px; line-height:1.5; font-style:italic; padding-left:12px; border-left:2px solid var(--accent2); margin-top:8px; opacity:0.9;">
+                            ${item.reasoning}
+                        </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                console.error("Error loading news history", e);
+                container.innerHTML = '<div style="color:var(--red); text-align:center; padding:20px;">Error cargando noticias.</div>';
+            }
+        }
+
+        let globalNewsData = null; // Cache local para el modal
+
+        async function openNewsModal(symbol, date) {
+            const overlay = document.getElementById('news-modal-overlay');
+            const title = document.getElementById('news-modal-title');
+            const body = document.getElementById('news-modal-body');
+            
+            overlay.style.display = 'flex';
+            title.innerHTML = `Noticias: <span style="color:var(--accent)">${symbol}</span> <span style="color:var(--muted); font-size:14px; margin-left:10px;">${date}</span>`;
+            body.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">Analizando datos históricos...</div>';
+
+            try {
+                // Primero intentamos usar los datos de la matriz global si ya se cargó
+                if (!globalNewsData) {
+                    const res = await fetch('/api/all_news_history');
+                    const d = await res.json();
+                    if (d.status === 'success') globalNewsData = d.history;
+                }
+
+                let newsItem = null;
+                if (globalNewsData && globalNewsData[symbol] && globalNewsData[symbol][date]) {
+                    newsItem = globalNewsData[symbol][date];
+                } else {
+                    // Si no está en la matriz, buscar por símbolo individual
+                    const res = await fetch(`/api/news_history?symbol=${symbol}`);
+                    const d = await res.json();
+                    if (d.status === 'success') {
+                        newsItem = d.history.find(h => h.date === date);
+                    }
+                }
+
+                if (!newsItem) {
+                    body.innerHTML = '<div style="text-align:center; color:var(--red);">No se encontraron detalles para este día.</div>';
+                    return;
+                }
+
+                const score = newsItem.score || 0;
+                const scoreColor = score > 0.1 ? 'var(--green)' : (score < -0.1 ? 'var(--red)' : 'var(--yellow)');
+                
+                body.innerHTML = `
+                    <div style="margin-bottom:24px; padding:16px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <span style="font-weight:700; color:var(--muted); font-size:12px; text-transform:uppercase;">Resumen del Sentimiento</span>
+                            <span style="background:${scoreColor}22; color:${scoreColor}; padding:4px 12px; border-radius:20px; font-weight:800; border:1px solid ${scoreColor}44;">
+                                ${(score >= 0 ? '+' : '') + score.toFixed(2)}
+                            </span>
+                        </div>
+                        <div style="color:white; font-size:15px; line-height:1.6; font-style:italic; border-left:3px solid ${scoreColor}; padding-left:16px;">
+                            "${newsItem.reasoning || 'Sin razonamiento detallado.'}"
+                        </div>
+                    </div>
+
+                    <div style="font-weight:700; color:var(--muted); font-size:12px; text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                        <span>📜 Titulares Analizados</span>
+                        <span style="background:rgba(255,255,255,0.05); padding:2px 8px; border-radius:6px; font-size:11px;">${newsItem.headlines ? newsItem.headlines.length : 0}</span>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        ${(newsItem.headlines || []).map(h => `
+                            <div class="news-headline-item">
+                                <span style="color:var(--accent2); margin-right:8px;">●</span> ${h}
+                            </div>
+                        `).join('') || '<div style="color:var(--muted); font-style:italic;">No se guardaron titulares para este registro.</div>'}
+                    </div>
+                `;
+
+            } catch (err) {
+                body.innerHTML = `<div style="text-align:center; color:var(--red);">Error al recuperar datos: ${err.message}</div>`;
+            }
+        }
+
+        function closeNewsModal() {
+            document.getElementById('news-modal-overlay').style.display = 'none';
+        }
+
+        function renderSentimentFromState(fullState) {
+            // Buscamos si algún símbolo tiene razonamiento en el estado actual
+            // En simulación, el estado suele ser un objeto con los símbolos como llaves
+            if (!fullState) return;
+            
+            let currentSentiment = null;
+            let currentReasoning = null;
+            
+            // Si el foco está en un símbolo, ver si ese tiene sentimiento
+            if (focusSymbol && fullState[focusSymbol]) {
+            }
+
+            
+            if (sidebarSentiment && currentSentiment !== null && currentSentiment !== undefined) {
+                sidebarSentiment.textContent = (currentSentiment >= 0 ? '+' : '') + currentSentiment.toFixed(2);
+                sidebarSentiment.className = 'kv-val ' + (currentSentiment > 0.1 ? 'g' : (currentSentiment < -0.1 ? 'r' : 'y'));
+            }
+            
+            if (sidebarReasoning && currentReasoning) {
+                sidebarReasoning.textContent = currentReasoning;
+                sidebarReasoning.style.display = 'block';
+            } else if (sidebarReasoning) {
+                sidebarReasoning.style.display = 'none';
+            }
+        }
+
+        function focusOnSymbol(symbol) {
+            focusSymbol = symbol;
+            manualFocus = true;
+            // Actualizar pestañas, charts, etc.
+            if (typeof updateChartsForSymbol === 'function') updateChartsForSymbol(symbol);
+            
+            // Cargar noticias automáticamente al cambiar de foco
+            loadNewsHistory(symbol);
+            
+            // Marcar fila como activa en la tabla
+            document.querySelectorAll('#main-table-body tr').forEach(tr => {
+                tr.classList.remove('active-row');
+                if (tr.dataset.symbol === symbol) tr.classList.add('active-row');
+            });
+        }
 
         function updateUI(fullState) {
             if (!fullState) return;
@@ -4030,6 +4443,11 @@
                 document.getElementById('ai-detailed-size').textContent = `${sizeMult}% (${sizeMult > 100 ? 'Aumentado' : sizeMult < 100 ? 'Reducido' : 'Normal'})`;
                 document.getElementById('ai-detailed-size').style.color = sizeMult > 100 ? "var(--green)" : sizeMult < 100 ? "var(--red)" : "var(--accent2)";
             }
+
+            // Render sentiment from state
+            if (typeof renderSentimentFromState === 'function') {
+                renderSentimentFromState(fullState);
+            }
         }
 
         // ═══════════════════════════════════════════════════════
@@ -4193,6 +4611,7 @@
 
             document.getElementById('btn-cancelar-sim').onclick = () => overlay.remove();
             document.getElementById('btn-confirmar-sim').onclick = () => {
+                setProcessing(true);
                 fetch('/api/restart_sim', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4200,6 +4619,7 @@
                 })
                     .then(res => res.json())
                     .then(data => {
+                        setProcessing(false);
                         showToast(data.message || 'Reinicio solicitado');
                         overlay.remove();
                         window._completionToastShown = false;
@@ -4210,7 +4630,8 @@
         }
 
         function resetAllData() {
-            // Montar un modal personalizado en vez de usar window.confirm nativo que falla en algunos navegadores
+            if (isProcessingAction) return;
+            // Montar un modal personalizado
             const overlay = document.createElement('div');
             overlay.style.position = 'fixed';
             overlay.style.top = '0'; overlay.style.left = '0';
@@ -4520,7 +4941,7 @@
             try {
                 // Read current AI accuracy from UI element if available
                 const accText = document.getElementById('neural-accuracy')?.textContent || '0';
-                const accuracy = parseFloat(accText.replace('%','').replace(',','.')) || 0;
+                const accuracy = parseFloat(accText.replace('%', '').replace(',', '.')) || 0;
 
                 const payload = {
                     timestamp: new Date().toISOString(),
@@ -4544,7 +4965,7 @@
                 if (data.status === 'success') {
                     showToast('📜 Simulación guardada en el historial', 'success');
                 }
-            } catch(e) {
+            } catch (e) {
                 console.warn('No se pudo guardar en el historial:', e);
             }
         }
@@ -4606,9 +5027,9 @@
                     const wrColor = h.win_rate >= 55 ? 'var(--green)' : h.win_rate >= 45 ? 'var(--yellow)' : 'var(--red)';
                     const accColor = h.accuracy >= 60 ? 'var(--green)' : h.accuracy >= 50 ? 'var(--yellow)' : 'var(--muted)';
                     const symbolsJson = JSON.stringify(h.symbols_list || []).replace(/"/g, '&quot;');
-                    
-                    const simStart = (h.sim_start && h.sim_start !== '─') ? new Date(h.sim_start).toLocaleDateString('es-CO', { day:'2-digit', month:'short' }) : '─';
-                    const simEnd   = (h.sim_end && h.sim_end !== '─') ? new Date(h.sim_end).toLocaleDateString('es-CO', { day:'2-digit', month:'short' }) : '─';
+
+                    const simStart = (h.sim_start && h.sim_start !== '─') ? new Date(h.sim_start).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '─';
+                    const simEnd = (h.sim_end && h.sim_end !== '─') ? new Date(h.sim_end).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : '─';
                     const rangeStr = simStart === '─' ? '─' : `${simStart} - ${simEnd}`;
 
                     const style = h.investment_style || 'Normal';
@@ -4629,7 +5050,7 @@
                         </td>
                         <td style="text-align:center; font-weight:700;">${h.trades_learned}</td>
                         <td style="text-align:center;"><span style="color:${wrColor}; font-weight:700;">${h.win_rate.toFixed(1)}%</span></td>
-                        <td style="text-align:center;"><span style="color:${accColor}; font-weight:700;">${h.accuracy > 0 ? h.accuracy.toFixed(1)+'%' : '─'}</span></td>
+                        <td style="text-align:center;"><span style="color:${accColor}; font-weight:700;">${h.accuracy > 0 ? h.accuracy.toFixed(1) + '%' : '─'}</span></td>
                         <td style="text-align:right;"><span class="${pnlClass}">${pnlStr}</span></td>
                     </tr>`;
                 }).join('');
@@ -4651,22 +5072,22 @@
                         </thead>
                         <tbody>${rows}</tbody>
                     </table>`;
-            } catch(e) {
+            } catch (e) {
                 container.innerHTML = `<div class="hist-empty">❌ Error al cargar el historial: ${e.message}</div>`;
             }
         }
         // Función para mostrar la lista de símbolos en un mini-modal
-        window.showSymbolsModal = function(symbolsJson) {
+        window.showSymbolsModal = function (symbolsJson) {
             try {
                 const symbols = JSON.parse(symbolsJson.replace(/&quot;/g, '"'));
-                const listHtml = symbols.length > 0 
+                const listHtml = symbols.length > 0
                     ? symbols.map(s => `<span class="symbol-tag" style="margin:2px; display:inline-block;">${s}</span>`).join('')
                     : '<div style="color:var(--muted); font-size:12px; padding:10px;">No hay símbolos registrados.</div>';
 
                 const overlay = document.createElement('div');
                 overlay.id = 'temp-symbols-modal';
                 overlay.style.cssText = 'position:fixed; inset:0; z-index:99999999; background:rgba(0,0,0,0.8); backdrop-filter:blur(4px); display:flex; justify-content:center; align-items:center;';
-                overlay.onclick = (e) => { if(e.target === overlay) overlay.remove(); };
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
                 const panel = document.createElement('div');
                 panel.style.cssText = 'background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; width:90%; max-width:400px; box-shadow:0 10px 40px rgba(0,0,0,0.8);';
@@ -5197,7 +5618,8 @@
                     <span style="color:#546e7a; font-size:10px; white-space:nowrap; align-self:center;">🧠 Train:</span>
                     <button onclick="togglePackWinners()" title="Tus favoritas marcadas con ⭐"
                         style="flex:1.2; background:linear-gradient(135deg,#00bfa5,#00695c); color:#e0f2f1; border:1px solid #00897b; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">💎
-                        Mejores<br><span id="count-winners-btn" style="font-size:9px; opacity:0.75;">Tus Top 7</span></button>
+                        Mejores<br><span id="count-winners-btn" style="font-size:9px; opacity:0.75;">Tus Top
+                            7</span></button>
                     <button onclick="togglePackGrowth()"
                         title="ARM, SMCI, AI, IONQ, RBLX, DDOG, NET, MDB, ZS, TWLO, HOOD, SOFI, AFRM, PLTR..."
                         style="flex:1; background:linear-gradient(135deg,#1565c0,#0d47a1); color:#90caf9; border:1px solid #1976d2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🚀
@@ -5332,7 +5754,7 @@
 
     <script>
         // ─── GESTOR DE SÍMBOLOS MAESTRO (assets.json) ───
-        
+
         // Manejo de Favoritos (Mejores) en localStorage
         function getFavorites() {
             const stored = localStorage.getItem('hapi_favorites');
@@ -5387,7 +5809,7 @@
                     const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
                     const recSet = new Set(getRecommendedTop());
                     const favsSet = new Set(getFavorites());
-                    
+
                     sortedAssets.forEach(item => {
                         const isEn = item.enabled !== false;
                         const isRec = recSet.has(item.symbol);
@@ -5832,6 +6254,53 @@
             document.body.appendChild(overlay);
         }
 
+        /**
+         * Muestra un modal de confirmación premium.
+         * Retorna una Promesa que se resuelve a true (Confirmado) o false (Cancelado).
+         */
+        function showConfirm(title, message, confirmText = "CONFIRMAR", type = "primary") {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                const overlay = document.getElementById('symbol-modal-overlay');
+                const titleEl = document.getElementById('confirm-title');
+                const msgEl = document.getElementById('confirm-msg');
+                const okBtn = document.getElementById('confirm-ok');
+                const cancelBtn = document.getElementById('confirm-cancel');
+                const iconEl = document.getElementById('confirm-icon');
+
+                titleEl.innerText = title;
+                msgEl.innerText = message;
+                okBtn.innerText = confirmText;
+                
+                // Estilos según tipo
+                if (type === 'danger') {
+                    okBtn.style.background = 'var(--red)';
+                    okBtn.style.color = 'white';
+                    iconEl.innerText = '🗑️';
+                } else {
+                    okBtn.style.background = 'var(--accent)';
+                    okBtn.style.color = 'black';
+                    iconEl.innerText = '⚠️';
+                }
+
+                const cleanup = (result) => {
+                    modal.classList.remove('visible');
+                    overlay.classList.remove('visible');
+                    okBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                    overlay.onclick = toggleSymbolModal; // Restaurar original si es necesario
+                    resolve(result);
+                };
+
+                okBtn.onclick = () => cleanup(true);
+                cancelBtn.onclick = () => cleanup(false);
+                overlay.onclick = () => cleanup(false);
+
+                overlay.classList.add('visible');
+                modal.classList.add('visible');
+            });
+        }
+
     </script>
 
     <!-- Symbol Selection Modal (Para Live Paper) -->
@@ -5886,6 +6355,31 @@
         </div>
     </div>
 
+    <div id="confirm-modal" class="symbol-modal" style="width: 400px; padding: 30px; text-align: center; border-color: rgba(255,255,255,0.1);">
+        <div id="confirm-icon" style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+        <h3 id="confirm-title" style="margin-bottom: 12px; font-size: 20px; color: white;">¿Confirmar Acción?</h3>
+        <p id="confirm-msg" style="color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 24px;">Esta es una descripción de la acción.</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="confirm-cancel" class="hdr-btn" style="padding: 10px 20px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;">CANCELAR</button>
+            <button id="confirm-ok" class="hdr-btn" style="padding: 10px 30px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">CONFIRMAR</button>
+        </div>
+    </div>
+
+    <!-- NEWS MODAL (DIÁLOGO) -->
+    <div id="news-modal-overlay" class="news-modal-overlay" onclick="if(event.target===this) closeNewsModal()">
+        <div class="news-modal">
+            <div class="news-modal-header">
+                <h3 id="news-modal-title" style="margin:0; font-size:18px; color:white;">Noticias</h3>
+                <button class="news-modal-close" onclick="closeNewsModal()">✕</button>
+            </div>
+            <div id="news-modal-body" class="news-modal-body">
+                <!-- Content injected via JS -->
+            </div>
+            <div style="padding:16px; border-top:1px solid rgba(255,255,255,0.05); text-align:right;">
+                <button onclick="closeNewsModal()" style="background:var(--accent); color:black; border:none; padding:8px 24px; border-radius:8px; font-weight:700; cursor:pointer;">CERRAR</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

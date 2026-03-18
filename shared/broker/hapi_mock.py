@@ -283,6 +283,14 @@ class HapiMock(BrokerInterface):
         self._last_buy_qty   = order.qty
         self._stats.total_fees += comm
         
+        # Record Buy in history for "Last Order" tracking
+        self._stats.trade_history.append({
+            "side": "BUY",
+            "price": actual_fill_price,
+            "qty": order.qty,
+            "timestamp": timestamp or datetime.now(timezone.utc).isoformat()
+        })
+        
         try:
             from shared.utils.state_writer import _state
             _state.total_fees_paid += comm
@@ -331,7 +339,7 @@ class HapiMock(BrokerInterface):
         )
         log.info(f"🏦 IBKR FEES COBRADOS: Com=${comm:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
         
-        self._stats.record_trade(net_pnl, current_balance=self._cash)
+        self._stats.record_trade(net_pnl, current_balance=self._cash, price=actual_fill_price, timestamp=timestamp)
         
         # Update global state
         try:

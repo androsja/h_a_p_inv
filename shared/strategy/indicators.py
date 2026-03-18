@@ -154,16 +154,21 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             confirmations.clear()
             blocks.append("Filtro de calidad (RSI/ADX)")
 
+
     # Venta de emergencia
     if signal == SIGNAL_HOLD and close_now < ema_20_now and macd_now < macd_prev and macd_now < 0:
         signal = SIGNAL_SELL
         confirmations.append("🛡️ Venta forzada: pérdida de estructura")
 
     # ML Features
+    _vwap_dist = (close_now - vwap_now) / vwap_now * 100 if vwap_now > 0 else 0.0
+    _hour_ny = float(df.index[-1].hour) if hasattr(df.index[-1], 'hour') else 10.0
     ml_features = {
+        'symbol': symbol,
+        'hour_of_day': _hour_ny,
+        'vwap_dist_pct': _vwap_dist,
         'rsi': rsi_now, 'macd_hist': macd_now, 
         'ema_diff_pct': (ema_f_now - ema_s_now) / close_now * 100,
-        'vwap_dist_pct': (close_now - vwap_now) / vwap_now * 100 if vwap_now > 0 else 0,
         'atr_pct': atr_pct, 'adx': adx_now, 'regime': current_regime,
         'vol_ratio': vol_ratio, 'zscore_vwap': zscore_now,
         'num_confirmations': len(confirmations),
@@ -199,3 +204,4 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
         ml_features=ml_features, regime=current_regime
     )
+

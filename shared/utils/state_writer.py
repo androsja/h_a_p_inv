@@ -253,7 +253,7 @@ def update_state(
         ai_win_prob=ai_win_prob,
         ai_recommendation=ai_recommendation,
         ai_expected_up=ai_expected_up,
-        ai_expected_down=ai_expected_down
+        ai_expected_down=ai_expected_down,
     )
     
     with _state_lock:

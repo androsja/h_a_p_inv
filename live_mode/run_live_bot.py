@@ -72,15 +72,24 @@ def run_symbol_live(
       9. Dormir 60s
     """
     from shared.broker.alpaca_paper import AlpacaPaperBroker
+    from shared.broker.virtual_live import VirtualLiveBroker
     from shared.utils.neural_filter import get_neural_filter
 
     log.info(f"[LIVE:{symbol}] 🚀 Hilo iniciado")
 
-    broker = AlpacaPaperBroker(
-        symbol=symbol,
-        api_key=api_key,
-        secret_key=secret_key,
-    )
+    live_mode_type = _read_live_cmd("live_mode", "PAPER") # PAPER, DEMO, REAL
+
+    if live_mode_type == "DEMO":
+        broker = VirtualLiveBroker(
+            symbol=symbol,
+            initial_cash=initial_cash,
+        )
+    else:
+        broker = AlpacaPaperBroker(
+            symbol=symbol,
+            api_key=api_key,
+            secret_key=secret_key,
+        )
 
     # ── Inicializar cuenta y gestión de riesgo ────────────────────────────────
     # Usamos el balance forzado configurado por el usuario ($25,000)
@@ -205,6 +214,9 @@ def run_symbol_live(
                             try:
                                 ml_f = position.ml_features
                                 fv = nf.build_features(
+                                    symbol=ml_f.get("symbol", symbol),
+                                    hour_of_day=ml_f.get("hour_of_day", 10.0),
+                                    vwap_dist_pct=ml_f.get("vwap_dist_pct", 0.0),
                                     rsi=ml_f.get("rsi", 50.0),
                                     macd_hist=ml_f.get("macd_hist", 0.0),
                                     atr_pct=ml_f.get("atr_pct", 0.0),
@@ -310,6 +322,9 @@ def run_symbol_live(
                     try:
                         ml_f = signal.ml_features
                         fv = nf.build_features(
+                            symbol=ml_f.get("symbol", symbol),
+                            hour_of_day=ml_f.get("hour_of_day", 10.0),
+                            vwap_dist_pct=ml_f.get("vwap_dist_pct", 0.0),
                             rsi=ml_f.get("rsi", 50.0),
                             macd_hist=ml_f.get("macd_hist", 0.0),
                             atr_pct=ml_f.get("atr_pct", 0.0),
@@ -444,6 +459,9 @@ def run_symbol_live(
                         ml_f = sp.entry_metadata.get("ml_features", {})
                         if ml_f:
                             fv = nf.build_features(
+                                symbol=ml_f.get("symbol", symbol),
+                                hour_of_day=ml_f.get("hour_of_day", 10.0),
+                                vwap_dist_pct=ml_f.get("vwap_dist_pct", 0.0),
                                 rsi=ml_f.get("rsi", 50.0),
                                 macd_hist=ml_f.get("macd_hist", 0.0),
                                 atr_pct=ml_f.get("atr_pct", 0.0),

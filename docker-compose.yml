@@ -14,6 +14,7 @@ services:
       - HAPI_IS_TEST_MODE=true
     command: [ "python", "simulation_mode/main_sim.py" ]
     volumes:
+      - ./.env:/app/.env
       - ./simulation_mode:/app/simulation_mode
       - ./data:/app/data
       - ./logs:/app/logs
@@ -144,6 +145,7 @@ services:
         limits:
           cpus: "1.0"
           memory: "1024M"
+
 
 # ─── Volúmenes compartidos ────────────────────────────────────────────────────
 # (Usando bind mounts directos para mayor transparencia)

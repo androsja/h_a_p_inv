@@ -24,6 +24,8 @@ from shared.config import (
 router = APIRouter(prefix="/api", tags=["simulation"])
 
 
+
+
 # ─── Request Models ──────────────────────────────────────────────────────────
 
 class ResetRequest(BaseModel):
@@ -280,14 +282,14 @@ async def paper_trade_start(req: PaperTradeRequest):
         symbol_list = [s.strip().upper() for s in req.symbols.split(",") if s.strip()]
         if not symbol_list:
             return {"status": "error", "message": "No se proporcionaron símbolos válidos."}
+        
         data["force_paper_trading"] = True
         data["force_symbols"] = symbol_list
-        data["force_symbol"] = symbol_list[0]
-        data["reset_all"] = True
         data["mock_time_930"] = req.mockTime
+        
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
-        return {"status": "success", "message": f"Iniciando Live Paper con: {', '.join(symbol_list)}. Reiniciando Bot."}
+        return {"status": "success", "message": f"Iniciando Live Paper con: {', '.join(symbol_list)}."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -308,3 +310,5 @@ async def paper_trade_stop():
         return {"status": "success", "message": "Live Paper Trading detenido. Volviendo a la Simulación Global."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
