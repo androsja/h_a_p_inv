@@ -79,8 +79,10 @@ def main():
     
     try:
         runner.main_loop(args)
+    except SessionInterrupted:
+        log.info("📢 Simulación interrumpida por comando global.")
     except KeyboardInterrupt:
-        log.info("\n🛑 Proceso detenido por el usuario (Ctrl+C).")
+        log.info("\n🛑 Proceso detenido por el usuario.")
     except Exception as e:
         log.critical(f"💥 Error fatal en el sistema: {e}", exc_info=True)
     finally:

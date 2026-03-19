@@ -105,7 +105,10 @@ class SimulationRunner:
                     # but index.html usually derives it from assets.json or history.
                     # We ensure we have symbols to start.
                 )
-                log.info(f"📋 Cargadas {len(self.all_symbols)} empresas para simular.")
+                # Solo loguear si es la primera vez o si cambió la lista
+                if not getattr(self, '_last_symbols_count', None) == len(self.all_symbols):
+                    log.info(f"📋 Cargadas {len(self.all_symbols)} empresas para simular.")
+                    self._last_symbols_count = len(self.all_symbols)
         except Exception as e:
             log.warning(f"⚠️ Error recargando símbolos: {e}")
 
@@ -179,7 +182,10 @@ class SimulationRunner:
         if is_lp and force_symbols:
             log.info(f"🚀 Modo Live Paper detectado ({len(force_symbols)} símbolos).")
             from shared.utils.live_paper_launcher import launch_parallel_bots
-            launch_parallel_bots(args, force_symbols, self.session_num, self.run_bot_logic, self.init_broker, save_simulation_checkpoint)
+            try:
+                launch_parallel_bots(args, force_symbols, self.session_num, self.run_bot_logic, self.init_broker, save_simulation_checkpoint)
+            except SessionInterrupted:
+                log.info("📢 Live Paper interrumpido por comando global.")
             return True
         return False
 

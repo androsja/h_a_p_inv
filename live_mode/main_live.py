@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
         p.symbol = fixed
     return p
 
-def init_broker_callback(args: argparse.Namespace) -> BrokerInterface:
+def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     """Inicializa el bróker basado en si es Paper o Real Live."""
     # Detectar si hay anulación de Live Paper desde comandos globales
     is_lp_override = False
@@ -88,8 +88,8 @@ def main():
     
     try:
         runner.main_loop(args)
-    except KeyboardInterrupt:
-        log.info("\n🛑 Proceso LIVE detenido por el usuario.")
+    except SessionInterrupted:
+        log.info("📢 Proceso LIVE interrumpido (Reinicio solicitado).")
     except Exception as e:
         log.critical(f"💥 Error fatal en modo LIVE: {e}", exc_info=True)
     finally:
