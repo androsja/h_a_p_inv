@@ -138,8 +138,9 @@ async def get_neural_stats():
                 with open(ML_DATASET_FILE, newline="", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
                     for row in reader:
-                        label = int(float(row.get("label", 0)))
-                        wins += label
+                        # La columna objetivo se llama 'is_win' en ml_dataset.csv, no 'label'
+                        is_win = int(float(row.get("is_win", 0)))
+                        wins += is_win
                         n += 1
                 losses = n - wins
             except Exception:

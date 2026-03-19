@@ -211,16 +211,43 @@ async def live_index():
 @app.websocket("/ws/sim")
 async def websocket_sim(websocket: WebSocket):
     await manager.connect(websocket, mode="sim")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] WS_SIM: Cliente conectado. Intentando inyección inicial...")
+    
+    # Enviar estado actual INMEDIATAMENTE al conectar para evitar pantalla "Cargando..."
+    try:
+        if config.STATE_FILE_SIM.exists():
+            content = config.STATE_FILE_SIM.read_text(encoding="utf-8")
+            data = json.loads(content)
+            data["logs"] = read_last_logs()
+            await websocket.send_json(data)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] WS_SIM: Inyección inicial enviada ({len(content)} bytes)")
+        else:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] WS_SIM: Archivo de estado NO hallado en {config.STATE_FILE_SIM}")
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] WS_SIM: Error en inyección inicial: {e}")
+
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] WS_SIM: Cliente desconectado")
         manager.disconnect(websocket)
 
 
 @app.websocket("/ws/live")
 async def websocket_live(websocket: WebSocket):
     await manager.connect(websocket, mode="live")
+    
+    # Enviar estado actual INMEDIATAMENTE al conectar
+    try:
+        if config.STATE_FILE_LIVE.exists():
+            content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
+            data = json.loads(content)
+            data["logs"] = read_last_logs()
+            await websocket.send_json(data)
+    except Exception as e:
+        print(f"Initial sync error (live): {e}")
+
     try:
         while True:
             await websocket.receive_text()

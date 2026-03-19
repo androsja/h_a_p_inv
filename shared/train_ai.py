@@ -7,36 +7,17 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier, export_text
 
 # 1. Recolectar datos
-data = []
-for log_file in glob.glob('logs/historial_*.log'):
-    with open(log_file, 'r') as f:
-        for line in f:
-            if 'SAVING TRADE:' in line:
-                try:
-                    # Extraer partes de la línea
-                    # Formato: ... SAVING TRADE: MSFT Pnl=-10.5 Features={'rsi': 50.1, ...}
-                    parts = line.split('SAVING TRADE: ')[1]
-                    symbol = parts.split(' Pnl=')[0]
-                    pnl_str = parts.split(' Pnl=')[1].split(' Features=')[0]
-                    features_str = parts.split(' Features=')[1].strip()
-                    
-                    pnl = float(pnl_str)
-                    features = ast.literal_eval(features_str)
-                    
-                    row = features.copy()
-                    row['symbol'] = symbol
-                    row['pnl'] = pnl
-                    row['target'] = 1 if pnl > 0 else 0  # 1 si ganó (win/TP), 0 si perdió (StopLoss/Whipsaw)
-                    
-                    data.append(row)
-                except Exception as e:
-                    pass
+from shared.config import ML_DATASET_FILE
 
-df = pd.DataFrame(data)
-
-if df.empty:
+if not ML_DATASET_FILE.exists():
     print("Aún no hay suficientes trades (0 registros) para entrenar una IA.")
     exit()
+
+df = pd.read_csv(ML_DATASET_FILE)
+df['target'] = df['is_win']
+
+if len(df) < 20:
+    print(f"\n⏳ Se han detectado {len(df)} trades, pero el Machine Learning requiere al menos 20 para encontrar patrones confiables.")
     
 # Mostrar el número de trades registrados
 wins = len(df[df['target'] == 1])
@@ -59,19 +40,20 @@ clf = DecisionTreeClassifier(max_depth=3, random_state=42)
 clf.fit(X, y)
 
 print("\n🧠 REVELACIÓN DE LA IA (Reglas Descubiertas por el Árbol de Decisión):")
-tree_rules = export_text(clf, feature_names=features_cols)
-# Imprimir reglas limpias
-print(tree_rules)
-
-# Guardar el modelo entrenado para usarlo ráfido en tiempo real
+# Guardar el modelo RandomForest robusto para usarlo en tiempo real
 import joblib
 import os
-os.makedirs('data', exist_ok=True)
-joblib.dump(clf, 'data/ai_model.joblib')
-print("\n✅ MODELO GUARDADO EN: data/ai_model.joblib (Listo para Inferencia Ultra-Rápida)")
 
-# Mostrar la importancia de cada indicador (Feature Importance)
+# Entrenamos el Random Forest para guardarlo como el motor real (Mejor que un solo arbol)
+rf_model = RandomForestClassifier(n_estimators=50, max_depth=5, random_state=42, class_weight='balanced')
+rf_model.fit(X, y)
+
+os.makedirs('data', exist_ok=True)
+joblib.dump(rf_model, 'data/ai_model.joblib')
+print("\n✅ MODELO RANDOM FOREST GUARDADO EN: data/ai_model.joblib (Activo para Live Trading y Simulación)")
+
+# Mostrar la importancia de cada indicador (Feature Importance) del Tree Random Forest
 print("\n📈 PESO DE CADA INDICADOR (¿Cuál es el culpable de hacerte perder o ganar?):")
-importances = pd.Series(clf.feature_importances_, index=features_cols).sort_values(ascending=False)
+importances = pd.Series(rf_model.feature_importances_, index=features_cols).sort_values(ascending=False)
 for feature, imp in importances.items():
     print(f"   - {feature.upper():13}: {imp*100:.1f}% de importancia.")

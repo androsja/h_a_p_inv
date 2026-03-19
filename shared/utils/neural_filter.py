@@ -50,8 +50,8 @@ class NeuralTradeFilter:
     """
     Filtro neuronal online. Aprende con cada trade completado.
 
-    Features de entrada (14 valores normalizados):
-        [symbol_hash, h_norm, vwap_dist_pct, rsi, macd_hist, atr_pct, vol_ratio,
+    Features de entrada (13 valores normalizados):
+        [h_norm, vwap_dist_pct, rsi, macd_hist, atr_pct, vol_ratio,
          ema_spread_pct, zscore_vwap, regime_encoded, num_confirmations,
          adx, has_pattern, is_adx_rising]
     """
@@ -77,8 +77,8 @@ class NeuralTradeFilter:
                 # Validación de arquitectura (si cambiamos el número de features, reseteamos)
                 if self._X:
                     n_features = len(self._X[0])
-                    if n_features != 14:
-                        log.warning(f"⚠️ Arquitectura de features cambió de {n_features} a 14. Reseteando modelo completamente para coherencia.")
+                    if n_features != 13:
+                        log.warning(f"⚠️ Arquitectura de features cambió de {n_features} a 13. Reseteando modelo completamente para coherencia.")
                         self._model = None
                         self._X = []
                         self._y = []
@@ -141,14 +141,10 @@ class NeuralTradeFilter:
         ema_spread_pct = ((ema_fast - ema_slow) / ema_slow * 100) if ema_slow else 0.0
         regime_enc = REGIME_ENCODING.get(regime, 3)  # Default NEUTRAL=3
         
-        # 1. Hashing el símbolo a representación numérica de 32 bits y normalizando a float 0-1
-        symbol_hash = int(hashlib.md5(symbol.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
-        
-        # 2. Normalización de Hora Militar Cíclica (0-23)
+        # Normalización de Hora Militar Cíclica (0-23)
         h_norm = hour_of_day / 24.0
 
         return [
-            symbol_hash,                        # 0-1 Normalizado id contexto entidad
             h_norm,                             # 0-1 Normalizado de hora del día
             np.clip(vwap_dist_pct / 5.0, -1, 1),# -1–1 (cap al 5% distancia vwap)
             rsi / 100.0,                        # 0–1
@@ -264,12 +260,12 @@ class NeuralTradeFilter:
         Reglas derivadas del análisis estadístico de 14 sesiones cuando
         aún no hay suficientes datos para el MLP.
         """
-        rsi_norm        = features[3]   # 0-1
-        macd_norm       = features[4]   # -1 a 1
-        atr_norm        = features[5]   # 0-1
-        vol_norm        = features[6]   # 0-1
-        regime_enc_norm = features[9]   # 0-1
-        num_conf_norm   = features[10]  # 0-1
+        rsi_norm        = features[2]   # 0-1
+        macd_norm       = features[3]   # -1 a 1
+        atr_norm        = features[4]   # 0-1
+        vol_norm        = features[5]   # 0-1
+        regime_enc_norm = features[8]   # 0-1
+        num_conf_norm   = features[9]  # 0-1
 
         rsi         = rsi_norm * 100
         regime_enc  = round(regime_enc_norm * 5)  # 0-5

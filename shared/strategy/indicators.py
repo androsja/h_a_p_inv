@@ -191,12 +191,19 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         # Neural Filter
         try:
             from shared.utils.neural_filter import get_neural_filter
-            proba, _ = get_neural_filter().predict(get_neural_filter().build_features(**ml_features))
+            
+            nf_kwargs = dict(ml_features)
+            nf_kwargs.pop('ema_diff_pct', None)
+            nf_kwargs['ema_fast'] = ema_f_now
+            nf_kwargs['ema_slow'] = ema_s_now
+            
+            proba, _ = get_neural_filter().predict(get_neural_filter().build_features(**nf_kwargs))
             if proba < config.CONFIDENCE_THRESHOLD:
                 signal = SIGNAL_HOLD
                 confirmations.clear()
                 blocks.append(f"🧠 NeuralFilter: Probabilidad baja ({proba*100:.1f}%)")
-        except: pass
+        except Exception as e:
+            log.error(f"Error crítico en Neural Filter: {e}")
 
     return SignalResult(
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,

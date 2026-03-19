@@ -42,6 +42,7 @@ class TradingEngine:
         self.sim_start_date = None
         self.sim_end_date = None
         self.investment_style = "Normal"
+        self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas
 
     def run(self, session_num: int = 1, stop_event: threading.Event = None, asset_type: str = "normal"):
         self.session_num = session_num
@@ -105,6 +106,9 @@ class TradingEngine:
                     self._handle_exit(quote, signal)
                 elif signal.signal == SIGNAL_BUY:
                     self._handle_entry(quote, signal)
+
+                # 4.1 Gestión de Posiciones Fantasma
+                self._handle_ghost_exits(quote, signal)
 
                 # 5. UI Update per iteration
                 if iteration % 2 == 0 or signal.signal != SIGNAL_HOLD:
@@ -224,8 +228,27 @@ class TradingEngine:
                     symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty,
                     stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
                     initial_stop=buy_plan.stop_loss, entry_reason="Technical Signal",
-                    entry_metadata=metadata, ml_features=signal.ml_features
+                    entry_metadata=metadata, ml_features=signal.ml_features,
+                    is_ghost=False
                 )
+        else:
+            # 👻 No es viable para trade real (riesgo/capital/comisión) -> Crear Ghost Trade para aprender
+            if len(self.ghost_positions) < 5:
+                ghost_metadata = {
+                    "confirmations": signal.confirmations,
+                    "ml_prob": signal.ml_features.get('ml_prob', 0.5),
+                    "conf_mult": conf_mult,
+                    "block_reason": buy_plan.block_reason
+                }
+                ghost = OpenPosition(
+                    symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty or 1.0,
+                    stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
+                    initial_stop=buy_plan.stop_loss, entry_reason=f"Ghost: {buy_plan.block_reason}",
+                    entry_metadata=ghost_metadata, ml_features=signal.ml_features,
+                    is_ghost=True
+                )
+                self.ghost_positions.append(ghost)
+                log.info(f"👻 GHOST ENTRY | {self.symbol} | Price={buy_plan.limit_price} | Reason: {buy_plan.block_reason}")
 
     def _calculate_confidence(self, signal):
         try:
@@ -289,7 +312,8 @@ class TradingEngine:
                 vwap_dist_pct=ml_f.get('vwap_dist_pct', 0.0),
                 rsi=ml_f.get('rsi', 50.0), macd_hist=ml_f.get('macd_hist', 0.0),
                 atr_pct=ml_f.get('atr_pct', 0.0), vol_ratio=ml_f.get('vol_ratio', 1.0),
-                ema_fast=ml_f.get('ema_diff_pct', 0.0) + 100, ema_slow=100.0,
+                ema_fast=ml_f.get('ema_fast', 0.0), 
+                ema_slow=ml_f.get('ema_slow', 0.0),
                 zscore_vwap=ml_f.get('zscore_vwap', 0.0), regime=ml_f.get('regime', 'NEUTRAL'),
                 num_confirmations=ml_f.get('num_confirmations', 2),
                 adx=ml_f.get('adx', 20.0),
@@ -299,3 +323,25 @@ class TradingEngine:
             nf.fit(f_vec, won=(pnl > 0))
         except Exception as e:
             log.warning(f"NeuralFit Error: {e}")
+
+    def _handle_ghost_exits(self, quote, signal):
+        """Rastrea la evolución de los trades fantasmas y aprende de ellos al salir."""
+        if not self.risk_mgr: return
+        active_ghosts = []
+        for gp in self.ghost_positions:
+            gp.hold_bars += 1
+            should_exit, reason = self.risk_mgr.should_exit(gp, quote.bid)
+            
+            if should_exit:
+                pnl = gp.pnl(quote.bid)
+                log.info(f"👻 GHOST EXIT | {self.symbol} | PnL: ${pnl:+.2f} | Reason: {reason}")
+                
+                # Aprender del trade fantasma
+                if hasattr(gp, 'ml_features'):
+                    ml_predictor.save_trade(self.symbol, gp.ml_features, pnl)
+                    # No entrenamos el filtro neuronal con fantasmas para no sesgar el riesgo real,
+                    # pero sí alimentamos el dataset del predictor para que sepa qué señales eran buenas.
+            else:
+                active_ghosts.append(gp)
+        
+        self.ghost_positions = active_ghosts

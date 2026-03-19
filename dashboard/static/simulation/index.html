@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IBKR SIMULACIÓN · Dashboard</title>
+    <title>Trading Bot VFINAL</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
@@ -12,6 +12,13 @@
     <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="/static/simulation/js/calendar.js"></script>
+    <script>
+        console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
+        
+        // ... other dashboard script content ...
+
+        console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
+    </script>
     <style>
         *,
         *::before,
@@ -866,9 +873,15 @@
             position: relative;
         }
 
+        #tab-candles.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
         #candle-chart {
             flex: 1;
-            min-height: 0;
+            min-height: 480px; /* Force minimum height for Lightweight Charts */
+            width: 100%;
         }
 
         .candle-overlay {
@@ -1618,11 +1631,14 @@
 
         <!-- ══ HEADER ══ -->
         <header>
-            <div class="logo">
+            <!-- Contenedor del Logo -->
+            <div class="logo-container">
                 <div class="logo-icon">🤖</div>
-                <div>
-                    <div class="logo-text">Trading Bot Pro (IBKR)</div>
-                    <div class="logo-sub">Intraday · Confluencia Multi-Indicador</div>
+                <div class="logo-text">
+                    <div class="title" style="display:flex; align-items:center; gap:8px;">
+                        <span>Trading Bot VFINAL <span style="font-size:10px; opacity:0.6;">(ANTI-CACHE)</span></span>
+                    </div>
+                    <div class="subtitle">Intraday · Confluencia Multi-Indicador</div>
                 </div>
             </div>
 
@@ -2321,14 +2337,25 @@
                 // Mostrar el seleccionado
                 document.getElementById(`tab-${tab}`).classList.add('visible');
                 btn.classList.add('active');
-                // Redimensionar charts si aplica
+                
+                // Redimensionar charts si aplica (con retraso para Reflow de DOM)
                 if (tab === 'candles') {
-                    candleChart.applyOptions({
-                        width: document.getElementById('candle-chart').clientWidth,
-                        height: document.getElementById('candle-chart').clientHeight,
-                    });
+                    window._forceChartRedraw = true; // Forzar repintado completo en el próximo tick
+                    setTimeout(() => {
+                        initCandleChartIfNeeded();
+                        const h = document.getElementById('candle-chart').clientHeight;
+                        if(h > 0 && candleChart) {
+                            candleChart.applyOptions({
+                                width: document.getElementById('candle-chart').clientWidth,
+                                height: h,
+                            });
+                            candleChart.timeScale().fitContent();
+                        }
+                    }, 50);
                 }
-                if (tab === 'pnl') pnlChart.resize();
+                if (tab === 'pnl') {
+                    setTimeout(() => pnlChart.resize(), 50);
+                }
             });
         });
 
@@ -2348,7 +2375,8 @@
         // ─── SYMBOL SELECTOR LOGIC ───
         let selectedSymbols = [];
         let suggestedSymbols = [];
-        let focusSymbol = null; // Símbolo que el usuario está viendo actualmente
+        window.focusSymbol = null; 
+        window.currentSymbol = null; 
         let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
         function toggleSymbolModal() {
@@ -2479,83 +2507,112 @@
         let pnlHistory = [];
 
         // ═══════════════════════════════════════════════════════
-        // CANDLESTICK CHART (TradingView Lightweight Charts)
+        // CANDLESTICK CHART (TradingView Lightweight Charts) - LAZY LOAD
         // ═══════════════════════════════════════════════════════
         const candleEl = document.getElementById('candle-chart');
-        const candleChart = LightweightCharts.createChart(candleEl, {
-            width: candleEl.clientWidth || 800,
-            height: candleEl.clientHeight || 400,
-            layout: { background: { color: '#07101f' }, textColor: '#546180' },
-            grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-            rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
-            timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true, secondsVisible: false },
-        });
-
-        const candleSeries = candleChart.addCandlestickSeries({
-            upColor: '#00e676', downColor: '#ff3d5a',
-            borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
-            wickUpColor: 'rgba(0,230,118,0.6)', wickDownColor: 'rgba(255,61,90,0.6)',
-        });
-        const ema200Series = candleChart.addLineSeries({
-            color: '#ffd740', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'EMA200',
-        });
-        const vwapSeries = candleChart.addLineSeries({
-            color: '#a78bfa', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'VWAP',
-        });
-        const aiTargetUpSeries = candleChart.addLineSeries({
-            color: 'rgba(0, 255, 163, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Objetivo',
-        });
-        const aiTargetDownSeries = candleChart.addLineSeries({
-            color: 'rgba(255, 43, 94, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Suelo',
-        });
-
-        // Redimensionar al cambiar tamaño de ventana
-        new ResizeObserver(() => {
-            if (document.getElementById('tab-candles').classList.contains('visible')) {
-                candleChart.applyOptions({ width: candleEl.clientWidth, height: candleEl.clientHeight });
-            }
-        }).observe(candleEl);
-
+        let candleChart = null;
+        let candleSeries = null;
+        let ema200Series = null;
+        let vwapSeries = null;
+        let aiTargetUpSeries = null;
+        let aiTargetDownSeries = null;
+        
         // Estado del gráfico
         let prevSymbol = '';
         let prevCandleTs = 0;
         let tradeMarkersList = [];
 
+        function initCandleChartIfNeeded() {
+            if (candleChart !== null) return;
+            
+            candleChart = LightweightCharts.createChart(candleEl, {
+                width: candleEl.clientWidth || 800,
+                height: candleEl.clientHeight || 480,
+                layout: { background: { color: '#07101f' }, textColor: '#546180' },
+                grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
+                timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true, secondsVisible: false },
+            });
+
+            candleSeries = candleChart.addCandlestickSeries({
+                upColor: '#00e676', downColor: '#ff3d5a',
+                borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
+                wickUpColor: 'rgba(0,230,118,0.6)', wickDownColor: 'rgba(255,61,90,0.6)',
+            });
+            ema200Series = candleChart.addLineSeries({
+                color: '#ffd740', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'EMA200',
+            });
+            vwapSeries = candleChart.addLineSeries({
+                color: '#a78bfa', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'VWAP',
+            });
+            aiTargetUpSeries = candleChart.addLineSeries({
+                color: 'rgba(0, 255, 163, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Objetivo',
+            });
+            aiTargetDownSeries = candleChart.addLineSeries({
+                color: 'rgba(255, 43, 94, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Suelo',
+            });
+
+            // Redimensionar al cambiar tamaño de ventana
+            new ResizeObserver(() => {
+                if (document.getElementById('tab-candles').classList.contains('visible') && candleChart) {
+                    candleChart.applyOptions({ width: candleEl.clientWidth, height: candleEl.clientHeight });
+                }
+            }).observe(candleEl);
+        }
+
         function updateCandleChart(state) {
+            if (candleChart === null) return; // Gráfico todavía no inicializado
+            
             const candles = state.candles;
             if (!candles || candles.length < 2) return;
             const sym = state.symbol || '';
             const lastTs = candles[candles.length - 1]?.time || 0;
             const symbolChanged = sym !== prevSymbol;
-            if (symbolChanged) {
-                // Símbolo nuevo: cargar todo desde cero 
+            
+            // SANITIZACIÓN FRONTEND (Protección estricta contra backend desincronizado)
+            const cleanCandles = [];
+            let lastSanitizeT = -1;
+            for(let i=0; i < candles.length; i++) {
+                if (candles[i] && candles[i].time > lastSanitizeT) {
+                    cleanCandles.push(candles[i]);
+                    lastSanitizeT = candles[i].time;
+                }
+            }
+            if(cleanCandles.length < 2) return;
+            
+            if (symbolChanged || window._forceChartRedraw) {
+                // Símbolo nuevo o pestaña recién abierta: cargar todo desde cero 
                 prevSymbol = sym; prevCandleTs = 0; tradeMarkersList = [];
+                window._forceChartRedraw = false;
                 try {
-                    candleSeries.setData(candles);
-                    ema200Series.setData(candles.map(c => ({ time: c.time, value: state.ema_200 || 0 })));
-                    vwapSeries.setData(candles.map(c => ({ time: c.time, value: state.vwap || 0 })));
-                    candleChart.timeScale().scrollToRealTime();
-                } catch (e) { }
+                    candleSeries.setData(cleanCandles);
+                    if (state.ema_200 > 0) ema200Series.setData(cleanCandles.map(c => ({ time: c.time, value: state.ema_200 })));
+                    if (state.vwap > 0) vwapSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.vwap })));
+                    if (state.ai_expected_up > 0) aiTargetUpSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_up })));
+                    if (state.ai_expected_down > 0) aiTargetDownSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_down })));
+
+                    candleChart.timeScale().fitContent();
+                } catch (e) { console.error("LTW Chart Mount Error:", e); }
             } else if (lastTs > prevCandleTs) {
                 // Solo actualizar la última vela
                 try {
-                    const last = candles[candles.length - 1];
+                    const last = cleanCandles[cleanCandles.length - 1];
                     candleSeries.update(last);
-                    if (state.ema_200) ema200Series.update({ time: last.time, value: state.ema_200 });
-                    if (state.vwap) vwapSeries.update({ time: last.time, value: state.vwap });
+                    if (state.ema_200 > 0) ema200Series.update({ time: last.time, value: state.ema_200 });
+                    if (state.vwap > 0) vwapSeries.update({ time: last.time, value: state.vwap });
 
                     // IA Targets en el gráfico
-                    if (state.ai_expected_up) aiTargetUpSeries.update({ time: last.time, value: state.ai_expected_up });
-                    if (state.ai_expected_down) aiTargetDownSeries.update({ time: last.time, value: state.ai_expected_down });
-                } catch (e) { }
+                    if (state.ai_expected_up > 0) aiTargetUpSeries.update({ time: last.time, value: state.ai_expected_up });
+                    if (state.ai_expected_down > 0) aiTargetDownSeries.update({ time: last.time, value: state.ai_expected_down });
+                } catch (e) { console.error("LTW Chart Update Error:", e); }
             }
             prevCandleTs = lastTs;
 
             // Actualizar líneas completas si cambió de símbolo
-            if (symbolChanged) {
-                aiTargetUpSeries.setData(candles.map(c => ({ time: c.time, value: state.ai_expected_up || 0 })));
-                aiTargetDownSeries.setData(candles.map(c => ({ time: c.time, value: state.ai_expected_down || 0 })));
+            if (symbolChanged && window._forceChartRedraw === false) {
+                if (state.ai_expected_up > 0) aiTargetUpSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_up })));
+                if (state.ai_expected_down > 0) aiTargetDownSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_down })));
             }
         }
 
@@ -3869,29 +3926,7 @@
         }
 
         function renderSentimentFromState(fullState) {
-            // Buscamos si algún símbolo tiene razonamiento en el estado actual
-            // En simulación, el estado suele ser un objeto con los símbolos como llaves
-            if (!fullState) return;
-            
-            let currentSentiment = null;
-            let currentReasoning = null;
-            
-            // Si el foco está en un símbolo, ver si ese tiene sentimiento
-            if (focusSymbol && fullState[focusSymbol]) {
-            }
-
-            
-            if (sidebarSentiment && currentSentiment !== null && currentSentiment !== undefined) {
-                sidebarSentiment.textContent = (currentSentiment >= 0 ? '+' : '') + currentSentiment.toFixed(2);
-                sidebarSentiment.className = 'kv-val ' + (currentSentiment > 0.1 ? 'g' : (currentSentiment < -0.1 ? 'r' : 'y'));
-            }
-            
-            if (sidebarReasoning && currentReasoning) {
-                sidebarReasoning.textContent = currentReasoning;
-                sidebarReasoning.style.display = 'block';
-            } else if (sidebarReasoning) {
-                sidebarReasoning.style.display = 'none';
-            }
+            // Función obsoleta (sentimiento removido). Mantenida por compatibilidad de llamadas.
         }
 
         function focusOnSymbol(symbol) {
@@ -3912,13 +3947,14 @@
 
         function updateUI(fullState) {
             if (!fullState) return;
+            console.log("[UI] updateUI llamado con:", Object.keys(fullState));
 
             // Si hay símbolos forzados, actualizar pestañas
             if (fullState.force_symbols) {
                 updateSymbolTabs(fullState.force_symbols);
             }
-
-            // Guardar estado global para lógica de finalización
+            
+            // ... (resto de lógica de status) ...
             if (fullState._main && fullState._main.status) {
                 window._lastBotStatus = fullState._main.status;
             } else if (fullState.status) {
@@ -3926,21 +3962,24 @@
             }
 
             // Seleccionar el estado del símbolo enfocado
-            // focusSymbol puede venir de hacer clic en una pestaña
             let state = fullState[focusSymbol] || fullState._main || fullState;
 
-            // Si el estado seleccionado no es válido (ej. focusSymbol viejo), buscar el primero disponible
-            if (!state.symbol || state.symbol === '─') {
-                const availableSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main');
-                if (availableSyms.length > 0) {
-                    state = fullState[availableSyms[0]];
-                    if (!manualFocus) focusSymbol = state.symbol;
+            // Validación de estado válido
+            if (!state || typeof state !== 'object' || !state.symbol || state.symbol === '─') {
+                const validCompanies = Object.values(fullState).filter(v => v && typeof v !== 'string' && v.symbol && v.symbol !== '─' && v.symbol !== '_main');
+                if (validCompanies.length > 0) {
+                    state = validCompanies[0];
+                    focusSymbol = state.symbol; 
+                    manualFocus = false;
+                    console.log("[UI] Foco automático asignado a:", focusSymbol);
                 }
             }
 
             const sym = state.symbol || '─';
             const bid = state.bid ?? 0;
             const ask = state.ask ?? 0;
+            
+            console.log(`[UI] Renderizando símbolo: ${sym} (Bid: ${bid})`);
 
             // Si el bot cambió de símbolo y el usuario NO está mirando una pestaña específica,
             // (En monitoreo paralelo real, esto es menos común pero lo dejamos como fallback)
@@ -3996,11 +4035,14 @@
             if (simEndEl && state.sim_end) simEndEl.textContent = state.sim_end;
 
             // Auto-actualizar ML Dataset si hay cambio de símbolo
-            if (currentSymbol !== null && sym !== '─' && sym !== currentSymbol) {
+            if (window.currentSymbol !== null && sym !== '─' && sym !== window.currentSymbol) {
+                console.log("[UI] Cambio de símbolo detectado, limpiando historial visual de trades...");
+                lastTradeCount = 0; // REINICIAR CONTADOR PARA EL NUEVO SÍMBOLO
                 loadResults();
+                renderTrades([]); // Limpiar lista visual inmediatamente
             }
             if (sym !== '─') {
-                currentSymbol = sym;
+                window.currentSymbol = sym;
             }
 
             // Actualizar las filas "En progreso..." en la tabla de resultados para TODOS los símbolos activos
@@ -4128,18 +4170,20 @@
 
                 const sig = state.signal || 'HOLD';
                 const sigEl = document.getElementById('hdr-sig');
-                sigEl.textContent = sig;
-                sigEl.className = `sig - badge ${sig} `;
-
-                // Gráfico de velas
-                if (state.candles && state.candles.length > 0) {
-                    candleSeries.setData(state.candles);
+                if (sigEl) {
+                    sigEl.textContent = sig;
+                    sigEl.className = `sig-badge ${sig}`;
                 }
+
+                // Gráfico de velas (Mantenimiento delegado a updateCandleChart más abajo)
+
 
                 // Símbolo en header (Combobox)
                 const symDisplay = document.getElementById('hdr-sym');
                 if (symDisplay && symDisplay.tagName === 'SELECT') {
-                    const activeSyms = Object.keys(fullState).filter(k => k !== 'force_symbols' && k !== '_main' && k !== 'logs');
+                    const activeSyms = Object.values(fullState)
+                        .filter(v => v && typeof v === 'object' && v.symbol && v.symbol !== '─' && v.symbol !== '_main')
+                        .map(v => v.symbol);
 
                     const currentOptions = Array.from(symDisplay.options).map(o => o.value);
                     if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
@@ -4283,7 +4327,9 @@
             }
 
             // Candlestick
-            updateCandleChart(state);
+            try {
+                updateCandleChart(state);
+            } catch(e) { }
 
             // Confluencias
             renderConfirmations(state.confirmations);
@@ -4293,9 +4339,9 @@
 
             // Reset flag cuando inicia nueva simulación
             if (state.status && state.status !== 'completed') window._tradesReloadedOnComplete = false;
-            // Trades: state.trades solo tiene el símbolo actual; si está vacío no sobrescribir
-            // (evita borrar los 349+ trades cargados desde /api/trades_history)
-            if (state.trades && state.trades.length > 0) {
+            // Trades: Si está vacío y el símbolo cambió, renderTrades([]) se encarga de limpiar.
+            // Siempre intentamos renderizar para asegurar la sincronización por símbolo.
+            if (state.trades) {
                 renderTrades(state.trades);
             } else if (state.status === 'completed' && !window._tradesReloadedOnComplete) {
                 // Al terminar simulación, recargar historial completo desde API (solo una vez)
@@ -4465,9 +4511,10 @@
             };
 
             ws.onmessage = (e) => {
+                console.log("[WS] Mensaje recibido de longitud:", e.data.length);
                 try {
                     const d = JSON.parse(e.data);
-                    // Guardar régimen en vivo por símbolo (viene en el estado del WS)
+                    // Guardar régimen en vivo por símbolo
                     if (d && typeof d === 'object') {
                         Object.keys(d).forEach(sym => {
                             if (d[sym] && d[sym].regime) {
@@ -4477,7 +4524,7 @@
                     }
                     updateUI(d);
                 }
-                catch (err) { /* silencioso */ }
+                catch (err) { console.error("[WS] Error parseando/actualizando:", err); }
             };
 
             ws.onclose = () => {
@@ -5631,6 +5678,9 @@
                     <button onclick="togglePackMega()" title="Mix Pro: Ganadores + Growth + Estables"
                         style="flex:1; background:linear-gradient(135deg,#4a148c,#6a1b9a); color:#ce93d8; border:1px solid #7b1fa2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🌍
                         Mega<br><span style="font-size:9px; opacity:0.75;">Pack Pro</span></button>
+                    <button onclick="togglePackIndices()" title="SPY, QQQ, DIA para dar contexto general"
+                        style="flex:1; background:linear-gradient(135deg,#b71c1c,#c62828); color:#ffcdd2; border:1px solid #d32f2f; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📈
+                        Índices<br><span style="font-size:9px; opacity:0.75;">Base</span></button>
                 </div>
             </div>
             <div id="sym-manager-list"
@@ -5809,13 +5859,20 @@
                     const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
                     const recSet = new Set(getRecommendedTop());
                     const favsSet = new Set(getFavorites());
+                    const indicesSet = new Set(['SPY', 'QQQ', 'DIA']);
+                    
+                    let htmlIndices = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--accent); font-weight: bold; font-size: 12px; margin-top: 5px;">📈 ÍNDICES (MERCADO)</div>';
+                    let htmlRegular = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--muted); font-weight: bold; font-size: 12px; margin-top: 15px;">🏢 ACCIONES</div>';
+                    
+                    let hasIndices = false;
+                    let hasRegular = false;
 
                     sortedAssets.forEach(item => {
                         const isEn = item.enabled !== false;
                         const isRec = recSet.has(item.symbol);
                         const isFav = favsSet.has(item.symbol);
                         // Damos ID única cada tarjeta para actualizarlas sin redibujar todo
-                        html += `
+                        const itemHtml = `
                         <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}" style="position:relative; padding-top: 18px;">
                             <div class="sm-fav ${isFav ? 'active' : ''}" onclick="toggleFavorite(event, '${item.symbol}')" title="Marcar/Desmarcar como Favorita (💎 Mejores)">⭐</div>
                             ${isRec ? `<span style="position:absolute;top:3px;right:3px;font-size:9px;color:#fbbf24;line-height:1;" title="Recomendada para mañana">★</span>` : ''}
@@ -5826,7 +5883,16 @@
                             </label>
                         </div>
                     `;
+                        if (indicesSet.has(item.symbol)) {
+                            htmlIndices += itemHtml;
+                            hasIndices = true;
+                        } else {
+                            htmlRegular += itemHtml;
+                            hasRegular = true;
+                        }
                     });
+                    
+                    html = (hasIndices ? htmlIndices : '') + (hasRegular ? htmlRegular : '');
                     listContainer.innerHTML = html;
                     updateSymbolCounter();
                     showRecPresetRow();
@@ -5966,6 +6032,8 @@
 
         // ── Packs de Entrenamiento IA ───────────────────────────────────────
 
+        const _PACK_INDICES = ['SPY', 'QQQ', 'DIA'];
+
         const _PACK_GROWTH = [
             // Tech / AI / Alto crecimiento (20 empresas) - Curado
             'ARM', 'SMCI', 'AI', 'IONQ', 'RBLX', 'TWLO', 'DDOG', 'NET', 'MDB', 'ZS',
@@ -5978,6 +6046,13 @@
             'C', 'AXP', 'MCD', 'PM', 'BTI', 'O', 'SPG', 'AMT', 'LOW', 'HD',
             'TGT', 'MDLZ', 'GIS', 'K', 'CL', 'HSY', 'STZ', 'TAP', 'BRK.B', 'WFC'
         ];
+
+        async function togglePackIndices() {
+            if (!window.configAssets || !window.configAssets.assets) return;
+            const allSymbols = window.configAssets.assets.map(a => a.symbol);
+            await applyMassSymbolToggle(allSymbols, false);
+            await applyMassSymbolToggle(_PACK_INDICES, true);
+        }
 
         async function togglePackGrowth() {
             if (!window.configAssets || !window.configAssets.assets) return;

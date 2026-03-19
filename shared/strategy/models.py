@@ -30,6 +30,7 @@ class OpenPosition:
     initial_stop:  float = 0.0  # SL original (para referencia)
     ml_features:   dict  = field(default_factory=dict)
     hold_bars:     int   = 0    # Iteraciones que lleva abierta la posición
+    is_ghost:      bool  = False # 👻 Si es True, no afecta balance real ni se envía al bróker
     entry_reason:  str   = ""
     entry_metadata: dict = field(default_factory=dict)
 

@@ -59,24 +59,39 @@ def smart_sleep(seconds: float):
     return False
 
 def get_candles_json(df: pd.DataFrame, window: int = 60) -> list:
-    """Convierte fragmento de DF a lista de dicts para el dashboard."""
+    """Convierte fragmento de DF a lista de dicts para el dashboard asegurando integridad temporal."""
     if df is None or len(df) == 0: return []
+    
+    # Remover duplicados en el índice de tiempo (evita crash en LightweightCharts)
+    if not df.index.is_unique:
+        df = df[~df.index.duplicated(keep='first')]
+    
+    df = df.sort_index() # Orden estricto garantizado
+
     last_window = df.tail(window)
     res = []
     for ts, row in last_window.iterrows():
         try:
-            # Si el índice es DatetimeIndex
-            t_val = int(ts.timestamp())
+            # Priorizar extracción de timezone-aware timestamp
+            if 'Datetime' in row.index:
+                t_val = int(pd.to_datetime(row['Datetime']).timestamp())
+            else:
+                t_val = int(pd.to_datetime(ts).timestamp())
         except:
-            t_val = str(ts)
-        res.append({
-            "time": t_val,
-            "open": float(row["Open"]),
-            "high": float(row["High"]),
-            "low": float(row["Low"]),
-            "close": float(row["Close"]),
-            "volume": float(row.get("Volume", 0))
-        })
+            continue # Omitir vela corrupta en la UI
+
+        # Evitar datos nulos en velas que crashean JSON
+        try:
+            res.append({
+                "time": t_val,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "volume": float(row.get("Volume", 0))
+            })
+        except: continue
+        
     return res
 
 def print_status(
