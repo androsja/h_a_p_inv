@@ -100,7 +100,11 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     current_regime = detect_regime(adx_now, atr_pct, close_now, ema_200_now, rsi_now, vol_ratio)
     regime_label   = REGIMEN_LABELS.get(current_regime, current_regime)
     
-    log.info(f"{sym_prefix}🌍 RÉGIMEN: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | Vol={vol_ratio:.1f}x")
+    # [OPTIMIZACIÓN LOGS] Solo loguear régimen si cambia para no saturar el buffer
+    if not hasattr(analyze, "_last_regime"): analyze._last_regime = {}
+    if analyze._last_regime.get(symbol) != regime_label:
+        log.info(f"{sym_prefix}🌍 RÉGIMEN: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | Vol={vol_ratio:.1f}x")
+        analyze._last_regime[symbol] = regime_label
 
     # 5. Lógica de Estrategias (Simplified for readability after refactor)
     signal = SIGNAL_HOLD
