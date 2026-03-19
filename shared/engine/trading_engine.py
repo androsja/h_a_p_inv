@@ -107,7 +107,11 @@ class TradingEngine:
                 elif signal.signal == SIGNAL_BUY:
                     self._handle_entry(quote, signal)
 
-                # 4.1 Gestión de Posiciones Fantasma
+                # 4.1 Gestión de Posiciones Fantasma (Ghost Trades)
+                if self.ghost_positions:
+                    n_ghosts = len(self.ghost_positions)
+                    log.info(f"👻 GHOST MONITOR: Monitoreando {n_ghosts} oportunidad{'es' if n_ghosts > 1 else ''} en segundo plano...")
+                
                 self._handle_ghost_exits(quote, signal)
 
                 # 5. UI Update per iteration
