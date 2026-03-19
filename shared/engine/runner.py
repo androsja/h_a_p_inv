@@ -165,7 +165,7 @@ class SimulationRunner:
     def _handle_completion(self):
         # Re-chequear si hay nuevos
         update_state(mode="SIMULATED", status="completed", symbol="─", session=self.session_num)
-        smart_sleep(5)
+        smart_sleep(1)
         return False
 
     def _check_live_paper(self, args):

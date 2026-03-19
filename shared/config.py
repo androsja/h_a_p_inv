@@ -90,8 +90,8 @@ MODEL_SNAPSHOTS_DIR = DATA_DIR / "model_snapshots"   # ❄️ Versiones guardada
 
 # ─── Timing del bot ─────────────────────────────────────────────────────────
 SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)
-REST_INTERVAL_SEC  = 60   # Descanso fuera de ventana de trading
-SESSION_PAUSE      = 10   # Segundos entre sesiones de simulación
+REST_INTERVAL_SEC  = 1    # Descanso fuera de ventana de trading (1s para no bloquear en LIVE)
+SESSION_PAUSE      = 0    # Segundos entre sesiones de simulación (0 = máxima velocidad)
 
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1
