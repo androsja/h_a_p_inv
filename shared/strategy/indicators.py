@@ -44,6 +44,8 @@ def get_ai_model():
         return _load_ai_model(os.path.getmtime(p))
     return None
 
+_regime_buffer = {}  # {symbol: (last_label, last_time)}
+
 def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> SignalResult:
     sym_prefix = f"[{symbol}] " if symbol else ""
     
@@ -100,11 +102,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     current_regime = detect_regime(adx_now, atr_pct, close_now, ema_200_now, rsi_now, vol_ratio)
     regime_label   = REGIMEN_LABELS.get(current_regime, current_regime)
     
-    # [OPTIMIZACIÓN LOGS] Solo loguear régimen si cambia para no saturar el buffer
-    if not hasattr(analyze, "_last_regime"): analyze._last_regime = {}
-    if analyze._last_regime.get(symbol) != regime_label:
+    # [OPTIMIZACIÓN LOGS] Solo loguear régimen si cambia y han pasado al menos 10s (tiempo real)
+    import time
+    now_real = time.time()
+    last_r, last_t = _regime_buffer.get(symbol, (None, 0))
+    
+    if (last_r != regime_label) and (now_real - last_t > 10):
         log.info(f"{sym_prefix}🌍 RÉGIMEN: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | Vol={vol_ratio:.1f}x")
-        analyze._last_regime[symbol] = regime_label
+        _regime_buffer[symbol] = (regime_label, now_real)
 
     # 5. Lógica de Estrategias (Simplified for readability after refactor)
     signal = SIGNAL_HOLD
@@ -123,7 +128,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     
     # ESTRATEGIA D: EMA Crossover
     is_ema_x = (ema_f.iloc[-2] < ema_s.iloc[-2]) and (ema_f_now > ema_s_now) and (35 < rsi_now < 70)
-
+    
     # Evaluación por Régimen
     is_inverted = asset_type == "inverted"
     eff_regime = current_regime
