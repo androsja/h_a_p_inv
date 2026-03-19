@@ -21,6 +21,7 @@ class SignalResult:
     blocks:        list[str] = field(default_factory=list)
     ml_features:   dict = field(default_factory=dict)
     regime:        str = "NEUTRAL"
+    is_quality_blocked: bool = False
 
     def __repr__(self) -> str:
         return (

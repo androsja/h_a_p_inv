@@ -271,7 +271,7 @@ class NeuralTradeFilter:
         regime_enc  = round(regime_enc_norm * 5)  # 0-5
         num_conf    = round(num_conf_norm * 7)
 
-        score = 0.5  # Inicio neutro
+        score = 0.3  # Inicio restrictivo (requiere confirmaciones fuertes para llegar a 0.65)
         reasons = []
 
 
@@ -285,25 +285,28 @@ class NeuralTradeFilter:
             score -= 0.15
             reasons.append("RANGE: MACD débil")
 
-        # Buenas confirmaciones → subir score
-        if num_conf >= 4:
+        # Buenas confirmaciones → subir score sustancialmente
+        if num_conf >= 5:
+            score += 0.25
+            reasons.append(f"{num_conf} confirmaciones")
+        elif num_conf == 4:
             score += 0.15
             reasons.append(f"{num_conf} confirmaciones")
 
-        # Volumen alto → impulso real
-        if vol_norm > 0.6:
-            score += 0.10
-            reasons.append("volumen fuerte")
+        # Volumen expansivo → impulso real
+        if vol_norm > 0.7:
+            score += 0.15
+            reasons.append("volumen expansivo")
 
         # ATR muy alto → volatilidad destructiva
         if atr_norm > 0.7:
-            score -= 0.10
-            reasons.append("ATR muy alto")
+            score -= 0.15
+            reasons.append("ATR destructor")
 
-        # TREND_DOWN histórico es rentable → beneficiar
+        # TREND_DOWN histórico es muy rentable → beneficiar agresivo
         if regime_enc == 1:
-            score += 0.10
-            reasons.append("TREND_DOWN favorable")
+            score += 0.15
+            reasons.append("TREND_DOWN (históricamente favorable)")
 
         score = float(np.clip(score, 0.0, 1.0))
         reason_str = f"Heurístico ({n}/{MIN_SAMPLES} muestras): {', '.join(reasons) or 'normal'}. P={score:.0%}"

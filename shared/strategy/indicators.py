@@ -155,13 +155,6 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         signal = SIGNAL_BUY
         confirmations.append(f"🔥 [{regime_label}] Capitulación (Z={zscore_now:.2f})")
 
-    # Filtros de Calidad
-    if signal == SIGNAL_BUY:
-        if (43 < rsi_now < 47 or adx_now < 10) and zscore_now > -2.3:
-            log.warning(f"{sym_prefix}🛑 Bloqueado por RSI Zona Muerta o ADX bajo.")
-            signal = SIGNAL_HOLD
-            confirmations.clear()
-            blocks.append("Filtro de calidad (RSI/ADX)")
 
 
     # Venta de emergencia
@@ -214,10 +207,17 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         except Exception as e:
             log.error(f"Error crítico en Neural Filter: {e}")
 
+    # Filtros de Calidad (Mover después de IA)
+    is_quality_blocked = False
+    if signal == SIGNAL_BUY:
+        if (43 < rsi_now < 47 or adx_now < 10) and zscore_now > -2.3:
+            log.warning(f"{sym_prefix}🛑 Bloqueado por RSI Zona Muerta o ADX bajo (Será Ghost).")
+            is_quality_blocked = True
+            blocks.append("Filtro de calidad (RSI/ADX)")
+
     return SignalResult(
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,
         rsi_value=rsi_now, macd_hist=macd_now, vwap_value=vwap_now, atr_value=atr_now,
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
-        ml_features=ml_features, regime=current_regime
+        ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked
     )
-

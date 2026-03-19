@@ -12,6 +12,7 @@ from shared.broker.interface import BrokerInterface
 from shared.broker.hapi_mock import HapiMock
 from shared.engine.runner import SimulationRunner
 from shared.engine.trading_engine import TradingEngine
+from shared.engine.utils import SessionInterrupted
 
 BANNER = """
 ╔══════════════════════════════════════════════════════╗
@@ -35,7 +36,7 @@ def parse_args() -> argparse.Namespace:
 
 def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     """Callback para inicializar el bróker (Mock) basado en comandos o args."""
-    is_live_paper = False
+    is_live_paper = kwargs.get('is_live_paper_override', False)
     sim_start_date = None
     
     try:
@@ -43,7 +44,11 @@ def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
         if cmd_file.exists():
             with open(cmd_file) as f:
                 cmds = json.load(f)
-            is_live_paper = cmds.get("force_paper_trading", False)
+            
+            # Si no hay override forzado desde kwargs, lee del archivo
+            if not is_live_paper:
+                is_live_paper = cmds.get("force_paper_trading", False)
+            
             sim_start_date = cmds.get("sim_start_date")
             
             # Ajuste de símbolo forzado si aplica

@@ -107,7 +107,7 @@ def read_state(mode: str = "sim") -> dict:
     return state
 
 
-def read_last_logs(n: int = 200) -> list[str]:
+def read_last_logs(n: int = 1000) -> list[str]:
     """Lee las últimas n líneas del log principal. Filtra líneas HTML de error."""
     HTML_NOISE = ("<html>", "<head>", "<body>", "</html>", "</head>", "</body>",
                   "<center>", "</center>", "<hr>", "<h1>", "nginx", "<!DOCTYPE")

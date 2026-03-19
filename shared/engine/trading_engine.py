@@ -214,7 +214,10 @@ class TradingEngine:
             self.symbol, quote.ask, signal.atr_value, confidence_multiplier=conf_mult
         )
 
-        if buy_plan.is_viable:
+        # 🚀 Determinar si es un trade Real o Ghost
+        is_ghost_force = getattr(signal, "is_quality_blocked", False)
+
+        if buy_plan.is_viable and not is_ghost_force:
             metadata = {
                 "confirmations": signal.confirmations,
                 "ml_prob": signal.ml_features.get('ml_prob', 0.5),
@@ -242,17 +245,18 @@ class TradingEngine:
                     "confirmations": signal.confirmations,
                     "ml_prob": signal.ml_features.get('ml_prob', 0.5),
                     "conf_mult": conf_mult,
-                    "block_reason": buy_plan.block_reason
+                    "block_reason": buy_plan.block_reason or "Filtro de Calidad"
                 }
+                ghost_reason = buy_plan.block_reason or "Quality: RSI/ADX Block"
                 ghost = OpenPosition(
                     symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty or 1.0,
                     stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
-                    initial_stop=buy_plan.stop_loss, entry_reason=f"Ghost: {buy_plan.block_reason}",
+                    initial_stop=buy_plan.stop_loss, entry_reason=f"Ghost: {ghost_reason}",
                     entry_metadata=ghost_metadata, ml_features=signal.ml_features,
                     is_ghost=True
                 )
                 self.ghost_positions.append(ghost)
-                log.info(f"👻 GHOST ENTRY | {self.symbol} | Price={buy_plan.limit_price} | Reason: {buy_plan.block_reason}")
+                log.info(f"👻 GHOST ENTRY | {self.symbol} | Price={buy_plan.limit_price} | Reason: {ghost_reason}")
 
     def _calculate_confidence(self, signal):
         try:

@@ -39,14 +39,16 @@ def parse_args() -> argparse.Namespace:
 
 def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     """Inicializa el bróker basado en si es Paper o Real Live."""
-    # Detectar si hay anulación de Live Paper desde comandos globales
-    is_lp_override = False
+    # Detectar si hay anulación de Live Paper desde comandos globales o kwargs
+    is_lp_override = kwargs.get('is_live_paper_override', False)
+    
     try:
         cmd_file = config.COMMAND_FILE
         if cmd_file.exists():
             with open(cmd_file) as f:
                 cmds = json.load(f)
-            is_lp_override = cmds.get("force_paper_trading", False)
+            if not is_lp_override:
+                is_lp_override = cmds.get("force_paper_trading", False)
     except: pass
 
     if args.paper or is_lp_override:

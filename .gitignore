@@ -32,3 +32,6 @@ shared/data/*.joblib
 shared/data/backtest_results.json
 shared/data/command.json
 shared/data/mock_anchor.json
+
+# Temporary / Test Scripts
+test_ai.py

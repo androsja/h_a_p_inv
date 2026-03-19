@@ -14,7 +14,7 @@
     <script src="/static/simulation/js/calendar.js"></script>
     <script>
         console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
-        
+
         // ... other dashboard script content ...
 
         console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
@@ -880,7 +880,8 @@
 
         #candle-chart {
             flex: 1;
-            min-height: 480px; /* Force minimum height for Lightweight Charts */
+            min-height: 480px;
+            /* Force minimum height for Lightweight Charts */
             width: 100%;
         }
 
@@ -1419,8 +1420,10 @@
         /* --- NEWS MODAL --- */
         .news-modal-overlay {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.9);
             z-index: 100000;
             display: none;
@@ -1499,8 +1502,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .hdr-btn.btn-purple {
@@ -1888,55 +1896,56 @@
                         </div>
                         <div class="kv">
                             <span class="kv-key">🔼 Objetivo (Est.)</span>
-                        <div class="kv">
-                            <span class="kv-key">🔽 Suelo (Est.)</span>
-                            <span class="kv-val r" id="ai-target-down">$─.──</span>
-                        </div>
-                        <div
-                            style="font-size: 9px; color: var(--muted); margin-top: 8px; font-style: italic; text-align: center;">
-                            * Basado en aprendizaje de trades previos y volatilidad actual.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Posición abierta -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Posición Abierta</div>
-                    <div id="pos-area">
-                        <div style="padding:12px 16px;font-size:11px;color:var(--muted);">🏖 Sin posición abierta</div>
-                    </div>
-                </div>
-
-                <!-- Confluencias -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Confluencias de señal</div>
-                    <div id="confirm-summary-container">
-                        <div class="conf-summary">
-                            <div class="conf-stats">
-                                <span class="badge-count" id="conf-count">0</span>
-                                <span>filtros activos</span>
+                            <div class="kv">
+                                <span class="kv-key">🔽 Suelo (Est.)</span>
+                                <span class="kv-val r" id="ai-target-down">$─.──</span>
                             </div>
-                            <button class="btn-view-conf" onclick="showConfModal()">Ver detalles</button>
+                            <div
+                                style="font-size: 9px; color: var(--muted); margin-top: 8px; font-style: italic; text-align: center;">
+                                * Basado en aprendizaje de trades previos y volatilidad actual.
+                            </div>
                         </div>
                     </div>
-                    <!-- Mantener el listado oculto por si se necesita renderizar en el modal -->
-                    <div class="confirm-list" id="confirm-list" style="display:none;">
-                        <div class="confirm-item muted">Esperando señal…</div>
-                    </div>
-                </div>
 
-                <!-- Modal de Confluencias Detalladas -->
-                <div class="conf-modal-overlay" id="conf-modal-overlay">
-                    <div class="conf-modal">
-                        <div class="conf-modal-header">
-                            <h3 class="conf-modal-title">🔍 Detalle de Confluencias</h3>
-                            <button class="conf-modal-close" onclick="closeConfModal()">×</button>
-                        </div>
-                        <div class="conf-modal-body" id="conf-modal-body" style="padding: 20px; color: white;">
-                            <!-- Se llena dinámicamente -->
+                    <!-- Posición abierta -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Posición Abierta</div>
+                        <div id="pos-area">
+                            <div style="padding:12px 16px;font-size:11px;color:var(--muted);">🏖 Sin posición abierta
+                            </div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- Confluencias -->
+                    <div class="sidebar-section">
+                        <div class="sidebar-section-title">Confluencias de señal</div>
+                        <div id="confirm-summary-container">
+                            <div class="conf-summary">
+                                <div class="conf-stats">
+                                    <span class="badge-count" id="conf-count">0</span>
+                                    <span>filtros activos</span>
+                                </div>
+                                <button class="btn-view-conf" onclick="showConfModal()">Ver detalles</button>
+                            </div>
+                        </div>
+                        <!-- Mantener el listado oculto por si se necesita renderizar en el modal -->
+                        <div class="confirm-list" id="confirm-list" style="display:none;">
+                            <div class="confirm-item muted">Esperando señal…</div>
+                        </div>
+                    </div>
+
+                    <!-- Modal de Confluencias Detalladas -->
+                    <div class="conf-modal-overlay" id="conf-modal-overlay">
+                        <div class="conf-modal">
+                            <div class="conf-modal-header">
+                                <h3 class="conf-modal-title">🔍 Detalle de Confluencias</h3>
+                                <button class="conf-modal-close" onclick="closeConfModal()">×</button>
+                            </div>
+                            <div class="conf-modal-body" id="conf-modal-body" style="padding: 20px; color: white;">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
 
             </aside>
 
@@ -2337,14 +2346,14 @@
                 // Mostrar el seleccionado
                 document.getElementById(`tab-${tab}`).classList.add('visible');
                 btn.classList.add('active');
-                
+
                 // Redimensionar charts si aplica (con retraso para Reflow de DOM)
                 if (tab === 'candles') {
                     window._forceChartRedraw = true; // Forzar repintado completo en el próximo tick
                     setTimeout(() => {
                         initCandleChartIfNeeded();
                         const h = document.getElementById('candle-chart').clientHeight;
-                        if(h > 0 && candleChart) {
+                        if (h > 0 && candleChart) {
                             candleChart.applyOptions({
                                 width: document.getElementById('candle-chart').clientWidth,
                                 height: h,
@@ -2375,8 +2384,8 @@
         // ─── SYMBOL SELECTOR LOGIC ───
         let selectedSymbols = [];
         let suggestedSymbols = [];
-        window.focusSymbol = null; 
-        window.currentSymbol = null; 
+        window.focusSymbol = null;
+        window.currentSymbol = null;
         let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
         function toggleSymbolModal() {
@@ -2516,7 +2525,7 @@
         let vwapSeries = null;
         let aiTargetUpSeries = null;
         let aiTargetDownSeries = null;
-        
+
         // Estado del gráfico
         let prevSymbol = '';
         let prevCandleTs = 0;
@@ -2524,7 +2533,7 @@
 
         function initCandleChartIfNeeded() {
             if (candleChart !== null) return;
-            
+
             candleChart = LightweightCharts.createChart(candleEl, {
                 width: candleEl.clientWidth || 800,
                 height: candleEl.clientHeight || 480,
@@ -2563,24 +2572,24 @@
 
         function updateCandleChart(state) {
             if (candleChart === null) return; // Gráfico todavía no inicializado
-            
+
             const candles = state.candles;
             if (!candles || candles.length < 2) return;
             const sym = state.symbol || '';
             const lastTs = candles[candles.length - 1]?.time || 0;
             const symbolChanged = sym !== prevSymbol;
-            
+
             // SANITIZACIÓN FRONTEND (Protección estricta contra backend desincronizado)
             const cleanCandles = [];
             let lastSanitizeT = -1;
-            for(let i=0; i < candles.length; i++) {
+            for (let i = 0; i < candles.length; i++) {
                 if (candles[i] && candles[i].time > lastSanitizeT) {
                     cleanCandles.push(candles[i]);
                     lastSanitizeT = candles[i].time;
                 }
             }
-            if(cleanCandles.length < 2) return;
-            
+            if (cleanCandles.length < 2) return;
+
             if (symbolChanged || window._forceChartRedraw) {
                 // Símbolo nuevo o pestaña recién abierta: cargar todo desde cero 
                 prevSymbol = sym; prevCandleTs = 0; tradeMarkersList = [];
@@ -2616,10 +2625,7 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════
-        // LOG
-        // ═══════════════════════════════════════════════════════
-        const MAX_LOG = 200;
+        const MAX_LOG = 1000;
         let logLines = [];
         function classifyLog(l) {
             if (l.includes('🟢 BUY') || l.includes('ORDER_FILLED | BUY')) return 'order-buy';
@@ -3718,7 +3724,7 @@
                         Object.keys(sHist).forEach(d => datesSet.add(d));
                     }
                 });
-                
+
                 const sortedDates = Array.from(datesSet).sort().reverse().slice(0, 10); // Últimas 10 fechas
 
                 // Render Head
@@ -3750,35 +3756,35 @@
                         <tr style="border-bottom:1px solid rgba(255,255,255,0.03); transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
                             <td style="padding:12px; text-align:left; font-weight:700; color:var(--accent);">${sym}</td>
                             ${sortedDates.map(d => {
-                                const val = row[d];
-                                
-                                // Caso 1: No existe el registro en absoluto
-                                if (!val) {
-                                    return '<td style="padding:12px; color:rgba(255,255,255,0.05); font-weight:300;">0.00</td>';
-                                }
-                                
-                                // Caso 2: Pendiente de descargar (MARKET u otros)
-                                if (val.source === 'pending') {
-                                    return '<td style="padding:12px; color:rgba(255,255,255,0.1); font-style:italic; animation: pulse 1.5s infinite;">0.00</td>';
-                                }
+                        const val = row[d];
 
-                                // Caso 3: Procesado pero sin noticias encontradas
-                                if (!val.headlines || val.headlines.length === 0) {
-                                    return '<td style="padding:12px; color:rgba(255,255,255,0.05);" title="Sin noticias encontradas">0.00</td>';
-                                }
-                                
-                                // Mostrar raw score -1.0 a 1.0
-                                const scoreDisplay = typeof val.score === 'number' ? val.score.toFixed(2) : '?.??';
-                                const color = val.score > 0.2 ? '#00ffa3' : (val.score < -0.2 ? '#ff2b5e' : '#9ca3af');
-                                const bg = val.score > 0.2 ? 'rgba(0,255,163,0.1)' : (val.score < -0.2 ? 'rgba(255,43,94,0.1)' : 'rgba(156,163,175,0.1)');
-                                
-                                // Escapar comillas para el tooltip para no romper el atributo 'title'
-                                const safeTitles = (val.headlines && val.headlines.length > 0) ? 
-                                    String(val.headlines[0]).replace(/"/g, '&quot;') : 'Sin titulares';
-                                const safeReason = String(val.reasoning || 'Sin detalle').replace(/"/g, '&quot;');
-                                const tooltip = `${safeTitles}\n---\nRazonamiento: ${safeReason}`;
-                                
-                                return `
+                        // Caso 1: No existe el registro en absoluto
+                        if (!val) {
+                            return '<td style="padding:12px; color:rgba(255,255,255,0.05); font-weight:300;">0.00</td>';
+                        }
+
+                        // Caso 2: Pendiente de descargar (MARKET u otros)
+                        if (val.source === 'pending') {
+                            return '<td style="padding:12px; color:rgba(255,255,255,0.1); font-style:italic; animation: pulse 1.5s infinite;">0.00</td>';
+                        }
+
+                        // Caso 3: Procesado pero sin noticias encontradas
+                        if (!val.headlines || val.headlines.length === 0) {
+                            return '<td style="padding:12px; color:rgba(255,255,255,0.05);" title="Sin noticias encontradas">0.00</td>';
+                        }
+
+                        // Mostrar raw score -1.0 a 1.0
+                        const scoreDisplay = typeof val.score === 'number' ? val.score.toFixed(2) : '?.??';
+                        const color = val.score > 0.2 ? '#00ffa3' : (val.score < -0.2 ? '#ff2b5e' : '#9ca3af');
+                        const bg = val.score > 0.2 ? 'rgba(0,255,163,0.1)' : (val.score < -0.2 ? 'rgba(255,43,94,0.1)' : 'rgba(156,163,175,0.1)');
+
+                        // Escapar comillas para el tooltip para no romper el atributo 'title'
+                        const safeTitles = (val.headlines && val.headlines.length > 0) ?
+                            String(val.headlines[0]).replace(/"/g, '&quot;') : 'Sin titulares';
+                        const safeReason = String(val.reasoning || 'Sin detalle').replace(/"/g, '&quot;');
+                        const tooltip = `${safeTitles}\n---\nRazonamiento: ${safeReason}`;
+
+                        return `
                                     <td style="padding:8px;">
                                          <div onclick="openNewsModal('${sym}', '${d}')" 
                                              title="${tooltip}"
@@ -3787,7 +3793,7 @@
                                         </div>
                                     </td>
                                 `;
-                            }).join('')}
+                    }).join('')}
                         </tr>
                     `;
                 }).join('');
@@ -3856,7 +3862,7 @@
             const overlay = document.getElementById('news-modal-overlay');
             const title = document.getElementById('news-modal-title');
             const body = document.getElementById('news-modal-body');
-            
+
             overlay.style.display = 'flex';
             title.innerHTML = `Noticias: <span style="color:var(--accent)">${symbol}</span> <span style="color:var(--muted); font-size:14px; margin-left:10px;">${date}</span>`;
             body.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">Analizando datos históricos...</div>';
@@ -3888,7 +3894,7 @@
 
                 const score = newsItem.score || 0;
                 const scoreColor = score > 0.1 ? 'var(--green)' : (score < -0.1 ? 'var(--red)' : 'var(--yellow)');
-                
+
                 body.innerHTML = `
                     <div style="margin-bottom:24px; padding:16px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -3934,10 +3940,10 @@
             manualFocus = true;
             // Actualizar pestañas, charts, etc.
             if (typeof updateChartsForSymbol === 'function') updateChartsForSymbol(symbol);
-            
+
             // Cargar noticias automáticamente al cambiar de foco
             loadNewsHistory(symbol);
-            
+
             // Marcar fila como activa en la tabla
             document.querySelectorAll('#main-table-body tr').forEach(tr => {
                 tr.classList.remove('active-row');
@@ -3953,7 +3959,7 @@
             if (fullState.force_symbols) {
                 updateSymbolTabs(fullState.force_symbols);
             }
-            
+
             // ... (resto de lógica de status) ...
             if (fullState._main && fullState._main.status) {
                 window._lastBotStatus = fullState._main.status;
@@ -3969,7 +3975,7 @@
                 const validCompanies = Object.values(fullState).filter(v => v && typeof v !== 'string' && v.symbol && v.symbol !== '─' && v.symbol !== '_main');
                 if (validCompanies.length > 0) {
                     state = validCompanies[0];
-                    focusSymbol = state.symbol; 
+                    focusSymbol = state.symbol;
                     manualFocus = false;
                     console.log("[UI] Foco automático asignado a:", focusSymbol);
                 }
@@ -3978,7 +3984,7 @@
             const sym = state.symbol || '─';
             const bid = state.bid ?? 0;
             const ask = state.ask ?? 0;
-            
+
             console.log(`[UI] Renderizando símbolo: ${sym} (Bid: ${bid})`);
 
             // Si el bot cambió de símbolo y el usuario NO está mirando una pestaña específica,
@@ -4329,7 +4335,7 @@
             // Candlestick
             try {
                 updateCandleChart(state);
-            } catch(e) { }
+            } catch (e) { }
 
             // Confluencias
             renderConfirmations(state.confirmations);
@@ -5860,10 +5866,10 @@
                     const recSet = new Set(getRecommendedTop());
                     const favsSet = new Set(getFavorites());
                     const indicesSet = new Set(['SPY', 'QQQ', 'DIA']);
-                    
+
                     let htmlIndices = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--accent); font-weight: bold; font-size: 12px; margin-top: 5px;">📈 ÍNDICES (MERCADO)</div>';
                     let htmlRegular = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--muted); font-weight: bold; font-size: 12px; margin-top: 15px;">🏢 ACCIONES</div>';
-                    
+
                     let hasIndices = false;
                     let hasRegular = false;
 
@@ -5891,7 +5897,7 @@
                             hasRegular = true;
                         }
                     });
-                    
+
                     html = (hasIndices ? htmlIndices : '') + (hasRegular ? htmlRegular : '');
                     listContainer.innerHTML = html;
                     updateSymbolCounter();
@@ -6346,7 +6352,7 @@
                 titleEl.innerText = title;
                 msgEl.innerText = message;
                 okBtn.innerText = confirmText;
-                
+
                 // Estilos según tipo
                 if (type === 'danger') {
                     okBtn.style.background = 'var(--red)';
@@ -6430,13 +6436,17 @@
         </div>
     </div>
 
-    <div id="confirm-modal" class="symbol-modal" style="width: 400px; padding: 30px; text-align: center; border-color: rgba(255,255,255,0.1);">
+    <div id="confirm-modal" class="symbol-modal"
+        style="width: 400px; padding: 30px; text-align: center; border-color: rgba(255,255,255,0.1);">
         <div id="confirm-icon" style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
         <h3 id="confirm-title" style="margin-bottom: 12px; font-size: 20px; color: white;">¿Confirmar Acción?</h3>
-        <p id="confirm-msg" style="color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 24px;">Esta es una descripción de la acción.</p>
+        <p id="confirm-msg" style="color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 24px;">Esta es
+            una descripción de la acción.</p>
         <div style="display: flex; gap: 12px; justify-content: center;">
-            <button id="confirm-cancel" class="hdr-btn" style="padding: 10px 20px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;">CANCELAR</button>
-            <button id="confirm-ok" class="hdr-btn" style="padding: 10px 30px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">CONFIRMAR</button>
+            <button id="confirm-cancel" class="hdr-btn"
+                style="padding: 10px 20px; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;">CANCELAR</button>
+            <button id="confirm-ok" class="hdr-btn"
+                style="padding: 10px 30px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer;">CONFIRMAR</button>
         </div>
     </div>
 
@@ -6451,7 +6461,8 @@
                 <!-- Content injected via JS -->
             </div>
             <div style="padding:16px; border-top:1px solid rgba(255,255,255,0.05); text-align:right;">
-                <button onclick="closeNewsModal()" style="background:var(--accent); color:black; border:none; padding:8px 24px; border-radius:8px; font-weight:700; cursor:pointer;">CERRAR</button>
+                <button onclick="closeNewsModal()"
+                    style="background:var(--accent); color:black; border:none; padding:8px 24px; border-radius:8px; font-weight:700; cursor:pointer;">CERRAR</button>
             </div>
         </div>
     </div>
