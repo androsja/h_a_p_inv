@@ -22,6 +22,7 @@ class SignalResult:
     ml_features:   dict = field(default_factory=dict)
     regime:        str = "NEUTRAL"
     is_quality_blocked: bool = False
+    is_ml_blocked: bool = False
 
     def __repr__(self) -> str:
         return (

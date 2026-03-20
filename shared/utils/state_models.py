@@ -67,6 +67,11 @@ class BotState:
     total_sim_trades: int = 0
     total_sim_wins:   int = 0
     total_sim_pnl:    float = 0.0
+    total_sim_ghosts: int = 0
+    
+    # 👻 Fantasmas (Activo)
+    total_ghosts:       int = 0
+    ghost_trades_count: int = 0
 
     # Posición abierta
     position: dict | None = None
@@ -86,4 +91,6 @@ class BotState:
     ai_recommendation: str = ""
     ai_expected_up: float = 0.0
     ai_expected_down: float = 0.0
+    model_accuracy: float = 0.0
+    total_samples:  int = 0
 

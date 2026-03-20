@@ -32,6 +32,12 @@ class SimulationRunner:
         self.is_simulated = True
         self.session_pause = config.SESSION_PAUSE
         
+        # 📈 Acumuladores Globales de Simulación
+        self.total_sim_trades = 0
+        self.total_sim_wins = 0
+        self.total_sim_pnl = 0.0
+        self.total_sim_ghosts = 0
+        
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 SISTEMA INICIADO: Preparando motores de trading...")
         self.is_simulated = (args.mode == "SIMULATED")
@@ -135,6 +141,10 @@ class SimulationRunner:
                 
                 self.symbol_idx = 0
                 self.session_num = 0
+                self.total_sim_trades = 0
+                self.total_sim_wins = 0
+                self.total_sim_pnl = 0.0
+                self.total_sim_ghosts = 0
                 update_state(mode="SIMULATED", status="restarting", symbol="─", mock_time_930=_is_mock_time_active())
                 return True
         except: pass
@@ -160,7 +170,9 @@ class SimulationRunner:
             if f.exists(): f.unlink()
         if is_purgue:
             clear_simulation_checkpoints()
+            # Borrar modelos y dataset de IA
             if config.NEURAL_MODEL_FILE.exists(): config.NEURAL_MODEL_FILE.unlink()
+            if config.ML_DATASET_FILE.exists(): config.ML_DATASET_FILE.unlink()
 
     def _handle_completion(self):
         # Re-chequear si hay nuevos
@@ -264,9 +276,26 @@ class SimulationRunner:
                 "sim_end": engine.sim_end_date,
                 "investment_style": engine.investment_style,
                 "blocking_summary": dict(engine.blocking_history or {}),
+                "ghost_trades_count": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
+                "total_ghosts": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
                 "last_price": round(float(last_price), 2) if last_price else None,
                 "last_order_date": last_order_date,
             }
+
+            # Accumulate global totals
+            self.total_sim_trades += trades_val
+            self.total_sim_wins += getattr(stats, 'winning_trades', 0)
+            self.total_sim_pnl += pnl_val
+            self.total_sim_ghosts += session_result["total_ghosts"]
+
+            # Update dashboard with global report
+            update_state(
+                mode="SIMULATED", 
+                total_sim_trades=self.total_sim_trades,
+                total_sim_wins=self.total_sim_wins,
+                total_sim_pnl=round(self.total_sim_pnl, 2),
+                total_sim_ghosts=self.total_sim_ghosts
+            )
 
             results = []
             if res_file.exists():

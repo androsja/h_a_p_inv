@@ -48,7 +48,7 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
 # Aumentamos exigencia para reducir trades y comisiones (antes 0.45)
-CONFIDENCE_THRESHOLD = 0.65
+CONFIDENCE_THRESHOLD = 0.60
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
 RSI_OVERBOUGHT = 75     # Más agresivo: permite tendencias fuertes (antes 70)
