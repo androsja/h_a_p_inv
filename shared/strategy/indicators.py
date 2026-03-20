@@ -44,7 +44,7 @@ def get_ai_model():
         return _load_ai_model(os.path.getmtime(p))
     return None
 
-_regime_buffer = {}  # {symbol: (last_label, last_time)}
+_regime_buffer: dict[str, tuple[str | None, float]] = {}  # {symbol: (last_label, last_time)}
 
 def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> SignalResult:
     sym_prefix = f"[{symbol}] " if symbol else ""
@@ -178,31 +178,41 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'is_adx_rising': adx_now > adx_vals.iloc[-2]
     }
 
-    # AI Check
+    # AI Check (Random Forest dinámico)
+    is_ml_blocked = False
     if signal == SIGNAL_BUY:
-        ai_model = get_ai_model()
-        if ai_model:
-            try:
-                rf_decision = ai_model.predict(pd.DataFrame([ml_features])[ai_model.feature_names_in_])[0]
-                if rf_decision == 0:
-                    signal = SIGNAL_HOLD
-                    confirmations.clear()
-                    blocks.append("🤖 RandomForest bloqueó la entrada")
-            except: pass
+        from shared.strategy.ml_predictor import ml_predictor
+        is_win_pred, prob_win = ml_predictor.predict_win(ml_features)
+        if not is_win_pred:
+            is_ml_blocked = True
+            # NO seteamos signal = SIGNAL_HOLD para permitir paso a Ghost Trades
+            blocks.append(f"🤖 RandomForest bloqueó: P(win)={prob_win*100:.1f}%")
 
         # Neural Filter
         try:
             from shared.utils.neural_filter import get_neural_filter
-            
-            nf_kwargs = dict(ml_features)
-            nf_kwargs.pop('ema_diff_pct', None)
-            nf_kwargs['ema_fast'] = ema_f_now
-            nf_kwargs['ema_slow'] = ema_s_now
-            
-            proba, _ = get_neural_filter().predict(get_neural_filter().build_features(**nf_kwargs))
+            nf = get_neural_filter()
+            nf_features = nf.build_features(
+                symbol=symbol,
+                hour_of_day=ml_features.get('hour_of_day', 10.0),
+                vwap_dist_pct=ml_features.get('vwap_dist_pct', 0.0),
+                rsi=ml_features.get('rsi', 50.0), 
+                macd_hist=ml_features.get('macd_hist', 0.0),
+                atr_pct=ml_features.get('atr_pct', 0.0), 
+                vol_ratio=ml_features.get('vol_ratio', 1.0),
+                ema_fast=ema_f_now, 
+                ema_slow=ema_s_now,
+                zscore_vwap=zscore_now, 
+                regime=current_regime,
+                num_confirmations=len(confirmations),
+                adx=adx_now,
+                has_pattern=ml_features.get('has_pattern', False),
+                is_adx_rising=ml_features.get('is_adx_rising', False)
+            )
+            proba, reason = nf.predict(nf_features)
             if proba < config.CONFIDENCE_THRESHOLD:
-                signal = SIGNAL_HOLD
-                confirmations.clear()
+                is_ml_blocked = True
+                # NO seteamos signal = SIGNAL_HOLD para permitir paso a Ghost Trades
                 blocks.append(f"🧠 NeuralFilter: Probabilidad baja ({proba*100:.1f}%)")
         except Exception as e:
             log.error(f"Error crítico en Neural Filter: {e}")
@@ -219,5 +229,6 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,
         rsi_value=rsi_now, macd_hist=macd_now, vwap_value=vwap_now, atr_value=atr_now,
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
-        ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked
+        ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked,
+        is_ml_blocked=is_ml_blocked
     )

@@ -48,7 +48,7 @@ LOG_FILE  = BASE_DIR / os.getenv("LOG_FILE", "logs/trading_bot.log")
 # EMA 12/26 es el estándar para intraday (mismos períodos que el MACD clásico)
 EMA_FAST       = 12     # EMA rápida  — señal de entrada
 # Aumentamos exigencia para reducir trades y comisiones (antes 0.45)
-CONFIDENCE_THRESHOLD = 0.65
+CONFIDENCE_THRESHOLD = 0.60
 EMA_SLOW       = 26     # EMA lenta   — tendencia de fondo
 RSI_PERIOD     = 14     # RSI estándar
 RSI_OVERBOUGHT = 75     # Más agresivo: permite tendencias fuertes (antes 70)
@@ -90,8 +90,8 @@ MODEL_SNAPSHOTS_DIR = DATA_DIR / "model_snapshots"   # ❄️ Versiones guardada
 
 # ─── Timing del bot ─────────────────────────────────────────────────────────
 SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)
-REST_INTERVAL_SEC  = 60   # Descanso fuera de ventana de trading
-SESSION_PAUSE      = 10   # Segundos entre sesiones de simulación
+REST_INTERVAL_SEC  = 1    # Descanso fuera de ventana de trading (1s para no bloquear en LIVE)
+SESSION_PAUSE      = 0    # Segundos entre sesiones de simulación (0 = máxima velocidad)
 
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1

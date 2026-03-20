@@ -42,7 +42,16 @@ class TradingEngine:
         self.sim_start_date = None
         self.sim_end_date = None
         self.investment_style = "Normal"
-        self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas
+        self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas activas
+        self.ghost_history: list[dict] = []          # 📜 Registro de todos los ghosts cerrados
+
+    @property
+    def total_ghosts(self) -> int:
+        return len(self.ghost_history) + len(self.ghost_positions)
+
+    @property
+    def active_ghosts(self) -> list:
+        return self.ghost_positions
 
     def run(self, session_num: int = 1, stop_event: threading.Event = None, asset_type: str = "normal"):
         self.session_num = session_num
@@ -129,10 +138,16 @@ class TradingEngine:
                         winning_trades=self.broker.stats.winning_trades,
                         gross_profit=self.broker.stats.gross_profit,
                         gross_loss=self.broker.stats.gross_loss,
+                        total_fees=getattr(self.broker.stats, 'total_fees', 0.0),
+                        total_slippage=round(self.broker.stats.total_trades * 0.10, 2),
                         position=self.position.__dict__ if self.position else None,
+                        total_ghosts=self.total_ghosts,
+                        ghost_trades_count=len(self.active_ghosts),
                         candles=get_candles_json(df), timestamp=quote.timestamp,
                         regime=signal.regime, blocks=signal.blocks,
-                        investment_style=self.investment_style
+                        investment_style=self.investment_style,
+                        model_accuracy=ml_predictor.accuracy * 100,
+                        total_samples=ml_predictor.get_sample_count()
                     )
 
         except SessionInterrupted:
@@ -168,7 +183,7 @@ class TradingEngine:
         except: pass
 
     def _record_blocks(self, signal):
-        if signal.signal == "HOLD" and signal.blocks:
+        if signal.blocks:
             for b in signal.blocks:
                 clean_b = b.split(":")[0].strip()
                 self.blocking_history[clean_b] += 1
@@ -198,29 +213,46 @@ class TradingEngine:
             return resp.status, plan.limit_price
 
     def _handle_entry(self, quote, signal):
-        # Lógica de ML y Neural Filter integrada
+        # 0. Inicializar variables de estado de la señal
+        _is_ml_blocked = getattr(signal, "is_ml_blocked", False)
+        _is_quality_blocked = getattr(signal, "is_quality_blocked", False)
+        _is_ghost_force = _is_quality_blocked or _is_ml_blocked
+        _ml_prob = signal.ml_features.get('ml_prob', 0.5)
+
+        # 1. Lógica de ML y confianza
         conf_mult = self._calculate_confidence(signal)
         
-        # Sincronizar cash en mock
+        # 2. Sincronizar cash en mock
         if self.is_mock:
             self.account.total_cash = self.broker.get_account_info().total_cash
 
-        # Spread check
+        # 3. Filtro de Spread
         spread = quote.ask - quote.bid
         if spread > (quote.bid * 0.0020):
             return
 
+        # 4. Plan de Compra (Risk Manager)
         buy_plan = self.risk_mgr.calculate_buy_order(
             self.symbol, quote.ask, signal.atr_value, confidence_multiplier=conf_mult
         )
 
-        # 🚀 Determinar si es un trade Real o Ghost
-        is_ghost_force = getattr(signal, "is_quality_blocked", False)
+        # 5. [AUDITORÍA LOGS]
+        if signal.signal == SIGNAL_BUY:
+            log.info(f"🎯 SEÑAL DETECTADA | {self.symbol} | Conf: {len(signal.confirmations)} indicadores")
+            log.info(f"🤖 ML Forest: {_ml_prob*100:.1f}% | 🧩 Filtros: {'OK' if not _is_quality_blocked else 'BLOQUEADO'}")
+            
+            if _is_ghost_force:
+                log.info(f"👻 GHOST MODE: Señal bloqueada por filtros (IA/Calidad). Seguimiento fantasma activo.")
+            elif not buy_plan.is_viable:
+                log.info(f"⚠️ TRADE REAL DESCARTADO: {buy_plan.block_reason or 'Riesgo Excesivo'}")
+            else:
+                log.info(f"💰 TRADE REAL VIABLE: Profit proyectado > ${buy_plan.min_profit:.4f}")
 
-        if buy_plan.is_viable and not is_ghost_force:
+        # 6. Ejecución (Real o Ghost)
+        if buy_plan.is_viable and not _is_ghost_force:
             metadata = {
                 "confirmations": signal.confirmations,
-                "ml_prob": signal.ml_features.get('ml_prob', 0.5),
+                "ml_prob": _ml_prob,
                 "conf_mult": conf_mult
             }
             
@@ -231,6 +263,7 @@ class TradingEngine:
             )
             
             if resp.status not in ("REJECTED",):
+                log.info(f"✅ ORDEN EJECUTADA: {buy_plan.qty} @ ${buy_plan.limit_price}")
                 self.position = OpenPosition(
                     symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty,
                     stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
@@ -241,9 +274,13 @@ class TradingEngine:
         else:
             # 👻 No es viable para trade real (riesgo/capital/comisión) -> Crear Ghost Trade para aprender
             if len(self.ghost_positions) < 5:
+                # Log extra si el bloqueo fue por profit insuficiente
+                if "Ganancia esperada" in (buy_plan.block_reason or ""):
+                    log.info(f"📉 BLOQUEO RENTABILIDAD: {buy_plan.block_reason}")
+
                 ghost_metadata = {
                     "confirmations": signal.confirmations,
-                    "ml_prob": signal.ml_features.get('ml_prob', 0.5),
+                    "ml_prob": _ml_prob,
                     "conf_mult": conf_mult,
                     "block_reason": buy_plan.block_reason or "Filtro de Calidad"
                 }
@@ -260,6 +297,7 @@ class TradingEngine:
 
     def _calculate_confidence(self, signal):
         try:
+            from shared.strategy.ml_predictor import ml_predictor
             is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
             signal.ml_features['ml_prob'] = prob_win
         except: prob_win = 0.5
@@ -268,6 +306,8 @@ class TradingEngine:
         if prob_win > 0.85: mult *= 1.5
         elif prob_win > 0.70: mult *= 1.2
         elif prob_win < 0.40: mult *= 0.7
+        
+        return mult
         
         if len(signal.confirmations) >= 4: mult *= 1.2
         return min(mult, 2.0)
@@ -309,11 +349,14 @@ class TradingEngine:
         
         self.position = None
 
-    def _train_neural_filter(self, pnl):
+    def _train_neural_filter(self, pnl, pos=None):
+        position_to_train = pos if pos else self.position
+        if not position_to_train: return
+        
         try:
             from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter()
-            ml_f = self.position.ml_features
+            ml_f = position_to_train.ml_features
             f_vec = nf.build_features(
                 symbol=self.symbol,
                 hour_of_day=ml_f.get('hour_of_day', 10.0),
@@ -344,11 +387,20 @@ class TradingEngine:
                 pnl = gp.pnl(quote.bid)
                 log.info(f"👻 GHOST EXIT | {self.symbol} | PnL: ${pnl:+.2f} | Reason: {reason}")
                 
-                # Aprender del trade fantasma
+                # Aprender del trade fantasma (Ambos modelos)
                 if hasattr(gp, 'ml_features'):
                     ml_predictor.save_trade(self.symbol, gp.ml_features, pnl)
-                    # No entrenamos el filtro neuronal con fantasmas para no sesgar el riesgo real,
-                    # pero sí alimentamos el dataset del predictor para que sepa qué señales eran buenas.
+                    # AHORA SÍ entrenamos el NeuralFilter con fantasmas
+                    # De lo contrario nunca saldrá de su fase Cold-Start
+                    self._train_neural_filter(pnl, pos=gp)
+                
+                self.ghost_history.append({
+                    "pnl": pnl,
+                    "reason": reason,
+                    "entry_price": gp.entry_price,
+                    "exit_price": quote.bid,
+                    "hold_bars": gp.hold_bars
+                })
             else:
                 active_ghosts.append(gp)
         

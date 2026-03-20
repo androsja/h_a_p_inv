@@ -207,6 +207,21 @@ async def live_index():
     return HTMLResponse(content=LIVE_HTML_FILE.read_text(encoding="utf-8"))
 
 
+@app.get("/algorithm", response_class=HTMLResponse)
+async def algorithm_logic():
+    logic_file = Path(__file__).parent / "static" / "simulation" / "logic.html"
+    if not logic_file.exists():
+        return HTMLResponse("Algorithm Logic page missing", status_code=404)
+    return HTMLResponse(content=logic_file.read_text(encoding="utf-8"))
+
+@app.get("/analytics", response_class=HTMLResponse)
+async def analytics_hub():
+    analytics_file = Path(__file__).parent / "static" / "simulation" / "analytics.html"
+    if not analytics_file.exists():
+        return HTMLResponse("Analytics Hub page missing", status_code=404)
+    return HTMLResponse(content=analytics_file.read_text(encoding="utf-8"))
+
+
 # ─── WebSocket endpoints ──────────────────────────────────────────────────────
 @app.websocket("/ws/sim")
 async def websocket_sim(websocket: WebSocket):

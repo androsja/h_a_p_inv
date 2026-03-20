@@ -26,10 +26,13 @@ _trades: list[TradeRecord] = []
 _global_sim_trades: int = 0
 _global_sim_wins:   int = 0
 _global_sim_pnl:    float = 0.0
+_global_sim_ghosts: int = 0
+_global_model_accuracy: float = 0.0
+_global_total_samples:  int = 0
 
 def load_global_stats_from_journal() -> None:
     """Carga los totales acumulados y los últimos trades desde el archivo CSV de la bitácora."""
-    global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _trades
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _trades
     try:
         journal_path = config.TRADE_JOURNAL_FILE
         if not journal_path.exists():
@@ -187,6 +190,9 @@ def update_state(
     total_sim_trades: int = None,
     total_sim_wins: int = None,
     total_sim_pnl: float = None,
+    total_sim_ghosts: int = None,
+    total_ghosts: int = 0,
+    ghost_trades_count: int = 0,
     position: dict | None = None,
     candles: list | None = None,
     timestamp: str | None = None,
@@ -200,14 +206,26 @@ def update_state(
     ai_recommendation: str = "",
     ai_expected_up: float = 0.0,
     ai_expected_down: float = 0.0,
+    model_accuracy: float = 0.0,
+    total_samples: int = 0,
     **kwargs
 ) -> None:
-    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl
+    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _global_model_accuracy, _global_total_samples
     
-    # Si no se pasan acumulados específicos, usar los de la memoria global
-    ts_trades = total_sim_trades if total_sim_trades is not None else _global_sim_trades
-    ts_wins   = total_sim_wins   if total_sim_wins   is not None else _global_sim_wins
-    ts_pnl    = total_sim_pnl    if total_sim_pnl    is not None else _global_sim_pnl
+    if total_sim_trades is not None: _global_sim_trades = total_sim_trades
+    if total_sim_wins   is not None: _global_sim_wins   = total_sim_wins
+    if total_sim_pnl    is not None: _global_sim_pnl    = total_sim_pnl
+    if total_sim_ghosts is not None: _global_sim_ghosts = total_sim_ghosts
+    
+    # Persistir métricas de IA
+    if model_accuracy is not None: _global_model_accuracy = model_accuracy
+    if total_samples is not None: _global_total_samples = total_samples
+    if total_sim_ghosts is not None: _global_sim_ghosts = total_sim_ghosts
+
+    ts_trades = _global_sim_trades
+    ts_wins   = _global_sim_wins
+    ts_pnl    = _global_sim_pnl
+    ts_ghosts = _global_sim_ghosts
 
     new_s = BotState(
         mode=mode,
@@ -240,6 +258,9 @@ def update_state(
         total_sim_trades=ts_trades,
         total_sim_wins=ts_wins,
         total_sim_pnl=ts_pnl,
+        total_sim_ghosts=ts_ghosts,
+        total_ghosts=total_ghosts,
+        ghost_trades_count=ghost_trades_count,
         position=position,
         trades=[asdict(t) for t in _trades if t.symbol == symbol],
         candles=candles or [],
@@ -254,6 +275,8 @@ def update_state(
         ai_recommendation=ai_recommendation,
         ai_expected_up=ai_expected_up,
         ai_expected_down=ai_expected_down,
+        model_accuracy=_global_model_accuracy,
+        total_samples=_global_total_samples,
     )
     
     with _state_lock:
@@ -264,14 +287,26 @@ def _flush() -> None:
     try:
         _state_path.parent.mkdir(parents=True, exist_ok=True)
         # El estado final es un diccionario de símbolos
-        output = {sym: asdict(st) for sym, st in _symbol_states.items()}
+        output = {}
+        for sym, st in _symbol_states.items():
+            d = asdict(st)
+            # Forzar campos críticos si no están (redundancia de seguridad)
+            d["model_accuracy"] = getattr(st, "model_accuracy", 0.0)
+            d["total_samples"] = getattr(st, "total_samples", 0)
+            output[sym] = d
         
         # Inyectar una vista "global" (el primer símbolo o una mezcla relevante)
         # para compatibilidad parcial o para que el UI sepa qué símbolos hay
         if _symbol_states:
             # Seleccionamos el ÚLTIMO símbolo actualizado para ser el 'main'
-            last_sym = list(_symbol_states.keys())[-1]
-            output["_main"] = asdict(_symbol_states[last_sym])
+            keys = list(_symbol_states.keys())
+            if keys:
+                last_sym = keys[-1]
+                st_main = _symbol_states[last_sym]
+                d_main = asdict(st_main)
+                d_main["model_accuracy"] = getattr(st_main, "model_accuracy", 0.0)
+                d_main["total_samples"] = getattr(st_main, "total_samples", 0)
+                output["_main"] = d_main
         
         tmp = _state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(output, indent=2, default=str))

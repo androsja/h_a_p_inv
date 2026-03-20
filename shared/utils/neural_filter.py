@@ -271,7 +271,7 @@ class NeuralTradeFilter:
         regime_enc  = round(regime_enc_norm * 5)  # 0-5
         num_conf    = round(num_conf_norm * 7)
 
-        score = 0.3  # Inicio restrictivo (requiere confirmaciones fuertes para llegar a 0.65)
+        score = 0.45  # Inicio restrictivo perdonado (permite que trades excepcionales lleguen a 0.60)
         reasons = []
 
 

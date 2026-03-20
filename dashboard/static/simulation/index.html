@@ -1643,8 +1643,22 @@
             <div class="logo-container">
                 <div class="logo-icon">🤖</div>
                 <div class="logo-text">
-                    <div class="title" style="display:flex; align-items:center; gap:8px;">
-                        <span>Trading Bot VFINAL <span style="font-size:10px; opacity:0.6;">(ANTI-CACHE)</span></span>
+                    <div class="title" style="display:flex; align-items:center; gap:12px;">
+                        <span style="letter-spacing: -0.5px;">Trading Bot VFINAL</span>
+                        <div style="display:flex; gap:8px; align-items:center; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <a href="/algorithm" title="Manual de Estrategias y Lógica" 
+                               style="text-decoration:none; font-size:14px; background:rgba(0, 242, 255, 0.1); border:1px solid #00f2ff; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; color:#00f2ff; transition:all 0.3s; box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);"
+                               onmouseover="this.style.background='#00f2ff'; this.style.color='#000'"
+                               onmouseout="this.style.background='rgba(0, 242, 255, 0.1)'; this.style.color='#00f2ff'">
+                                🧠
+                            </a>
+                            <a href="/analytics" title="Evolución y Auditoría de IA" 
+                               style="text-decoration:none; font-size:14px; background:rgba(112, 0, 255, 0.1); border:1px solid #7000ff; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; color:#7000ff; transition:all 0.3s; box-shadow: 0 0 10px rgba(112, 0, 255, 0.2);"
+                               onmouseover="this.style.background='#7000ff'; this.style.color='#fff'"
+                               onmouseout="this.style.background='rgba(112, 0, 255, 0.1)'; this.style.color='#7000ff'">
+                                📊
+                            </a>
+                        </div>
                     </div>
                     <div class="subtitle">Intraday · Confluencia Multi-Indicador</div>
                 </div>
@@ -1690,7 +1704,6 @@
                             <option value="3.0">🦍 Alto Riesgo (3x)</option>
                         </select>
                     </div>
-
                     <button onclick="openSymbolManager()" class="hdr-btn btn-purple"
                         title="Configurar activos en simulador">
                         🎛️ SÍMBOLOS
@@ -1842,6 +1855,10 @@
                     <div class="kv">
                         <span class="kv-key">🎯 Win Rate Global</span>
                         <span class="kv-val" id="global-wr-val">0%</span>
+                    </div>
+                    <div class="kv">
+                        <span class="kv-key">👻 Ghost Trades</span>
+                        <span class="kv-val" id="global-ghosts-val" style="color:var(--primary);">0</span>
                     </div>
                 </div>
 
@@ -4093,6 +4110,11 @@
                         const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
                         const pnlSign = pnl > 0 ? '+' : '';
 
+                        const grossPnl = (sState.gross_profit || 0) + (sState.gross_loss || 0);
+                        const fees = sState.total_fees || 0;
+                        const slip = sState.total_slippage || 0;
+                        const drawdown = sState.max_drawdown || 0;
+
                         currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
 
                         // ─── DEDUPLICACIÓN AGRESIVA ───
@@ -4116,7 +4138,7 @@
                         // 2. Si hay una fila estática ya renderizada con el mismo número de sesión, ocultar
                         if (shouldShow && staticRows.length > 0) {
                             const matchSameSession = staticRows.some(r => {
-                                const sText = r.cells[2].textContent.replace('#', '').trim();
+                                const sText = r.cells[3].textContent.replace('#', '').trim(); // Corregido índice a 3 (Sesión #)
                                 return parseInt(sText) === currentSession;
                             });
                             if (matchSameSession) shouldShow = false;
@@ -4129,18 +4151,31 @@
 
                         currentRow.style.display = shouldShow ? 'table-row' : 'none';
 
+                        const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                        const grossPfx = grossPnl >= 0 ? '+' : '';
+
                         currentRow.innerHTML = `
-                <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
+                <td style="padding:10px; font-weight:bold; color:var(--accent2); display:flex; align-items:center; gap:8px;">
+                    ${sSym} 🔄
+                    <button onclick="openCalendarModal('${sSym}')" 
+                        title="Ver Calendario de Historial"
+                        style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px 5px; cursor:pointer; font-size:12px; transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                        onmouseout="this.style.background='rgba(255,255,255,0.05)'">📅</button>
+                </td>
+                <td style="padding:10px; color:var(--muted); font-size:11px;">─</td>
                 <td style="padding:10px; font-weight:bold; color:var(--green);">$${(sState.bid || 0).toFixed(2)}</td>
-                <td style="padding:10px; color:var(--muted);">#${sState.session || 0}</td>
+                <td style="padding:10px; color:var(--muted);">#${currentSession}</td>
                 <td style="padding:10px;">${sState.total_trades || 0}</td>
                 <td style="padding:10px;">${(sState.win_rate || 0).toFixed(1)}%</td>
-                <td style="padding:10px; color:var(--muted);">─</td>
-                <td style="padding:10px; color:var(--muted);">─</td>
-                <td style="padding:10px; color:var(--muted);">─</td>
-                <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${pnlSign}$${pnl.toFixed(2)}</td>
+                <td style="padding:10px; color:${grossColor}; font-family:'JetBrains Mono',monospace;">
+                    ${grossPfx}$${grossPnl.toFixed(2)}</td>
+                <td style="padding:10px; color:#ff9800; font-family:'JetBrains Mono',monospace;">-$${fees.toFixed(2)}</td>
+                <td style="padding:10px; color:#ff5722; font-family:'JetBrains Mono',monospace;">-$${slip.toFixed(2)}</td>
+                <td style="padding:10px; color:${pnlColor}; font-weight:bold; font-family:'JetBrains Mono',monospace;">
+                    ${pnlSign}$${pnl.toFixed(2)}</td>
                 <td style="padding:10px;">$${(sState.available_cash || window.INITIAL_CAPITAL || 10000).toFixed(2)}</td>
-                <td style="padding:10px; color:var(--muted);">─</td>
+                <td style="padding:10px;">${drawdown.toFixed(1)}%</td>
                 <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
                     ${(() => {
                                 const allBlocks = (sState.blocks && sState.blocks.length > 0) ? sState.blocks : [];
@@ -4262,6 +4297,30 @@
                 gpnlEl.className = `kv-val ${gPnl > 0 ? 'g' : gPnl < 0 ? 'r' : ''}`;
             }
             if (document.getElementById('global-wr-val')) document.getElementById('global-wr-val').textContent = `${gWr.toFixed(1)}%`;
+            
+            // 👻 Actualizar Ghosts en tiempo real
+            const ghosts = state.total_ghosts || 0;
+            window._currentSessionGhosts = ghosts; // Guardar para el snapshot final
+            if (document.getElementById('global-ghosts-val')) {
+                document.getElementById('global-ghosts-val').textContent = ghosts;
+            }
+
+            // 🧠 Actualizar Estadísticas de IA en tiempo real (vía WebSocket)
+            if (state.model_accuracy !== undefined && state.model_accuracy !== null) {
+                const accEl = document.getElementById('neural-accuracy');
+                if (accEl) {
+                    if (state.model_accuracy > 0) {
+                        accEl.textContent = `${state.model_accuracy.toFixed(1)}%`;
+                    } else {
+                        // Si es exactamente 0, podría ser que aún está entrenando el bloque inicial
+                        accEl.textContent = 'En espera...';
+                    }
+                }
+            }
+            if (state.total_samples !== undefined && state.total_samples > 0) {
+                const sampEl = document.getElementById('neural-samples');
+                if (sampEl) sampEl.textContent = state.total_samples;
+            }
 
             // Countdown visibility 
             const cdContainer = document.getElementById('scan-countdown');
@@ -5000,6 +5059,7 @@
                     timestamp: new Date().toISOString(),
                     symbols_count,
                     trades_learned,
+                    total_ghosts: window._currentSessionGhosts || 0,
                     win_rate,
                     accuracy,
                     pnl: parseFloat(pnl.toFixed(2)),
@@ -5367,46 +5427,42 @@
                 const dd = parseFloat(row.drawdown) || 0;
                 const regime = (row.regime || 'NEUTRAL').toUpperCase();
 
-                // ── Puntuación compuesta (0–100) ──────────────────────────
-                // Cada criterio aporta hasta ~20 pts
+                // ── NASA SCORE 🛰️ (Neural-Assisted Selection Algorithm) ──────
+                // Puntuación 0-100 para predecir éxito en el Live de mañana.
+                const ghosts = parseInt(row.ghost_trades_count) || 0;
+                const totalSignals = trades + ghosts;
+                const selectivityRatio = totalSignals > 0 ? (trades / totalSignals) : 1.0;
 
-                // A) Win Rate (0–30 pts): ≥60% = 30, ≥50% = 20, ≥40% = 10, <40% = 0
-                let scoreWR = wr >= 60 ? 30 : wr >= 50 ? 20 : wr >= 40 ? 10 : 0;
-
-                // B) Profit Factor (0–25 pts): >2 = 25, >1.5 = 20, >1.0 = 12, <1 = 0
-                let scorePF = pf > 2 ? 25 : pf > 1.5 ? 20 : pf > 1.0 ? 12 : 0;
-
-                // C) Net PnL (0–20 pts): proporcional, normalizado por trades
-                //    (evita premiar acciones con muchos trades vs pocos)
+                // A) Win Rate (0–30 pts)
+                let scoreWR = wr >= 60 ? 30 : wr >= 50 ? 20 : Math.max(0, Math.round(wr * 0.4));
+                // B) AI Selectivity (0–30 pts)
+                let scoreSelectivity = Math.round(selectivityRatio * 30);
+                if (selectivityRatio < 0.4) scoreSelectivity = 0; 
+                // C) Profit Factor (0–10 pts)
+                let scorePF = pf > 2 ? 10 : pf > 1.5 ? 7 : pf > 1.0 ? 4 : 0;
+                // D) Net PnL (0–10 pts)
                 let netPerTrade = trades > 0 ? net / trades : 0;
-                let scoreNet = netPerTrade > 5 ? 20 : netPerTrade > 2 ? 15 : netPerTrade > 0 ? 10 : netPerTrade > -1 ? 3 : 0;
+                let scoreNet = netPerTrade > 5 ? 10 : netPerTrade > 2 ? 7 : netPerTrade > 0 ? 4 : 0;
+                // E) Muestra (0–10 pts)
+                let scoreSample = trades >= 4 ? 10 : trades >= 2 ? 5 : 2;
+                // F) Drawdown (0–10 pts)
+                let scoreDD = dd < 0.01 ? 10 : dd < 0.05 ? 5 : 0;
 
-                // D) Muestra válida (0–10 pts): más trades = más confiable
-                let scoreSample = trades >= 5 ? 10 : trades >= 3 ? 7 : trades >= 2 ? 4 : trades >= 1 ? 2 : 0;
-
-                // E) Drawdown (0–10 pts): inversamente proporcional
-                let scoreDD = dd < 0.01 ? 10 : dd < 0.05 ? 8 : dd < 0.1 ? 5 : dd < 0.2 ? 2 : 0;
-
-                // F) Régimen de mercado (0–5 pts): favorece tendencias alcistas
-                let scoreRegime = regime === 'TREND_UP' ? 5 :
-                    regime === 'MOMENTUM_UP' ? 5 :
-                        regime === 'NEUTRAL' ? 3 :
-                            regime === 'TREND_DOWN' ? 1 : 2;
-
-                const score = scoreWR + scorePF + scoreNet + scoreSample + scoreDD + scoreRegime;
+                const score = scoreWR + scoreSelectivity + scorePF + scoreNet + scoreSample + scoreDD;
+                const isLiveReady = score >= 75 && net > 0 && trades >= 2;
 
                 return {
-                    symbol: row.symbol, net, wr, trades, wins, pf: Math.round(pf * 100) / 100,
-                    dd, regime, gp, gl, gross, score: Math.round(score),
-                    scoreBreakdown: { wr: scoreWR, pf: scorePF, net: scoreNet, sample: scoreSample, dd: scoreDD, regime: scoreRegime }
+                    symbol: row.symbol, net, wr, trades, ghosts, wins, pf: Math.round(pf * 100) / 100,
+                    dd, regime, gp, gl, gross, score: Math.round(score), isLiveReady,
+                    scoreBreakdown: { wr: scoreWR, sel: scoreSelectivity, pf: scorePF, net: scoreNet, sample: scoreSample, dd: scoreDD }
                 };
             }).sort((a, b) => b.score - a.score);
 
-            // ── 2. Clasificación ──────────────────────────────────────────────
-            // REQUIREMENT: Must have positive Net PnL to be recommended
-            const top = scored.filter(s => s.score >= 60 && s.net > 0);   // ✅ Recomendados
-            const mid = scored.filter(s => (s.score >= 35 && s.score < 60) || (s.score >= 60 && s.net <= 0));  // 🟡 Revisar (incluye high score pero net <= 0)
-            const bad = scored.filter(s => s.score < 35 && s.net <= 0);    // ❌ Evitar
+            // ── 2. Clasificación NASA 🛰️ ─────────────────────────────────────
+            // REQUIREMENT: Score >= 70 + Net PnL positivo para ser Recomendado
+            const top = scored.filter(s => s.score >= 70 && s.net > 0);   
+            const mid = scored.filter(s => (s.score >= 40 && s.score < 70) || (s.score >= 70 && s.net <= 0));  
+            const bad = scored.filter(s => s.score < 40 && s.net <= 0);    
 
             // Guardar para que el Gestor pueda mostrar estrellas y botón rápido
             window._recommendedTop = top.map(s => s.symbol);
@@ -5436,35 +5492,43 @@
                 const ganoPor1 = s.pf.toFixed(1);
                 const netColor = s.net >= 0 ? '#00c781' : '#ef4444';
                 const netTxt = s.net >= 0 ? `ganó +$${s.net.toFixed(2)}` : `perdió -$${Math.abs(s.net).toFixed(2)}`;
-                const starColor = s.score >= 60 ? '#00c781' : s.score >= 35 ? '#fbbf24' : '#ef4444';
+                const starColor = s.score >= 75 ? '#00f2ff' : s.score >= 55 ? '#00c781' : s.score >= 35 ? '#fbbf24' : '#ef4444';
+                
                 return `
-                <div style="border-radius:10px; padding:12px 14px; margin-bottom:8px;
+                <div style="border-radius:10px; padding:12px 14px; margin-bottom:8px; position:relative; overflow:hidden;
                     background:${s.score >= 60 ? 'rgba(0,199,129,0.07)' : s.score >= 35 ? 'rgba(251,191,36,0.07)' : 'rgba(239,68,68,0.05)'};
                     border:1px solid ${s.score >= 60 ? 'rgba(0,199,129,0.2)' : s.score >= 35 ? 'rgba(251,191,36,0.2)' : 'rgba(239,68,68,0.15)'};">
+                    
+                    ${s.isLiveReady ? `
+                    <div style="position:absolute; top:0; right:0; background:linear-gradient(90deg, #00f2ff, #00c781); 
+                        color:black; font-size:9px; font-weight:900; padding:2px 8px; border-bottom-left-radius:8px;
+                        box-shadow: 0 0 15px rgba(0,242,255,0.4);">LIVE-READY 💎</div>
+                    ` : ''}
+
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                         <span style="font-weight:800;font-size:15px;color:white;">${s.symbol}</span>
-                        <span style="font-size:16px;color:${starColor};letter-spacing:2px;" title="Puntuación: ${s.score}/100">${stars(s.score)}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:9px; color:#6e7681; font-weight:bold;">NASA SCORE 🛰️</span>
+                            <span style="font-size:16px;color:${starColor};font-weight:900;" title="Confianza NASA: ${s.score}/100">${s.score}</span>
+                        </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
                         <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
-                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Ganó de cada 10 intentos</div>
-                            <div style="color:white;font-weight:600;">${winsOf10} de 10 veces ✓&nbsp;&nbsp;<span style="color:#6e7681;font-size:10px;">(${s.wr}%)</span></div>
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Efectividad (Win Rate)</div>
+                            <div style="color:white;font-weight:600;">${winsOf10}/10 <span style="color:#6e7681;font-weight:normal;font-size:9px;">(${s.wr}%)</span></div>
                         </div>
                         <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
-                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Por cada $1 que perdió, ganó</div>
-                            <div style="color:${s.pf >= 1.5 ? '#00c781' : s.pf >= 1 ? '#fbbf24' : '#ef4444'};font-weight:600;">$${ganoPor1}</div>
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Filtro de IA (Selectivity)</div>
+                            <div style="color:${s.ghosts > 0 ? '#c084fc' : '#00c781'};font-weight:600;">${s.trades} Entradas / ${s.ghosts} Ghosts</div>
                         </div>
                         <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
-                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Ganancia real (descontando costos)</div>
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Rentabilidad Unitaria</div>
                             <div style="color:${netColor};font-weight:600;">${netTxt}</div>
                         </div>
                         <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px 8px;">
-                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Cómo estaba el mercado</div>
-                            <div style="color:white;font-weight:600;font-size:10px;">${regimeLabel(s.regime)}</div>
+                            <div style="color:#6e7681;font-size:10px;margin-bottom:2px;">Drawdown Máximo</div>
+                            <div style="color:${s.dd < 0.05 ? '#00c781' : '#ef4444'};font-weight:600;">${(s.dd * 100).toFixed(1)}%</div>
                         </div>
-                    </div>
-                    <div style="margin-top:6px;font-size:10px;color:#6e7681;">
-                        Analizó ${s.trades} operacion${s.trades === 1 ? '' : 'es'} en la simulación de hoy
                     </div>
                 </div>`;
             };
@@ -5481,11 +5545,11 @@
                 <div style="padding:24px;overflow-y:auto;flex:1;">
                     <!-- Encabezado -->
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-right:20px;">
-                        <span style="font-size:32px;">📅</span>
+                        <span style="font-size:32px;">🛰️</span>
                         <div>
-                            <div style="font-size:18px;font-weight:800;color:white;">¿Cuáles empresas correr mañana?</div>
+                            <div style="font-size:18px;font-weight:800;color:white;">Predicciones NASA: ¿Mañana al Live?</div>
                             <div style="font-size:12px;color:#6e7681;margin-top:3px;">
-                                El bot analizó <b style="color:#c084fc;">${scored.length} empresas</b> en la simulación de hoy y te da su recomendación.
+                                El algoritmo **NASA** evaluó <b style="color:#00f2ff;">${scored.length} empresas</b> cruzando Wins con selectividad de IA.
                             </div>
                         </div>
                     </div>
@@ -5500,10 +5564,10 @@
                     <!-- SECCIÓN VERDE: Mejores -->
                     <div style="margin-bottom:20px;">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                            <span style="font-size:18px;">✅</span>
+                            <span style="font-size:18px;">💎</span>
                             <div>
-                                <div style="font-size:13px;font-weight:700;color:#00c781;">Para correr mañana — ${top.length} empresa${top.length === 1 ? '' : 's'}</div>
-                                <div style="font-size:10px;color:#6e7681;">Les fue bien hoy. Ganaron más de lo que perdieron y la estrategia funcionó.</div>
+                                <div style="font-size:13px;font-weight:700;color:#00f2ff;">Candidatos Live-Ready — ${top.length} empresa${top.length === 1 ? '' : 's'}</div>
+                                <div style="font-size:10px;color:#6e7681;">Empresas con alta selectividad de IA y rentabilidad confirmada para mañana.</div>
                             </div>
                         </div>
                         ${top.length > 0 ? top.map(scoreRow).join('') :
@@ -5669,21 +5733,18 @@
                 <div
                     style="display:flex; gap:6px; flex-wrap:nowrap; border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
                     <span style="color:#546e7a; font-size:10px; white-space:nowrap; align-self:center;">🧠 Train:</span>
-                    <button onclick="togglePackWinners()" title="Tus favoritas marcadas con ⭐"
-                        style="flex:1.2; background:linear-gradient(135deg,#00bfa5,#00695c); color:#e0f2f1; border:1px solid #00897b; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">💎
-                        Mejores<br><span id="count-winners-btn" style="font-size:9px; opacity:0.75;">Tus Top
-                            7</span></button>
-                    <button onclick="togglePackGrowth()"
-                        title="ARM, SMCI, AI, IONQ, RBLX, DDOG, NET, MDB, ZS, TWLO, HOOD, SOFI, AFRM, PLTR..."
-                        style="flex:1; background:linear-gradient(135deg,#1565c0,#0d47a1); color:#90caf9; border:1px solid #1976d2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🚀
-                        Growth<br><span style="font-size:9px; opacity:0.75;">20 Tech/AI</span></button>
-                    <button onclick="togglePackDividend()"
-                        title="PG, XOM, CVX, NEE, DUK, SO, AXP, C, MCD, PM, BTI, O, SPG, AMT, LOW, HD..."
-                        style="flex:1; background:linear-gradient(135deg,#1b5e20,#2e7d32); color:#a5d6a7; border:1px solid #388e3c; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">💰
-                        Value<br><span style="font-size:9px; opacity:0.75;">30 Estables</span></button>
-                    <button onclick="togglePackMega()" title="Mix Pro: Ganadores + Growth + Estables"
-                        style="flex:1; background:linear-gradient(135deg,#4a148c,#6a1b9a); color:#ce93d8; border:1px solid #7b1fa2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">🌍
-                        Mega<br><span style="font-size:9px; opacity:0.75;">Pack Pro</span></button>
+                    <button onclick="toggleSetA()" title="Empresas de Tecnología e Inteligencia Artificial"
+                        style="flex:1; background:linear-gradient(135deg,#1565c0,#0d47a1); color:#90caf9; border:1px solid #1976d2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📦
+                        Conjunto A<br><span style="font-size:9px; opacity:0.75;">20 Tech / AI</span></button>
+                    <button onclick="toggleSetB()" title="Empresas Sólidas y Pagadoras de Dividendos"
+                        style="flex:1; background:linear-gradient(135deg,#1b5e20,#2e7d32); color:#a5d6a7; border:1px solid #388e3c; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📦
+                        Conjunto B<br><span style="font-size:9px; opacity:0.75;">20 Value/Div</span></button>
+                    <button onclick="toggleSetC()" title="Consumo Masivo, Retail y Salud"
+                        style="flex:1; background:linear-gradient(135deg,#f57c00,#e65100); color:#ffe0b2; border:1px solid #ef6c00; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📦
+                        Conjunto C<br><span style="font-size:9px; opacity:0.75;">20 Consumo/Hlth</span></button>
+                    <button onclick="toggleSetD()" title="Industriales, Transporte y Aeroespacial (Símbolos Nuevos)"
+                        style="flex:1; background:linear-gradient(135deg,#4a148c,#6a1b9a); color:#ce93d8; border:1px solid #7b1fa2; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📦
+                        Conjunto D<br><span style="font-size:9px; opacity:0.75;">20 Industriales</span></button>
                     <button onclick="togglePackIndices()" title="SPY, QQQ, DIA para dar contexto general"
                         style="flex:1; background:linear-gradient(135deg,#b71c1c,#c62828); color:#ffcdd2; border:1px solid #d32f2f; padding:6px 4px; border-radius:6px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap;">📈
                         Índices<br><span style="font-size:9px; opacity:0.75;">Base</span></button>
@@ -5813,17 +5874,21 @@
 
         // Manejo de Favoritos (Mejores) en localStorage
         function getFavorites() {
-            const stored = localStorage.getItem('hapi_favorites');
-            if (stored) return JSON.parse(stored);
+            try {
+                const stored = localStorage.getItem('hapi_favorites');
+                if (stored) return JSON.parse(stored);
+            } catch (e) { console.error("Error parseando favoritos:", e); }
             // Default inicial si nunca ha guardado nada
             return ['CVX', 'CL', 'C', 'BTI', 'BRK.B', 'AXP', 'AMT'];
         }
 
         // Recuperar últimas recomendaciones para no perderlas en refresh
         function getRecommendedTop() {
-            if (window._recommendedTop && window._recommendedTop.length > 0) return window._recommendedTop;
-            const stored = localStorage.getItem('hapi_recommended_top');
-            if (stored) return JSON.parse(stored);
+            try {
+                if (window._recommendedTop && window._recommendedTop.length > 0) return window._recommendedTop;
+                const stored = localStorage.getItem('hapi_recommended_top');
+                if (stored) return JSON.parse(stored);
+            } catch (e) { console.error("Error parseando recomendadas:", e); }
             return [];
         }
 
@@ -5860,24 +5925,23 @@
             try {
                 const res = await fetch('/api/all_symbols?mode=sim');
                 const data = await res.json();
-                if (data.status === 'success') {
+                if (data.status === 'success' && data.assets) {
+                    // ... (resto de la lógica igual)
                     let html = '';
                     const sortedAssets = data.assets.sort((a, b) => a.symbol.localeCompare(b.symbol));
+                    // ... logic skipped for brevity in replacement ...
+                    // (Re-inserting the logic to ensure it works)
                     const recSet = new Set(getRecommendedTop());
                     const favsSet = new Set(getFavorites());
                     const indicesSet = new Set(['SPY', 'QQQ', 'DIA']);
-
                     let htmlIndices = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--accent); font-weight: bold; font-size: 12px; margin-top: 5px;">📈 ÍNDICES (MERCADO)</div>';
                     let htmlRegular = '<div style="grid-column: 1/-1; padding: 10px 0 5px; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--muted); font-weight: bold; font-size: 12px; margin-top: 15px;">🏢 ACCIONES</div>';
-
                     let hasIndices = false;
                     let hasRegular = false;
-
                     sortedAssets.forEach(item => {
                         const isEn = item.enabled !== false;
                         const isRec = recSet.has(item.symbol);
                         const isFav = favsSet.has(item.symbol);
-                        // Damos ID única cada tarjeta para actualizarlas sin redibujar todo
                         const itemHtml = `
                         <div id="smi-${item.symbol}" class="sm-item ${isEn ? 'enabled' : 'disabled'}" style="position:relative; padding-top: 18px;">
                             <div class="sm-fav ${isFav ? 'active' : ''}" onclick="toggleFavorite(event, '${item.symbol}')" title="Marcar/Desmarcar como Favorita (💎 Mejores)">⭐</div>
@@ -5889,23 +5953,22 @@
                             </label>
                         </div>
                     `;
-                        if (indicesSet.has(item.symbol)) {
-                            htmlIndices += itemHtml;
-                            hasIndices = true;
-                        } else {
-                            htmlRegular += itemHtml;
-                            hasRegular = true;
-                        }
+                        if (indicesSet.has(item.symbol)) { htmlIndices += itemHtml; hasIndices = true; } 
+                        else { htmlRegular += itemHtml; hasRegular = true; }
                     });
-
                     html = (hasIndices ? htmlIndices : '') + (hasRegular ? htmlRegular : '');
                     listContainer.innerHTML = html;
                     updateSymbolCounter();
                     showRecPresetRow();
                     updatePackWinnersCount();
+                } else {
+                    listContainer.innerHTML = `<div style="color:var(--red); grid-column:1/-1; text-align:center; padding:20px;">
+                        ⚠️ No se pudo cargar el catálogo: ${data.message || 'Error desconocido'}.
+                    </div>`;
                 }
             } catch (e) {
-                listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1;">Error de conexión.</div>';
+                console.error("Error en SymbolManager:", e);
+                listContainer.innerHTML = '<div style="color:var(--red); grid-column:1/-1; text-align:center; padding:20px;">❌ Error de conexión con el servidor.</div>';
             }
         }
 
@@ -6040,17 +6103,28 @@
 
         const _PACK_INDICES = ['SPY', 'QQQ', 'DIA'];
 
-        const _PACK_GROWTH = [
-            // Tech / AI / Alto crecimiento (20 empresas) - Curado
+        const _SET_A = [
+            // Conjunto A (20 Tech/AI)
             'ARM', 'SMCI', 'AI', 'IONQ', 'RBLX', 'TWLO', 'DDOG', 'NET', 'MDB', 'ZS',
             'GTLB', 'HCP', 'MNDY', 'BILL', 'TTD', 'CELH', 'HOOD', 'SOFI', 'AFRM', 'OPEN'
         ];
 
-        const _PACK_DIVIDEND = [
-            // Value / Dividendos estables (Restaurado completo)
+        const _SET_B = [
+            // Conjunto B (20 Sólidas/Dividendos)
             'PG', 'XOM', 'CVX', 'T', 'VZ', 'NEE', 'DUK', 'SO', 'D', 'WFC',
-            'C', 'AXP', 'MCD', 'PM', 'BTI', 'O', 'SPG', 'AMT', 'LOW', 'HD',
-            'TGT', 'MDLZ', 'GIS', 'K', 'CL', 'HSY', 'STZ', 'TAP', 'BRK.B', 'WFC'
+            'C', 'AXP', 'MCD', 'PM', 'BTI', 'O', 'SPG', 'AMT', 'LOW', 'HD'
+        ];
+
+        const _SET_C = [
+            // Conjunto C (20 Retail/Consumo/Salud)
+            'TGT', 'MDLZ', 'GIS', 'K', 'CL', 'HSY', 'STZ', 'TAP', 'BRK.B', 'JNJ',
+            'PFE', 'PEP', 'KO', 'MRK', 'ABBV', 'WMT', 'COST', 'UNH', 'JPM', 'BAC'
+        ];
+
+        const _SET_D = [
+            // Conjunto D (20 Nuevas Industriales/Otros importantes)
+            'BA', 'LMT', 'NOC', 'GD', 'RTX', 'CAT', 'DE', 'MMM', 'HON', 'GE',
+            'UNP', 'CSX', 'NSC', 'FDX', 'UPS', 'WM', 'RSG', 'NKE', 'SBUX', 'DIS'
         ];
 
         async function togglePackIndices() {
@@ -6060,39 +6134,32 @@
             await applyMassSymbolToggle(_PACK_INDICES, true);
         }
 
-        async function togglePackGrowth() {
+        async function toggleSetA() {
             if (!window.configAssets || !window.configAssets.assets) return;
             const allSymbols = window.configAssets.assets.map(a => a.symbol);
             await applyMassSymbolToggle(allSymbols, false);
-            await applyMassSymbolToggle(_PACK_GROWTH, true);
+            await applyMassSymbolToggle(_SET_A, true);
         }
 
-        async function togglePackDividend() {
+        async function toggleSetB() {
             if (!window.configAssets || !window.configAssets.assets) return;
             const allSymbols = window.configAssets.assets.map(a => a.symbol);
             await applyMassSymbolToggle(allSymbols, false);
-            await applyMassSymbolToggle(_PACK_DIVIDEND, true);
+            await applyMassSymbolToggle(_SET_B, true);
         }
 
-        async function togglePackWinners() {
+        async function toggleSetC() {
             if (!window.configAssets || !window.configAssets.assets) return;
             const allSymbols = window.configAssets.assets.map(a => a.symbol);
-            const favs = getFavorites();
-            if (favs.length === 0) {
-                alert('No tienes empresas marcadas como favoritas (⭐).');
-                return;
-            }
             await applyMassSymbolToggle(allSymbols, false);
-            await applyMassSymbolToggle(favs, true);
+            await applyMassSymbolToggle(_SET_C, true);
         }
 
-        async function togglePackMega() {
+        async function toggleSetD() {
             if (!window.configAssets || !window.configAssets.assets) return;
             const allSymbols = window.configAssets.assets.map(a => a.symbol);
-            const favs = getFavorites();
-            const megaPack = [...new Set([..._PACK_GROWTH, ..._PACK_DIVIDEND, ...favs])];
             await applyMassSymbolToggle(allSymbols, false);
-            await applyMassSymbolToggle(megaPack, true);
+            await applyMassSymbolToggle(_SET_D, true);
         }
 
         async function applyMassSymbolToggle(symbolsToChange, enable) {

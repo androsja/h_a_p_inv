@@ -33,6 +33,7 @@ class SimHistoryRequest(BaseModel):
     timestamp: str
     symbols_count: int
     trades_learned: int
+    total_ghosts: int = 0  # 👻 Nuevo campo para auditoría
     win_rate: float
     accuracy: float
     pnl: float
@@ -67,11 +68,21 @@ async def save_model_snapshot(req: SnapshotRequest):
             snap_dir.rmdir()
             return {"status": "error", "message": "No hay modelos entrenados para guardar. Corre al menos una simulación primero."}
 
+        # NEW: Capturar los resultados detallados de la simulación actual
+        res_file = Path(__file__).parent.parent.parent / "data" / "backtest_results.json"
+        detailed_results = []
+        if res_file.exists():
+            try:
+                with open(res_file, "r") as f:
+                    detailed_results = json.load(f)
+            except: pass
+
         meta = {
             "id": f"{ts}_{safe_label}",
             "label": req.label,
             "created_at": datetime.utcnow().isoformat(),
             "files": files_saved,
+            "detailed_results": detailed_results # Persistimos el estado de los símbolos en este snapshot
         }
         with open(snap_dir / "meta.json", "w") as f:
             json.dump(meta, f, indent=2)
@@ -167,8 +178,20 @@ async def save_sim_history(req: SimHistoryRequest):
         if history_file.exists():
             with open(history_file, "r") as f:
                 history = json.load(f)
-        history.append(req.dict())
-        history = history[-50:]  # Keep last 50
+        # NEW: Adjuntar los resultados detallados por símbolo a este hito de la historia
+        res_file = Path(__file__).parent.parent.parent / "data" / "backtest_results.json"
+        detailed_results = []
+        if res_file.exists():
+            try:
+                with open(res_file, "r") as f:
+                    detailed_results = json.load(f)
+            except: pass
+        
+        entry = req.dict()
+        entry["detailed_results"] = detailed_results
+        
+        history.append(entry)
+        history = history[-500:]  # Keep last 500 simulations
         with open(history_file, "w") as f:
             json.dump(history, f)
         return {"status": "success", "message": "Simulation saved to history"}

@@ -14,6 +14,8 @@ from shared.data import market_data
 from shared.utils.state_writer import update_state, clear_state
 from shared.utils.market_hours import _is_mock_time_active
 from shared.utils.checkpoint import load_simulation_checkpoint, save_simulation_checkpoint, clear_simulation_checkpoints
+from shared.utils.neural_filter import get_neural_filter
+from shared.utils.live_paper_launcher import launch_parallel_bots
 
 from .utils import SessionInterrupted, smart_sleep
 from .trading_engine import TradingEngine
@@ -31,6 +33,12 @@ class SimulationRunner:
         self.all_assets = []
         self.is_simulated = True
         self.session_pause = config.SESSION_PAUSE
+        
+        # 📈 Acumuladores Globales de Simulación
+        self.total_sim_trades = 0
+        self.total_sim_wins = 0
+        self.total_sim_pnl = 0.0
+        self.total_sim_ghosts = 0
         
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 SISTEMA INICIADO: Preparando motores de trading...")
@@ -135,6 +143,10 @@ class SimulationRunner:
                 
                 self.symbol_idx = 0
                 self.session_num = 0
+                self.total_sim_trades = 0
+                self.total_sim_wins = 0
+                self.total_sim_pnl = 0.0
+                self.total_sim_ghosts = 0
                 update_state(mode="SIMULATED", status="restarting", symbol="─", mock_time_930=_is_mock_time_active())
                 return True
         except: pass
@@ -144,7 +156,6 @@ class SimulationRunner:
         frozen = cmds.get("strategy_frozen", False)
         # Sincronizar NeuralFilter y MLPredictor
         try:
-            from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter()
             if frozen and not nf.is_frozen: nf.freeze()
             elif not frozen and nf.is_frozen: nf.unfreeze()
@@ -160,12 +171,26 @@ class SimulationRunner:
             if f.exists(): f.unlink()
         if is_purgue:
             clear_simulation_checkpoints()
+            # Borrar modelos y dataset de IA
             if config.NEURAL_MODEL_FILE.exists(): config.NEURAL_MODEL_FILE.unlink()
+            if config.ML_DATASET_FILE.exists(): config.ML_DATASET_FILE.unlink()
 
     def _handle_completion(self):
-        # Re-chequear si hay nuevos
-        update_state(mode="SIMULATED", status="completed", symbol="─", session=self.session_num)
-        smart_sleep(5)
+        # Reportar estado final con TOTALES para que no se vea en cero
+        wr = (self.total_sim_wins / self.total_sim_trades * 100) if self.total_sim_trades > 0 else 0
+        update_state(
+            mode="SIMULATED", 
+            status="completed", 
+            symbol="─", 
+            session=self.session_num,
+            total_sim_trades=int(self.total_sim_trades or 0),
+            total_sim_wins=int(self.total_sim_wins or 0),
+            total_sim_pnl=float(round(float(self.total_sim_pnl or 0.0), 2)),
+            total_sim_ghosts=int(self.total_sim_ghosts or 0),
+            win_rate=float(round(float(wr or 0.0), 2))
+        )
+        log.info(f"🏁 Simulación finalizada. Total Trades: {self.total_sim_trades} | PnL: ${self.total_sim_pnl:.2f}")
+        smart_sleep(1)
         return False
 
     def _check_live_paper(self, args):
@@ -181,7 +206,6 @@ class SimulationRunner:
         
         if is_lp and force_symbols:
             log.info(f"🚀 Modo Live Paper detectado ({len(force_symbols)} símbolos).")
-            from shared.utils.live_paper_launcher import launch_parallel_bots
             try:
                 launch_parallel_bots(args, force_symbols, self.session_num, self.run_bot_logic, self.init_broker, save_simulation_checkpoint)
             except SessionInterrupted:
@@ -264,9 +288,30 @@ class SimulationRunner:
                 "sim_end": engine.sim_end_date,
                 "investment_style": engine.investment_style,
                 "blocking_summary": dict(engine.blocking_history or {}),
+                "ghost_trades_count": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
+                "total_ghosts": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
                 "last_price": round(float(last_price), 2) if last_price else None,
                 "last_order_date": last_order_date,
             }
+
+            # Accumulate global totals
+            self.total_sim_trades += int(trades_val)
+            self.total_sim_wins += int(getattr(stats, 'winning_trades', 0))
+            self.total_sim_pnl += float(pnl_val)
+            self.total_sim_ghosts += int(session_result.get("total_ghosts", 0))
+
+            # Update dashboard with global report
+            update_state(
+                mode="SIMULATED", 
+                symbol=engine.symbol,
+                session=self.session_num,
+                status="running",
+                total_sim_trades=int(self.total_sim_trades),
+                total_sim_wins=int(self.total_sim_wins),
+                total_sim_pnl=float(round(self.total_sim_pnl, 2)),
+                total_sim_ghosts=int(self.total_sim_ghosts),
+                report=session_result
+            )
 
             results = []
             if res_file.exists():

@@ -88,16 +88,22 @@ async def get_active_symbols():
 
 
 @router.get("/all_symbols")
-async def get_all_symbols():
+async def get_all_symbols(mode: str = "sim"):
+    # Determinamos qué archivo usar según el modo
     path = config.ASSETS_FILE
+    if mode == "sim" and hasattr(config, "ASSETS_FILE_SIM"):
+        path = config.ASSETS_FILE_SIM
+    elif mode == "live" and hasattr(config, "ASSETS_FILE_LIVE"):
+        path = config.ASSETS_FILE_LIVE
+        
     try:
         if path.exists():
             with open(path) as f:
                 data = json.load(f)
                 return {"status": "success", "assets": data.get('assets', [])}
-        return {"status": "error", "assets": []}
+        return {"status": "error", "message": f"Archivo {path.name} no encontrado", "assets": []}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": f"Error JSON en {path.name}: {str(e)}"}
 
 
 @router.post("/toggle_symbol")
