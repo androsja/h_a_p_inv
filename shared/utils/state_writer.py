@@ -27,6 +27,10 @@ _global_sim_trades: int = 0
 _global_sim_wins:   int = 0
 _global_sim_pnl:    float = 0.0
 _global_sim_ghosts: int = 0
+_global_sim_fees:   float = 0.0
+_global_sim_slippage: float = 0.0
+_global_sim_gross_profit: float = 0.0
+_global_sim_gross_loss:   float = 0.0
 _global_model_accuracy: float = 0.0
 _global_total_samples:  int = 0
 
@@ -216,16 +220,22 @@ def update_state(
     if total_sim_wins   is not None: _global_sim_wins   = total_sim_wins
     if total_sim_pnl    is not None: _global_sim_pnl    = total_sim_pnl
     if total_sim_ghosts is not None: _global_sim_ghosts = total_sim_ghosts
-    
+    # (Opcional: añadir bases para fees/slippage si runner las tuviera)
+
+    # ─── CÁLCULO DE TOTALES VISUALES (Base + Suma de Activos) ───
+    # Estos son los valores que "llenan" los campos vacíos del Dashboard en tiempo real
+    ts_trades  = _global_sim_trades + sum(s.total_trades for s in _symbol_states.values())
+    ts_wins    = _global_sim_wins   + sum(s.winning_trades for s in _symbol_states.values())
+    ts_pnl     = _global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values())
+    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values())
+    ts_fees    = _global_sim_fees   + sum(s.total_fees for s in _symbol_states.values())
+    ts_slippage= _global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values())
+    ts_gross_profit = _global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values())
+    ts_gross_loss   = _global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values())
+
     # Persistir métricas de IA
     if model_accuracy is not None: _global_model_accuracy = model_accuracy
     if total_samples is not None: _global_total_samples = total_samples
-    if total_sim_ghosts is not None: _global_sim_ghosts = total_sim_ghosts
-
-    ts_trades = _global_sim_trades
-    ts_wins   = _global_sim_wins
-    ts_pnl    = _global_sim_pnl
-    ts_ghosts = _global_sim_ghosts
 
     new_s = BotState(
         mode=mode,
@@ -259,6 +269,10 @@ def update_state(
         total_sim_wins=ts_wins,
         total_sim_pnl=ts_pnl,
         total_sim_ghosts=ts_ghosts,
+        total_sim_fees=ts_fees,
+        total_sim_slippage=ts_slippage,
+        total_sim_gross_profit=ts_gross_profit, # Added this line
+        total_sim_gross_loss=ts_gross_loss,     # Added this line
         total_ghosts=total_ghosts,
         ghost_trades_count=ghost_trades_count,
         position=position,

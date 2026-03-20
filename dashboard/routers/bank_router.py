@@ -86,7 +86,7 @@ async def wipe_total():
         errors.append(f"config_reset: {e}")
 
     files_to_delete = [
-        # Reiniciar logs
+        # Reiniciar logs y modelos
         ("neural_model.joblib",   NEURAL_MODEL_FILE),
         ("ml_dataset.csv",        ML_DATASET_FILE),
         ("trade_journal.csv",     config.TRADE_JOURNAL_FILE),
@@ -94,6 +94,8 @@ async def wipe_total():
         ("state_sim.json",        config.STATE_FILE_SIM),
         ("backtest_results.json", config.RESULTS_FILE),
         ("checkpoint.db",         CHECKPOINT_DB),
+        ("training_history.csv",  config.TRAINING_LOG_FILE),
+        ("sim_history.json",      config.DATA_CACHE_DIR / "sim_history.json"),
     ]
 
     for name, path in files_to_delete:
@@ -103,6 +105,15 @@ async def wipe_total():
                 deleted.append(name)
         except Exception as e:
             errors.append(f"{name}: {e}")
+
+    # Borrar snapshots guardados
+    try:
+        if config.MODEL_SNAPSHOTS_DIR.exists():
+            shutil.rmtree(config.MODEL_SNAPSHOTS_DIR)
+            config.MODEL_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+            deleted.append("snapshots_dir")
+    except Exception as e:
+        errors.append(f"snapshots_dir: {e}")
 
     try:
         if LOG_FILE.exists(): LOG_FILE.write_text("")
@@ -114,7 +125,7 @@ async def wipe_total():
         "deleted": deleted,
         "errors": errors,
         "verify": verify_ok,
-        "message": f"✅ WIPE TOTAL completado. {len(deleted)} archivos eliminados."
+        "message": f"✅ WIPE TOTAL completado. {len(deleted)} componentes eliminados (incluyendo historial y snapshots)."
     }
 
 

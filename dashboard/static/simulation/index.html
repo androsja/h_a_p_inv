@@ -2387,6 +2387,8 @@
 
         // Global check for background processing
         let isProcessingAction = false;
+        window._historicalSessions = []; // Historial desde API
+        window._lastFullState = {};      // Último estado desde WS
 
         function setProcessing(active) {
             isProcessingAction = active;
@@ -2921,329 +2923,16 @@
                     return;
                 }
 
-                if (data && data.length > 0) {
-                    lastResultCount = data.length;
-                    window._lastResultsData = data;  // Cache para el recomendador
-
-                    let totalWins = 0;
-                    let totalLosses = 0;
-                    data.forEach(item => {
-                        let p = item.gross_pnl !== undefined ? item.gross_pnl : item.pnl || 0;
-                        if (p > 0) totalWins += p;
-                        else totalLosses += p;
-                    });
-                    const totalGross = totalWins + totalLosses;
-                    const totalFees = data.reduce((sum, item) => sum + (item.total_fees || 0), 0);
-                    const totalSlip = data.reduce((sum, item) => sum + (item.slippage_est || 0), 0);
-                    const totalNet = totalGross - totalFees - totalSlip;
-
-                    const withdrawalFee = 1.99;
-                    const initCash = window.INITIAL_CAPITAL || 10000;
-                    const netToBank = (initCash + totalNet) - withdrawalFee;
-                    const finalProfit = netToBank - initCash;
-
-                    // Update Summary Card
-                    const winsEl = document.getElementById('summary-gross-wins');
-                    if (winsEl) winsEl.textContent = `+$${totalWins.toFixed(2)}`;
-
-                    const lossesEl = document.getElementById('summary-gross-losses');
-                    if (lossesEl) lossesEl.textContent = `-$${Math.abs(totalLosses).toFixed(2)}`;
-                    const feesEl = document.getElementById('summary-total-fees');
-                    if (feesEl) feesEl.textContent = `-$${totalFees.toFixed(2)}`;
-
-                    const netEl = document.getElementById('summary-net-pnl');
-                    if (netEl) {
-                        netEl.textContent = `${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}`;
-                        netEl.style.color = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
-                    }
-                    const balEl = document.getElementById('summary-final-balance');
-                    if (balEl) balEl.textContent = `$${(initCash + totalNet).toFixed(2)}`;
-
-                    const profitEl = document.getElementById('summary-real-profit');
-                    if (profitEl) {
-                        profitEl.textContent = `${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}`;
-                        profitEl.style.color = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
-                    }
-
-                    // For backward compatibility with existing rows logic
-                    window.totalNetValue = totalNet;
-
-                    const totalTradesAllSessions = data.reduce((sum, item) => sum + (item.total_trades || 0), 0);
-                    const uniqueSymbolsCount = new Set(data.map(d => d.symbol)).size;
-                    const completionPercent = TOTAL_SYMBOLS > 0 ? Math.min((uniqueSymbolsCount / TOTAL_SYMBOLS) * 100, 100) : 0;
-
-                    const tbody = document.getElementById('results-table-body');
-
-                    // Actualizar UI del progreso
-                    let summaryDiv = document.getElementById('ml-progress');
-                    if (!summaryDiv) {
-                        summaryDiv = document.createElement('div');
-                        summaryDiv.id = 'ml-progress';
-                        summaryDiv.style.padding = '10px 15px';
-                        summaryDiv.style.marginBottom = '15px';
-                        summaryDiv.style.background = 'rgba(255,255,255,0.03)';
-                        summaryDiv.style.borderRadius = '8px';
-                        summaryDiv.style.fontSize = '12px';
-
-                        // Insertarlo en el contenedor fijo superior
-                        const parentContainer = document.getElementById('ml-progress-container');
-                        if (parentContainer) parentContainer.appendChild(summaryDiv);
-                    }
-                    if (summaryDiv) {
-                        const isLivePaper = document.body.classList.contains('mode-live-paper');
-                        if (isLivePaper) {
-                            summaryDiv.style.display = 'none';
-                        } else {
-                            summaryDiv.style.display = 'block';
-
-                            if (completionPercent >= 100 || (window._lastBotStatus === 'completed')) {
-                                // ── SIMULACIÓN COMPLETA ──
-                                const totalNet = data.reduce((s, r) => s + ((r.gross_pnl || r.pnl || 0) - (r.total_fees || 0) - (r.slippage_est || 0)), 0);
-                                const totalWins = data.reduce((s, r) => s + (parseInt(r.winning_trades) || 0), 0);
-                                const totalTrades = data.reduce((s, r) => s + (parseInt(r.total_trades) || 0), 0);
-                                const globalWR = totalTrades > 0 ? (totalWins / totalTrades * 100).toFixed(1) : 0;
-                                const nowStr = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-
-                                summaryDiv.innerHTML = `
-                                <div style="background:linear-gradient(135deg,rgba(0,199,129,0.12),rgba(0,199,129,0.04));
-                                    border:1.5px solid rgba(0,199,129,0.4); border-radius:12px; padding:14px 18px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                                        <div style="display:flex; align-items:center; gap:12px;">
-                                            <span style="font-size:28px; animation: pulse-check 1.5s ease-in-out;">✅</span>
-                                            <div>
-                                                <div style="font-size:15px; font-weight:800; color:#00c781; letter-spacing:0.3px;">
-                                                    Simulación Completada
-                                                </div>
-                                                <div style="font-size:11px; color:#6e7681; margin-top:2px;">
-                                                    ${uniqueSymbolsCount} empresas analizadas &nbsp;·&nbsp; Finalizó a las ${nowStr}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
-                                                <div style="font-size:10px; color:#6e7681;">Net PnL total</div>
-                                                <div style="font-size:14px; font-weight:800; color:${totalNet >= 0 ? '#00c781' : '#ef4444'};">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</div>
-                                            </div>
-                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
-                                                <div style="font-size:10px; color:#6e7681;">Win Rate global</div>
-                                                <div style="font-size:14px; font-weight:800; color:white;">${globalWR}%</div>
-                                            </div>
-                                            <div style="text-align:center; background:rgba(0,199,129,0.1); border-radius:8px; padding:6px 12px;">
-                                                <div style="font-size:10px; color:#6e7681;">Trades</div>
-                                                <div style="font-size:14px; font-weight:800; color:white;">${totalTrades}</div>
-                                            </div>
-                                        </div>
-                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                            <button onclick="openNextDayRecommender(window._lastResultsData || [])"
-                                                style="padding:8px 14px; font-size:12px; background:linear-gradient(135deg,#7c3aed,#4f46e5);
-                                                       color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700;">
-                                                📅 Ver Recomendaciones
-                                            </button>
-                                            <button onclick="runAITraining()"
-                                                style="padding:8px 14px; font-size:12px; background:var(--accent);
-                                                       color:black; border:none; border-radius:8px; cursor:pointer; font-weight:700;">
-                                                🧠 Analizar Errores
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>`;
-
-                                // Toast de finalización (aparece solo una vez)
-                                if (!window._completionToastShown) {
-                                    window._completionToastShown = true;
-                                    _showCompletionToast(uniqueSymbolsCount, totalNet, globalWR);
-                                }
-
-                                // Auto-guardar en el historial de simulaciones (una sola vez por run)
-                                if (!window._simHistorySaved) {
-                                    window._simHistorySaved = true;
-                                    const symbolsList = Array.from(new Set(data.map(d => d.symbol)));
-
-                                    // Aggregate date range
-                                    let minStart = null;
-                                    let maxEnd = null;
-                                    data.forEach(item => {
-                                        if (item.sim_start) {
-                                            const s = new Date(item.sim_start);
-                                            if (!minStart || s < minStart) minStart = s;
-                                        }
-                                        if (item.sim_end) {
-                                            const e = new Date(item.sim_end);
-                                            if (!maxEnd || e > maxEnd) maxEnd = e;
-                                        }
-                                    });
-
-                                    const style = data[0]?.investment_style || 'Normal';
-
-                                    saveSimulationToHistory({
-                                        symbols_count: uniqueSymbolsCount,
-                                        trades_learned: totalTrades,
-                                        win_rate: parseFloat(globalWR),
-                                        pnl: totalNet,
-                                        symbols_list: symbolsList,
-                                        sim_start: minStart ? minStart.toISOString() : '─',
-                                        sim_end: maxEnd ? maxEnd.toISOString() : '─',
-                                        investment_style: style
-                                    });
-                                }
-
-                            } else {
-                                // ── EN PROGRESO ──
-                                const dots = ['.', '..', '...'][Math.floor(Date.now() / 600) % 3];
-                                summaryDiv.innerHTML = `
-                                <div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
-                                    <span style="font-size:12px; color:var(--muted);">
-                                        <span style="color:var(--green);">&#9679;</span>
-                                        Analizando empresas${dots} &nbsp;
-                                        <b style="color:white;">${uniqueSymbolsCount} / ${TOTAL_SYMBOLS > 0 ? TOTAL_SYMBOLS : '?'}</b>
-                                    </span>
-                                    <div style="display:flex;gap:6px;align-items:center;">
-                                        <button onclick="runAITraining()"
-                                            style="padding: 4px 10px; font-size: 11px; background: var(--accent); color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">🧠
-                                            Analizar Errores</button>
-                                        <span style="color:var(--green); font-weight:bold;">${completionPercent.toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                                <div style="background:rgba(255,255,255,0.1); border-radius:4px; height:8px; overflow:hidden; position:relative;">
-                                    <div style="width:${completionPercent}%; background:linear-gradient(90deg,#00c781,#00e676); height:100%; transition:width 0.3s; border-radius:4px;"></div>
-                                </div>`;
-                            }
-                        }
-                    }
-
-                    tbody.innerHTML = '';
-
-                    // ── Ordenar por Net PnL si está activo ────────────────
-                    let rowsToRender = [...data];
-                    if (window._sortByNetPnl !== undefined) {
-                        rowsToRender.sort((a, b) => {
-                            const netA = (a.gross_pnl || a.pnl || 0) - (a.total_fees || 0) - (a.slippage_est || 0);
-                            const netB = (b.gross_pnl || b.pnl || 0) - (b.total_fees || 0) - (b.slippage_est || 0);
-                            return window._sortByNetPnl === 'desc' ? netB - netA : netA - netB;
-                        });
-                    } else {
-                        rowsToRender.reverse(); // orden original (más reciente primero)
-                    }
-
-                    rowsToRender.forEach(row => {
-                        // Ya NO ocultamos sesiones sin trades para evitar confusión de "símbolos borrados"
-
-                        const tr = document.createElement('tr');
-                        tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
-
-                        if (!window.completedSessions[row.symbol] || window.completedSessions[row.symbol] < row.session_num) {
-                            window.completedSessions[row.symbol] = row.session_num;
-                        }
-
-                        const grossPnl = row.gross_pnl !== undefined ? row.gross_pnl : row.pnl || 0;
-                        const fees = row.total_fees !== undefined ? row.total_fees : 0;
-                        const slip = row.slippage_est !== undefined ? row.slippage_est : 0;
-                        const netPnl = grossPnl - fees - slip;
-
-                        const isWin = netPnl >= 0;
-                        const pnlColor = isWin ? 'var(--green)' : 'var(--red)';
-                        const prefix = isWin ? '+' : '';
-
-                        const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
-                        const grossPfx = grossPnl >= 0 ? '+' : '';
-
-                        tr.innerHTML = `
-        <td style="padding:10px; font-weight:bold; display:flex; align-items:center; gap:8px;">
-            ${row.symbol}
-            <button onclick="openCalendarModal('${row.symbol}')" 
-                title="Ver Calendario de Historial"
-                style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px 5px; cursor:pointer; font-size:12px; transition:all 0.2s;"
-                onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                onmouseout="this.style.background='rgba(255,255,255,0.05)'">📅</button>
-        </td>
-        <td style="padding:10px; color:var(--muted); font-size:11px;">
-            ${row.last_order_date && row.last_order_date !== '─' ? (row.last_order_date.includes('T') ? row.last_order_date.split('T')[0] : (row.last_order_date.includes(' ') ? row.last_order_date.split(' ')[0] : row.last_order_date)) : '─'}
-        </td>
-        <td style="padding:10px; color:${row.last_price ? 'var(--green)' : 'var(--muted)'}">
-            ${row.last_price ? '$' + parseFloat(row.last_price).toFixed(2) : '─'}
-        </td>
-        <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
-        <td style="padding:10px;">${row.total_trades}</td>
-        <td style="padding:10px;">${row.win_rate}%</td>
-        <td style="padding:10px; color:${grossColor}; font-family:'JetBrains Mono',monospace;">
-            ${grossPfx}$${grossPnl.toFixed(2)}</td>
-        <td style="padding:10px; color:#ff9800; font-family:'JetBrains Mono',monospace;">-$${fees.toFixed(2)}</td>
-        <td style="padding:10px; color:#ff5722; font-family:'JetBrains Mono',monospace;">-$${slip.toFixed(2)}</td>
-        <td style="padding:10px; color:${pnlColor}; font-family:'JetBrains Mono',monospace; font-weight:bold;">
-            ${prefix}$${netPnl.toFixed(2)}</td>
-        <td style="padding:10px; font-weight:bold; color:var(--text);">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
-        <td style="padding:10px;">${row.drawdown}%</td>
-        <td style="padding:10px;">
-            <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
-                ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
-            </div>
-        </td>
-        <td style="padding:10px; text-align:left;">
-            ${buildRegimeBadge(row.regime || liveRegimes[row.symbol] || 'NEUTRAL')}
-        </td>
-        `;
-                        tbody.appendChild(tr);
-                    });
-
-                    // Añadir resumen acumulado
-                    const sumRow = document.createElement('tr');
-
-                    // Usamos las variables ya calculadas arriba para el resumen
-                    const totGrossColor = totalGross >= 0 ? 'var(--green)' : 'var(--red)';
-                    const totGrossPre = totalGross >= 0 ? '+' : '';
-
-                    const totColor = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
-                    const totPre = totalNet >= 0 ? '+' : '';
-
-                    sumRow.innerHTML = `
-        <td colspan="5" style="padding:10px; text-align:right; font-weight:bold; color:var(--muted);">NETO ESTRATEGIA
-            ACUMULADA:</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totGrossColor};">
-            ${totGrossPre}$${totalGross.toFixed(2)}</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; color:#ff9800; font-weight:bold;">
-            <div style="font-size:10px; color:var(--muted); font-family:var(--font-primary);">FEES SUM</div>
-            -$${totalFees.toFixed(2)}</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; color:#ff5722; font-weight:bold;">
-            <div style="font-size:10px; color:var(--muted); font-family:var(--font-primary);">SLIPPAGE SUM</div>
-            -$${totalSlip.toFixed(2)}</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${totColor};">
-            ${totPre}$${totalNet.toFixed(2)}</td>
-        <td style="padding:10px; font-weight:bold; color:var(--text);">$${((window.INITIAL_CAPITAL || 10000) + totalNet).toFixed(2)}</td>
-        <td colspan="3" style="padding:10px;"></td>
-        `;
-                    tbody.appendChild(sumRow);
-
-                    // Añadir fila de retiro a banco (simulación final)
-                    // Usamos las variables ya calculadas arriba
-                    const finalColor = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
-                    const finalPre = finalProfit >= 0 ? '+' : '';
-
-                    const cashoutRow = document.createElement('tr');
-                    cashoutRow.innerHTML = `
-        <td colspan="4" style="padding:10px; text-align:right; font-weight:bold; color:var(--text); font-size:1.1em; background:rgba(0,0,0,0.2);">
-            💰 ESTIMADO REAL RETIRADO AL BANCO (Fee -$${withdrawalFee}):
-        </td>
-        <td style="padding:10px; background:rgba(0,0,0,0.2);"></td>
-        <td colspan="2" style="padding:10px; text-align:center; color:var(--muted); background:rgba(0,0,0,0.2);">---</td>
-        <td style="padding:10px; font-family:'JetBrains Mono',monospace; font-weight:bold; color:${finalColor}; font-size:1.15em; background:rgba(0,0,0,0.2); border-top: 1px dashed var(--border);">
-            ${finalPre}$${finalProfit.toFixed(2)}
-        </td>
-        <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.15em; background:rgba(0,0,0,0.2); border-top: 1px dashed var(--border);">
-            $${netToBank.toFixed(2)}
-        </td>
-        <td colspan="4" style="padding:10px; background:rgba(0,0,0,0.2); text-align: left;">
-            <button onclick="openWithdrawalBreakdown(${totalNet}, ${netToBank})" 
-                style="background:var(--accent); color:white; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:6px;">
-                🇨🇴 Ver en Pesos
-            </button>
-        </td>
-        `;
-                    tbody.appendChild(cashoutRow);
+                if (data) {
+                    window._historicalSessions = data;
+                    renderUnifiedTable(); // Motor unificado que integra activos e históricos
                 }
             } catch (e) {
                 console.error("Error en loadResults:", e);
             }
         }
+
+
 
         async function runAITraining() {
             const btn = document.querySelector('button[onclick="runAITraining()"]');
@@ -3968,9 +3657,177 @@
             });
         }
 
+        function renderUnifiedTable() {
+            const tbody = document.getElementById('results-table-body');
+            if (!tbody) return;
+
+            // 1. Recolectar datos activos desde window._lastFullState
+            const activeData = [];
+            if (window._lastFullState) {
+                Object.entries(window._lastFullState).forEach(([k, v]) => {
+                    if (k !== 'force_symbols' && k !== '_main' && v && v.symbol && v.symbol !== '─') {
+                        activeData.push({
+                            ...v,
+                            isActive: true,
+                            gross_pnl: (v.gross_profit || 0) + (v.gross_loss || 0),
+                            total_fees: v.total_fees || 0,
+                            slippage_est: v.total_slippage || 0,
+                            session_num: v.session || 0,
+                            total_trades: v.total_trades || 0,
+                            win_rate: v.win_rate || 0,
+                            last_price: v.last_price || v.bid || v.ask || 0,
+                            last_order_date: v.last_order_date || 'En curso...',
+                            drawdown: v.max_drawdown || 0,
+                            regime: v.regime || 'NEUTRAL'
+                        });
+                    }
+                });
+            }
+
+            // 2. Combinar con históricos
+            const histData = window._historicalSessions || [];
+            const activeSyms = new Set(activeData.map(d => d.symbol));
+            const combined = [...activeData];
+            histData.forEach(h => {
+                if (!activeSyms.has(h.symbol)) {
+                    combined.push({ ...h, isActive: false });
+                }
+            });
+
+            if (combined.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="14" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
+                return;
+            }
+
+            // 3. Ordenar
+            let rowsToRender = [...combined];
+            if (window._sortByNetPnl !== undefined) {
+                rowsToRender.sort((a, b) => {
+                    const netA = (a.gross_pnl || 0) - (a.total_fees || 0) - (a.slippage_est || 0);
+                    const netB = (b.gross_pnl || 0) - (b.total_fees || 0) - (b.slippage_est || 0);
+                    return window._sortByNetPnl === 'desc' ? netB - netA : netA - netB;
+                });
+            } else {
+                rowsToRender.sort((a,b) => (b.session_num || 0) - (a.session_num || 0));
+            }
+
+            tbody.innerHTML = '';
+            
+            let totalGross = 0;
+            let totalFees = 0;
+            let totalSlip = 0;
+
+            rowsToRender.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+                if (row.isActive) tr.id = `current-session-row-${row.symbol}`;
+
+                const grossPnl = row.gross_pnl || 0;
+                const fees = row.total_fees || 0;
+                const slip = row.slippage_est || 0;
+                const netPnl = grossPnl - fees - slip;
+                
+                totalGross += grossPnl;
+                totalFees += fees;
+                totalSlip += slip;
+
+                const isWin = netPnl >= 0;
+                const pnlColor = isWin ? 'var(--green)' : 'var(--red)';
+                const prefix = isWin ? '+' : '';
+                const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
+                const grossPfx = grossPnl >= 0 ? '+' : '';
+
+                tr.innerHTML = `
+                    <td style="padding:10px; font-weight:bold; display:flex; align-items:center; gap:8px;">
+                        ${row.isActive ? '<span style="color:var(--accent); font-size:10px; animation:pulse-text 1.5s infinite;">🔄</span> ' : ''}${row.symbol}
+                        <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer;">📅</button>
+                    </td>
+                    <td style="padding:10px; color:var(--muted); font-size:11px;">${row.last_order_date}</td>
+                    <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
+                    <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
+                    <td style="padding:10px;">${row.total_trades}</td>
+                    <td style="padding:10px;">${row.win_rate}%</td>
+                    <td style="padding:10px; color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</td>
+                    <td style="padding:10px; color:#ff9800;">-$${fees.toFixed(2)}</td>
+                    <td style="padding:10px; color:#ff5722;">-$${slip.toFixed(2)}</td>
+                    <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${prefix}$${netPnl.toFixed(2)}</td>
+                    <td style="padding:10px; font-weight:bold;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
+                    <td style="padding:10px;">${row.drawdown || 0}%</td>
+                    <td style="padding:10px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
+                            ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
+                        </div>
+                    </td>
+                    <td style="padding:10px; text-align:left;">
+                        ${buildRegimeBadge(row.regime || 'NEUTRAL')}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // ─── RESUMEN FINAL (BOTÓN DE PESOS RE-ACTIVADO) ───
+            const totalNet = totalGross - totalFees - totalSlip;
+            const withdrawalFee = 1.99;
+            const initCash = window.INITIAL_CAPITAL || 10000;
+            const netToBank = (initCash + totalNet) - withdrawalFee;
+            const finalProfit = netToBank - initCash;
+
+            const sumRow = document.createElement('tr');
+            sumRow.style.background = "rgba(255,255,255,0.02)";
+            sumRow.innerHTML = `
+                <td colspan="5" style="padding:15px; text-align:right; font-weight:bold; color:var(--muted);">ACUMULADO ESTRATEGIA:</td>
+                <td style="padding:10px; font-weight:bold; color:${totalGross >= 0 ? 'var(--green)' : 'var(--red)'};">${totalGross >= 0 ? '+' : ''}$${totalGross.toFixed(2)}</td>
+                <td style="padding:10px; color:#ff9800; font-weight:bold;">-$${totalFees.toFixed(2)}</td>
+                <td style="padding:10px; color:#ff5722; font-weight:bold;">-$${totalSlip.toFixed(2)}</td>
+                <td style="padding:10px; font-weight:bold; color:${totalNet >= 0 ? 'var(--green)' : 'var(--red)'}; font-size:1.1em;">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</td>
+                <td style="padding:10px; font-weight:bold;">$${(initCash + totalNet).toFixed(2)}</td>
+                <td colspan="4"></td>
+            `;
+            tbody.appendChild(sumRow);
+
+            const cashoutRow = document.createElement('tr');
+            cashoutRow.style.background = "rgba(0,199,129,0.05)";
+            cashoutRow.innerHTML = `
+                <td colspan="4" style="padding:15px; text-align:right; font-weight:bold; color:white;">💰 DISPONIBLE PARA RETIRO AL BANCO:</td>
+                <td></td><td></td><td></td>
+                <td style="padding:10px; font-weight:bold; color:${finalProfit >= 0 ? 'var(--green)' : 'var(--red)'}; font-size:1.2em;">${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}</td>
+                <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.2em;">$${netToBank.toFixed(2)}</td>
+                <td colspan="4" style="padding:10px;">
+                    <button onclick="openWithdrawalBreakdown(${totalNet}, ${netToBank})" 
+                        style="background:var(--accent); color:black; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 15px rgba(0,255,213,0.3);">
+                        🇨🇴 Ver en Pesos y Desglose de Impuestos
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(cashoutRow);
+            
+            // Actualizar tarjetas de resumen superior (opcional pero recomendado)
+            updateSummaryCards(totalGross, totalFees, totalSlip, totalNet, netToBank, finalProfit);
+        }
+
+        function updateSummaryCards(totalGross, totalFees, totalSlip, totalNet, netToBank, finalProfit) {
+            const ids = {
+                'summary-gross-wins': totalGross, // Simplificado, idealmente separar wins/losses
+                'summary-total-fees': totalFees,
+                'summary-net-pnl': totalNet,
+                'summary-final-balance': (window.INITIAL_CAPITAL || 10000) + totalNet,
+                'summary-real-profit': finalProfit
+            };
+            for (const [id, val] of Object.entries(ids)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === 'summary-final-balance') el.textContent = `$${val.toFixed(2)}`;
+                    else {
+                        el.textContent = `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
+                        el.style.color = val >= 0 ? 'var(--green)' : 'var(--red)';
+                    }
+                }
+            }
+        }
+
         function updateUI(fullState) {
             if (!fullState) return;
-            console.log("[UI] updateUI llamado con:", Object.keys(fullState));
+            window._lastFullState = fullState; // Persistir para renderizado unificado
 
             // Si hay símbolos forzados, actualizar pestañas
             if (fullState.force_symbols) {
@@ -4070,131 +3927,7 @@
 
             // Actualizar las filas "En progreso..." en la tabla de resultados para TODOS los símbolos activos
             // Ignoramos claves genéricas y extraemos solo los estados de símbolos individuales
-            const activeStates = Object.entries(fullState)
-                .filter(([k, v]) => {
-                    return k !== 'force_symbols' && k !== '_main' &&
-                        v && v.symbol && v.symbol !== '─' &&
-                        (v.status === 'running' || v.status === 'downloading');
-                })
-                .map(([k, v]) => v);
-
-            // ─── LIMPIEZA DE FILAS GHOST ───
-            // Eliminar filas que ya no están en activeStates
-            const activeSyms = new Set(activeStates.map(s => s.symbol));
-            const allCurrentRows = document.querySelectorAll('tr[id^="current-session-row-"]');
-            allCurrentRows.forEach(row => {
-                const rowSym = row.id.replace('current-session-row-', '');
-                if (!activeSyms.has(rowSym)) {
-                    row.remove();
-                }
-            });
-
-            if (activeStates.length > 0) {
-                activeStates.forEach(sState => {
-                    const sSym = sState.symbol;
-                    let currentRow = document.getElementById(`current-session-row-${sSym}`);
-                    const tbody = document.getElementById('results-table-body');
-
-                    if (!currentRow && tbody) {
-                        currentRow = document.createElement('tr');
-                        currentRow.id = `current-session-row-${sSym}`;
-                        tbody.insertBefore(currentRow, tbody.firstChild);
-                    }
-
-                    if (currentRow) {
-                        // Si previamente estaba en "Esperando resultados..."
-                        const noData = document.querySelector('.no-trades');
-                        if (noData && noData.closest('tbody') === tbody) noData.parentElement.remove();
-
-                        const pnl = (sState.available_cash || window.INITIAL_CAPITAL || 10000) - (sState.initial_cash || window.INITIAL_CAPITAL || 10000);
-                        const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-                        const pnlSign = pnl > 0 ? '+' : '';
-
-                        const grossPnl = (sState.gross_profit || 0) + (sState.gross_loss || 0);
-                        const fees = sState.total_fees || 0;
-                        const slip = sState.total_slippage || 0;
-                        const drawdown = sState.max_drawdown || 0;
-
-                        currentRow.style.background = 'rgba(255, 255, 255, 0.05)'; // Resaltado sutil
-
-                        // ─── DEDUPLICACIÓN AGRESIVA ───
-                        // Buscamos si ya existe una fila TR estática para este símbolo
-                        const staticRows = Array.from(tbody.querySelectorAll('tr')).filter(r =>
-                            !r.id.startsWith('current-session-row') &&
-                            r.cells[0] &&
-                            r.cells[0].textContent.replace('🔄', '').trim() === sSym
-                        );
-
-                        const highestHistoricalSession = (window.completedSessions || {})[sSym] || 0;
-                        const currentSession = sState.session || 0;
-
-                        let shouldShow = true;
-
-                        // 1. Si la sesión actual es menor o igual a la más alta grabada, ocultar
-                        if (currentSession > 0 && currentSession <= highestHistoricalSession) {
-                            shouldShow = false;
-                        }
-
-                        // 2. Si hay una fila estática ya renderizada con el mismo número de sesión, ocultar
-                        if (shouldShow && staticRows.length > 0) {
-                            const matchSameSession = staticRows.some(r => {
-                                const sText = r.cells[3].textContent.replace('#', '').trim(); // Corregido índice a 3 (Sesión #)
-                                return parseInt(sText) === currentSession;
-                            });
-                            if (matchSameSession) shouldShow = false;
-                        }
-
-                        // 3. Si acabamos de resetear (sesión 0 o 1) y ya hay datos históricos, probablemente sea ruido
-                        if (shouldShow && currentSession <= 1 && highestHistoricalSession >= 1) {
-                            shouldShow = false;
-                        }
-
-                        currentRow.style.display = shouldShow ? 'table-row' : 'none';
-
-                        const grossColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
-                        const grossPfx = grossPnl >= 0 ? '+' : '';
-
-                        currentRow.innerHTML = `
-                <td style="padding:10px; font-weight:bold; color:var(--accent2); display:flex; align-items:center; gap:8px;">
-                    ${sSym} 🔄
-                    <button onclick="openCalendarModal('${sSym}')" 
-                        title="Ver Calendario de Historial"
-                        style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px 5px; cursor:pointer; font-size:12px; transition:all 0.2s;"
-                        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-                        onmouseout="this.style.background='rgba(255,255,255,0.05)'">📅</button>
-                </td>
-                <td style="padding:10px; color:var(--muted); font-size:11px;">─</td>
-                <td style="padding:10px; font-weight:bold; color:var(--green);">$${(sState.bid || 0).toFixed(2)}</td>
-                <td style="padding:10px; color:var(--muted);">#${currentSession}</td>
-                <td style="padding:10px;">${sState.total_trades || 0}</td>
-                <td style="padding:10px;">${(sState.win_rate || 0).toFixed(1)}%</td>
-                <td style="padding:10px; color:${grossColor}; font-family:'JetBrains Mono',monospace;">
-                    ${grossPfx}$${grossPnl.toFixed(2)}</td>
-                <td style="padding:10px; color:#ff9800; font-family:'JetBrains Mono',monospace;">-$${fees.toFixed(2)}</td>
-                <td style="padding:10px; color:#ff5722; font-family:'JetBrains Mono',monospace;">-$${slip.toFixed(2)}</td>
-                <td style="padding:10px; color:${pnlColor}; font-weight:bold; font-family:'JetBrains Mono',monospace;">
-                    ${pnlSign}$${pnl.toFixed(2)}</td>
-                <td style="padding:10px;">$${(sState.available_cash || window.INITIAL_CAPITAL || 10000).toFixed(2)}</td>
-                <td style="padding:10px;">${drawdown.toFixed(1)}%</td>
-                <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
-                    ${(() => {
-                                const allBlocks = (sState.blocks && sState.blocks.length > 0) ? sState.blocks : [];
-                                if (allBlocks.length > 0) {
-                                    return `<div style="display:flex; flex-direction:column; gap:2px;">` +
-                                        allBlocks.map(b => `<span style="color:var(--yellow);">${b}</span>`).join('') +
-                                        `</div>` +
-                                        (sState.is_waiting ? ` <span style="color:var(--muted); opacity:0.6;">(Escaneo en ${sState.next_scan_in}s)</span>` : '');
-                                }
-                                return sState.is_waiting ? `⏳ Esperando próximo escaneo (${sState.next_scan_in}s)...` : 'Evaluando velas históricas en tiempo real...';
-                            })()}
-                </td>
-                <td style="padding:10px; text-align:left;">
-                    ${buildRegimeBadge(sState.regime || 'NEUTRAL')}
-                </td>
-                `;
-                    }
-                });
-            }
+            renderUnifiedTable(); // Motor unificado
 
             // Actualizar indicadores solo si es el símbolo enfocado
             const isFocusActive = (sym === focusSymbol);
@@ -4298,8 +4031,38 @@
             }
             if (document.getElementById('global-wr-val')) document.getElementById('global-wr-val').textContent = `${gWr.toFixed(1)}%`;
             
-            // 👻 Actualizar Ghosts en tiempo real
-            const ghosts = state.total_ghosts || 0;
+            // 🏆 BARRA DE RESUMEN SUPERIOR (Global Simulation Stats)
+            const sWinsEl = document.getElementById('summary-gross-wins');
+            if (sWinsEl) sWinsEl.textContent = `+$${(state.total_sim_gross_profit || 0).toFixed(2)}`;
+
+            const sLossesEl = document.getElementById('summary-gross-losses');
+            if (sLossesEl) sLossesEl.textContent = `-$${Math.abs(state.total_sim_gross_loss || 0).toFixed(2)}`;
+
+            const sFeesEl = document.getElementById('summary-total-fees');
+            if (sFeesEl) sFeesEl.textContent = `-$${(state.total_sim_fees || 0).toFixed(2)}`;
+
+            const sNetEl = document.getElementById('summary-net-pnl');
+            if (sNetEl) {
+                const net = state.total_sim_pnl || 0;
+                sNetEl.textContent = `${net >= 0 ? '+' : ''}$${net.toFixed(2)}`;
+                sNetEl.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+            }
+
+            const initCash = window.INITIAL_CAPITAL || 10000;
+            const sBalEl = document.getElementById('summary-final-balance');
+            if (sBalEl) sBalEl.textContent = `$${(initCash + (state.total_sim_pnl || 0)).toFixed(2)}`;
+
+            const sProfitEl = document.getElementById('summary-real-profit');
+            if (sProfitEl) {
+                const withdrawalFee = 1.99;
+                const netToBank = (initCash + (state.total_sim_pnl || 0)) - withdrawalFee;
+                const finalProfit = netToBank - initCash;
+                sProfitEl.textContent = `${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}`;
+                sProfitEl.style.color = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
+            }
+
+            // 👻 Actualizar Ghosts en tiempo real (Suma global)
+            const ghosts = state.total_sim_ghosts || 0;
             window._currentSessionGhosts = ghosts; // Guardar para el snapshot final
             if (document.getElementById('global-ghosts-val')) {
                 document.getElementById('global-ghosts-val').textContent = ghosts;
@@ -4600,6 +4363,23 @@
             };
 
             ws.onerror = () => ws.close();
+        }
+
+        async function clearSimHistory() {
+            if (!confirm("¿Seguro que quieres borrar todo el historial de simulaciones? Esta acción no se puede deshacer.")) return;
+            try {
+                const res = await fetch('/api/clear_sim_history', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showToast(data.message);
+                    const modal = document.getElementById('sim-history-modal');
+                    if (modal) _refreshSimHistoryTable(modal);
+                } else {
+                    showToast("Error: " + data.message, "error");
+                }
+            } catch (e) {
+                showToast("Error de conexión", "error");
+            }
         }
 
         function restartSim() {
@@ -5101,8 +4881,15 @@
             modal.innerHTML = `
                 <div class="hist-panel">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
-                        <div>
-                            <div class="hist-title">📜 Historial de Simulaciones</div>
+                            <div style="display:flex; align-items:center; gap:15px;">
+                                <div class="hist-title">📜 Historial de Simulaciones</div>
+                                <button onclick="clearSimHistory()" 
+                                    style="background:rgba(255,82,82,0.1); color:var(--red); border:1px solid rgba(255,82,82,0.2); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;"
+                                    title="Borrar todo el historial permanentemente">
+                                    <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    BORRAR TODO
+                                </button>
+                            </div>
                             <div class="hist-subtitle">Registro de todas las simulaciones completadas. El Accuracy y los Trades aprendidos muestran el progreso de tu IA.</div>
                         </div>
                         <button onclick="document.getElementById('sim-history-modal').classList.remove('open')"

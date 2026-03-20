@@ -176,19 +176,8 @@ def record_trade(
                 writer = csv.DictWriter(f, fieldnames=COLUMNS)
                 writer.writerow(row)
         
-        # 🔗 Notificar al state_writer para actualización en tiempo real del Dashboard
-        try:
-            from shared.utils import state_writer
-            state_writer.record_trade(
-                symbol=symbol,
-                side="SELL", # Modificado de BUY/SELL para que Dashboard lo asimile como Ciclo Cerrado con PNL
-                price=exit_price,
-                qty=qty,
-                pnl=gross_pnl,
-                timestamp=timestamp
-            )
-        except Exception:
-            pass
+        # Notificación eliminada: evitamos doble registro ya que el Broker (HapiMock) 
+        # ya llama a log_order_filled, el cual a su vez llama a state_writer.record_trade.
 
     except Exception as e:
         from shared.utils.logger import log

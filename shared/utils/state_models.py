@@ -68,6 +68,10 @@ class BotState:
     total_sim_wins:   int = 0
     total_sim_pnl:    float = 0.0
     total_sim_ghosts: int = 0
+    total_sim_fees:   float = 0.0
+    total_sim_slippage: float = 0.0
+    total_sim_gross_profit: float = 0.0
+    total_sim_gross_loss:   float = 0.0
     
     # 👻 Fantasmas (Activo)
     total_ghosts:       int = 0

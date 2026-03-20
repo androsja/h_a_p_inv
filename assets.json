@@ -17,7 +17,7 @@
         },
         {
             "symbol": "AAPL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ABBV",
@@ -53,7 +53,7 @@
         },
         {
             "symbol": "AMD",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "AMGN",
@@ -65,7 +65,7 @@
         },
         {
             "symbol": "AMZN",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ARM",
@@ -121,7 +121,7 @@
         },
         {
             "symbol": "CL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "COIN",
@@ -129,11 +129,11 @@
         },
         {
             "symbol": "COST",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "CRM",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "CRWD",
@@ -173,7 +173,7 @@
         },
         {
             "symbol": "DIS",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "DOCU",
@@ -201,11 +201,11 @@
         },
         {
             "symbol": "GIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GOOGL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "GS",
@@ -233,7 +233,7 @@
         },
         {
             "symbol": "HSY",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "IBM",
@@ -261,7 +261,7 @@
         },
         {
             "symbol": "K",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KLAC",
@@ -269,7 +269,7 @@
         },
         {
             "symbol": "KO",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "LLY",
@@ -309,11 +309,11 @@
         },
         {
             "symbol": "MDLZ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "META",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "MMM",
@@ -325,7 +325,7 @@
         },
         {
             "symbol": "MRK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MS",
@@ -333,7 +333,7 @@
         },
         {
             "symbol": "MSFT",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "MSTR",
@@ -353,11 +353,11 @@
         },
         {
             "symbol": "NFLX",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "NKE",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "NOC",
@@ -369,7 +369,7 @@
         },
         {
             "symbol": "NVDA",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "O",
@@ -393,7 +393,7 @@
         },
         {
             "symbol": "PFE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PG",
@@ -414,7 +414,7 @@
         },
         {
             "symbol": "PYPL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "QCOM",
@@ -438,7 +438,7 @@
         },
         {
             "symbol": "SBUX",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "SH",
@@ -484,7 +484,7 @@
         },
         {
             "symbol": "STZ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "T",
@@ -492,11 +492,11 @@
         },
         {
             "symbol": "TAP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TGT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TMO",
@@ -504,7 +504,7 @@
         },
         {
             "symbol": "TSLA",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "TTD",
@@ -528,7 +528,7 @@
         },
         {
             "symbol": "UNH",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "UPS",
@@ -536,7 +536,7 @@
         },
         {
             "symbol": "V",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "VZ",

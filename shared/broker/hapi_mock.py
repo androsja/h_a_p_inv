@@ -207,8 +207,8 @@ class HapiMock(BrokerInterface):
         Garantiza salida inmediata sin esperar que el precio regrese.
         Devuelve el precio de fill real.
         """
-        slippage   = 0.0005
-        fill_price = round(bid_price * (1 - slippage), 2)
+        # No aplicamos slippage aquí, se aplicará una única vez en _execute_sell
+        fill_price = bid_price
         fake_order = PendingOrder(
             order_id=str(uuid.uuid4())[:8],
             symbol=symbol, side="SELL",
