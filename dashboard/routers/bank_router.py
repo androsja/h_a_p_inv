@@ -88,6 +88,7 @@ async def wipe_total():
     files_to_delete = [
         # Reiniciar logs y modelos
         ("neural_model.joblib",   NEURAL_MODEL_FILE),
+        ("ai_model.joblib",       config.AI_MODEL_FILE),
         ("ml_dataset.csv",        ML_DATASET_FILE),
         ("trade_journal.csv",     config.TRADE_JOURNAL_FILE),
         ("state_live.json",       config.STATE_FILE_LIVE),

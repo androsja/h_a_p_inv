@@ -69,6 +69,27 @@
             transform: translateY(-2px);
         }
 
+        .btn-danger {
+            background: rgba(255, 51, 102, 0.1);
+            border: 1px solid rgba(255, 51, 102, 0.3);
+            color: #ff3366;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            margin-right: 10px;
+        }
+
+        .btn-danger:hover {
+            background: #ff3366;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.4);
+        }
+
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
@@ -164,6 +185,66 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
         .empty-state { text-align: center; padding: 60px; color: var(--text-dim); }
+
+        /* Custom Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-box {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(20px);
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 15px; color: var(--primary); }
+        .modal-text { color: var(--text-dim); line-height: 1.6; margin-bottom: 30px; }
+        
+        .modal-actions { display: flex; gap: 15px; justify-content: center; }
+        
+        .btn-modal {
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            font-family: inherit;
+        }
+
+        .btn-modal-primary { background: var(--primary); color: #000; border: none; }
+        .btn-modal-primary:hover { transform: scale(1.05); filter: brightness(1.1); box-shadow: 0 0 15px var(--primary); }
+        
+        .btn-modal-secondary { background: rgba(255,255,255,0.05); color: #fff; }
+        .btn-modal-secondary:hover { background: rgba(255,255,255,0.1); }
+
+        .btn-modal-danger { background: #ff3366; color: #fff; border: none; }
+        .btn-modal-danger:hover { transform: scale(1.05); box-shadow: 0 0 15px #ff3366; }
     </style>
 </head>
 <body>
@@ -173,7 +254,10 @@
                 <h1>EVOLUTION HUB</h1>
                 <p style="color: var(--text-dim)">Auditoría de Aprendizaje Incremental por Simulación</p>
             </div>
-            <a href="/" class="btn-back">← DASHBOARD</a>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="clearHistory()" class="btn-danger">🗑️ BORRAR TODO</button>
+                <a href="/" class="btn-back">← DASHBOARD</a>
+            </div>
         </header>
 
         <div class="dashboard-grid">
@@ -230,6 +314,17 @@
         </div>
     </div>
 
+    <!-- Custom Modal Structure -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-box">
+            <div id="modalTitle" class="modal-title">Confirmación</div>
+            <div id="modalText" class="modal-text">¿Estás seguro de continuar?</div>
+            <div class="modal-actions" id="modalActions">
+                <!-- Buttons injected dynamically -->
+            </div>
+        </div>
+    </div>
+
     <script>
         let historyData = [];
         let mainChart = null;
@@ -251,6 +346,82 @@
             } catch (e) {
                 console.error("Error loading history:", e);
             }
+        }
+
+        function showModal({ title, text, type, onConfirm }) {
+            const modal = document.getElementById('customModal');
+            const titleEl = document.getElementById('modalTitle');
+            const textEl = document.getElementById('modalText');
+            const actionsEl = document.getElementById('modalActions');
+
+            titleEl.textContent = title;
+            textEl.textContent = text;
+            actionsEl.innerHTML = '';
+
+            if (type === 'confirm') {
+                const btnCancel = document.createElement('button');
+                btnCancel.className = 'btn-modal btn-modal-secondary';
+                btnCancel.textContent = 'Cancelar';
+                btnCancel.onclick = () => modal.classList.remove('active');
+
+                const btnConfirm = document.createElement('button');
+                btnConfirm.className = 'btn-modal btn-modal-danger';
+                btnConfirm.textContent = 'Sí, borrar todo';
+                btnConfirm.onclick = () => {
+                    modal.classList.remove('active');
+                    onConfirm();
+                };
+
+                actionsEl.appendChild(btnCancel);
+                actionsEl.appendChild(btnConfirm);
+            } else {
+                const btnOk = document.createElement('button');
+                btnOk.className = 'btn-modal btn-modal-primary';
+                btnOk.textContent = 'Entendido';
+                btnOk.onclick = () => {
+                    modal.classList.remove('active');
+                    if (onConfirm) onConfirm();
+                };
+                actionsEl.appendChild(btnOk);
+            }
+
+            modal.classList.add('active');
+        }
+
+        async function clearHistory() {
+            showModal({
+                title: '⚠️ ¿BORRAR TODO?',
+                text: 'Esta acción eliminará permanentemente todas las simulaciones guardadas en Evolution Hub. No se puede deshacer.',
+                type: 'confirm',
+                onConfirm: async () => {
+                    try {
+                        const resp = await fetch('/api/clear_sim_history', { method: 'POST' });
+                        const data = await resp.json();
+                        
+                        if (data.status === 'success') {
+                            showModal({
+                                title: '✅ ÉXITO',
+                                text: 'El historial ha sido borrado correctamente.',
+                                type: 'alert',
+                                onConfirm: () => location.reload()
+                            });
+                        } else {
+                            showModal({
+                                title: '❌ ERROR',
+                                text: 'No se pudo borrar el historial: ' + data.message,
+                                type: 'alert'
+                            });
+                        }
+                    } catch (e) {
+                        showModal({
+                            title: '❌ ERROR DE CONEXIÓN',
+                            text: 'Hubo un problema al conectar con el servidor.',
+                            type: 'alert'
+                        });
+                        console.error(e);
+                    }
+                }
+            });
         }
 
         function renderStats() {

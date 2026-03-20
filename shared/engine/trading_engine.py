@@ -18,6 +18,7 @@ from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
 from shared.strategy.ml_predictor import ml_predictor
 from shared.utils.trade_journal import record_trade as journal_record_trade
 from shared.utils.state_writer import update_state
+from shared.engine.utils import get_candles_json
 
 from .utils import SessionInterrupted
 
@@ -125,20 +126,19 @@ class TradingEngine:
 
                 # 5. UI Update per iteration
                 if iteration % 2 == 0 or signal.signal != SIGNAL_HOLD:
-                    from .utils import get_candles_json
                     update_state(
                         mode=self.args.mode, symbol=self.symbol, session=self.session_num,
                         iteration=iteration, bid=quote.bid, ask=quote.ask, signal=signal.signal,
                         rsi=signal.rsi_value, ema_fast=signal.ema_fast, ema_slow=signal.ema_slow,
                         ema_200=signal.ema_200, macd_hist=signal.macd_hist, vwap=signal.vwap_value,
                         atr=signal.atr_value, confirmations=signal.confirmations,
-                        available_cash=self.account.available_cash,
+                        available_cash=round(self.account.available_cash, 2),
                         win_rate=self.broker.stats.win_rate,
                         total_trades=self.broker.stats.total_trades,
                         winning_trades=self.broker.stats.winning_trades,
-                        gross_profit=self.broker.stats.gross_profit,
-                        gross_loss=self.broker.stats.gross_loss,
-                        total_fees=getattr(self.broker.stats, 'total_fees', 0.0),
+                        gross_profit=round(self.broker.stats.gross_profit, 2),
+                        gross_loss=round(self.broker.stats.gross_loss, 2),
+                        total_fees=round(getattr(self.broker.stats, 'total_fees', 0.0), 2),
                         total_slippage=round(self.broker.stats.total_trades * 0.10, 2),
                         position=self.position.__dict__ if self.position else None,
                         total_ghosts=self.total_ghosts,
@@ -146,14 +146,15 @@ class TradingEngine:
                         candles=get_candles_json(df), timestamp=quote.timestamp,
                         regime=signal.regime, blocks=signal.blocks,
                         investment_style=self.investment_style,
-                        model_accuracy=ml_predictor.accuracy * 100,
-                        total_samples=ml_predictor.get_sample_count()
+                        model_accuracy=getattr(ml_predictor, 'accuracy', 0.0),
+                        total_samples=ml_predictor.get_sample_count(),
+                        ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5
                     )
 
         except SessionInterrupted:
             raise
-        except Exception as e:
-            log.error(f"Error crítico en Engine ({self.symbol}): {e}")
+        except Exception:
+            log.exception(f"Error crítico en Engine ({self.symbol})")
             raise
 
     def _get_data_slice(self):
@@ -213,6 +214,9 @@ class TradingEngine:
             return resp.status, plan.limit_price
 
     def _handle_entry(self, quote, signal):
+        if signal.signal == SIGNAL_BUY:
+            log.info(f"[{self.symbol}] 🎯 Señal de COMPRA detectada. Protecciones: ML={signal.is_ml_blocked}, Quality={signal.is_quality_blocked}")
+        
         # Lógica de ML y Neural Filter integrada
         conf_mult = self._calculate_confidence(signal)
         
@@ -253,25 +257,27 @@ class TradingEngine:
                     entry_metadata=metadata, ml_features=signal.ml_features,
                     is_ghost=False
                 )
-        else:
-            # 👻 No es viable para trade real (riesgo/capital/comisión) -> Crear Ghost Trade para aprender
-            if len(self.ghost_positions) < 5:
-                ghost_metadata = {
-                    "confirmations": signal.confirmations,
-                    "ml_prob": signal.ml_features.get('ml_prob', 0.5),
-                    "conf_mult": conf_mult,
-                    "block_reason": buy_plan.block_reason or "Filtro de Calidad"
-                }
-                ghost_reason = buy_plan.block_reason or "Quality: RSI/ADX Block"
-                ghost = OpenPosition(
-                    symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty or 1.0,
-                    stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
-                    initial_stop=buy_plan.stop_loss, entry_reason=f"Ghost: {ghost_reason}",
-                    entry_metadata=ghost_metadata, ml_features=signal.ml_features,
-                    is_ghost=True
-                )
-                self.ghost_positions.append(ghost)
-                log.info(f"👻 GHOST ENTRY | {self.symbol} | Price={buy_plan.limit_price} | Reason: {ghost_reason}")
+            else:
+                # 👻 No es viable para trade real (riesgo/capital/comisión) -> Crear Ghost Trade para aprender
+                if len(self.ghost_positions) < 5:
+                    ghost_metadata = {
+                        "confirmations": signal.confirmations,
+                        "ml_prob": signal.ml_features.get('ml_prob', 0.5),
+                        "conf_mult": conf_mult,
+                        "block_reason": buy_plan.block_reason or "Filtro de Calidad"
+                    }
+                    ghost_reason = buy_plan.block_reason or ("ML Blocked" if signal.is_ml_blocked else "Quality Blocked")
+                    ghost = OpenPosition(
+                        symbol=self.symbol, entry_price=buy_plan.limit_price, qty=buy_plan.qty or 1.0,
+                        stop_loss=buy_plan.stop_loss, take_profit=buy_plan.take_profit,
+                        initial_stop=buy_plan.stop_loss, entry_reason=f"Ghost: {ghost_reason}",
+                        entry_metadata=ghost_metadata, ml_features=signal.ml_features,
+                        is_ghost=True
+                    )
+                    self.ghost_positions.append(ghost)
+                    log.info(f"👻 GHOST ENTRY | {self.symbol} | Price={buy_plan.limit_price} | Reason: {ghost_reason}")
+                else:
+                    log.debug(f"[{self.symbol}] Límite de fantasmas alcanzado, ignorando señal.")
 
     def _calculate_confidence(self, signal):
         try:

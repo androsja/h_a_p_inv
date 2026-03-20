@@ -129,11 +129,11 @@
         },
         {
             "symbol": "COST",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CRM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CRWD",
@@ -173,7 +173,7 @@
         },
         {
             "symbol": "DIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DOCU",
@@ -257,7 +257,7 @@
         },
         {
             "symbol": "JPM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "K",
@@ -269,7 +269,7 @@
         },
         {
             "symbol": "KO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LLY",
@@ -313,7 +313,7 @@
         },
         {
             "symbol": "META",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MMM",
@@ -357,7 +357,7 @@
         },
         {
             "symbol": "NKE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NOC",
@@ -389,7 +389,7 @@
         },
         {
             "symbol": "PEP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PFE",
@@ -414,7 +414,7 @@
         },
         {
             "symbol": "PYPL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "QCOM",
@@ -438,7 +438,7 @@
         },
         {
             "symbol": "SBUX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SH",
@@ -536,7 +536,7 @@
         },
         {
             "symbol": "V",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "VZ",
@@ -548,7 +548,7 @@
         },
         {
             "symbol": "WMT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "XOM",

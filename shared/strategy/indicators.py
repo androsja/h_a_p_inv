@@ -23,13 +23,14 @@ from shared.strategy.indicators_calc import (
 from shared.strategy.patterns import volume_spike, detect_hammer, detect_engulfing
 from shared.strategy.regimes  import detect_regime, REGIMEN_LABELS
 from shared.strategy.signal_models import SignalResult
+from shared.strategy.ml_predictor import ml_predictor
 
 # Constantes de señal
 SIGNAL_BUY  = "BUY"
 SIGNAL_SELL = "SELL"
 SIGNAL_HOLD = "HOLD"
 
-MIN_BARS = 80
+MIN_BARS = config.MIN_BARS_REQUIRED
 
 @lru_cache(maxsize=1)
 def _load_ai_model(mtime):
@@ -66,14 +67,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     # 1. Calcular Indicadores
     ema_f       = ema(prices, config.EMA_FAST)
     ema_s       = ema(prices, config.EMA_SLOW)
-    ema_200_val = ema(prices, 200)
-    ema_20_val  = ema(prices, 20)
+    ema_200_val = ema(prices, config.EMA_LONG_PERIOD)
+    ema_20_val  = ema(prices, config.EMA_MEDIUM_PERIOD)
     rsi_vals    = rsi(prices, config.RSI_PERIOD)
     _, _, macd_hist = macd(prices)
     atr_vals    = atr(df)
     vwap_vals   = vwap(df)
     zscore_vals = zscore_vwap(df)
-    adx_vals    = adx(df, 14)
+    adx_vals    = adx(df, config.ADX_PERIOD)
     
     # 2. Patrones y Filtros
     is_vol_spike = bool(volume_spike(df).iloc[-1])
@@ -95,7 +96,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     adx_now     = float(adx_vals.iloc[-1]) if not pd.isna(adx_vals.iloc[-1]) else 0.0
     
     # 4. Régimen de Mercado
-    vol_avg   = float(df["Volume"].rolling(20).mean().iloc[-1])
+    vol_avg   = float(df["Volume"].rolling(config.VOLUME_ROLLING_WIN).mean().iloc[-1])
     vol_ratio = float(df["Volume"].iloc[-1]) / vol_avg if vol_avg > 0 else 1.0
     atr_pct   = (atr_now / close_now) * 100 if close_now else 0.0
     
@@ -107,27 +108,30 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     now_real = time.time()
     last_r, last_t = _regime_buffer.get(symbol, (None, 0))
     
-    if (last_r != regime_label) and (now_real - last_t > 10):
+    if (last_r != regime_label) and (now_real - last_t > config.REGIME_LOG_INTERVAL):
         log.info(f"{sym_prefix}🌍 RÉGIMEN: {regime_label} | ADX={adx_now:.1f} | ATR%={atr_pct:.2f}% | Vol={vol_ratio:.1f}x")
         _regime_buffer[symbol] = (regime_label, now_real)
 
-    # 5. Lógica de Estrategias (Simplified for readability after refactor)
+    # 5. Lógica de Estrategias
     signal = SIGNAL_HOLD
     confirmations = []
     blocks = []
+    prob_win = 0.5
+    is_ml_blocked = False
+    is_quality_blocked = False
     
     # ESTRATEGIA A: Oliver Vélez (Rebote 20)
-    is_velez = (ema_20_now > ema_200_now) and (df["Low"].iloc[-1] <= ema_20_now * 1.002) and (close_now > ema_20_now) and (close_now > df["Open"].iloc[-1])
+    is_velez = (ema_20_now > ema_200_now) and (df["Low"].iloc[-1] <= ema_20_now * config.VELEZ_BOUNCE_MULT) and (close_now > ema_20_now) and (close_now > df["Open"].iloc[-1])
     
     # ESTRATEGIA B: VWAP Bounce
-    is_vwap_bounce = (zscore_now < -2.0) and (close_now > df["Open"].iloc[-1] or is_hammer) and (close_now > ema_200_now)
+    is_vwap_bounce = (zscore_now < config.VWAP_BOUNCE_ZSCORE) and (close_now > df["Open"].iloc[-1] or is_hammer) and (close_now > ema_200_now)
     
     # ESTRATEGIA C: Bollinger Reversal
     _, _, bb_low = bollinger_bands(prices)
     is_bb_rev = (df["Low"].iloc[-1] <= bb_low.iloc[-1]) and (close_now > df["Open"].iloc[-1])
     
     # ESTRATEGIA D: EMA Crossover
-    is_ema_x = (ema_f.iloc[-2] < ema_s.iloc[-2]) and (ema_f_now > ema_s_now) and (35 < rsi_now < 70)
+    is_ema_x = (ema_f.iloc[-2] < ema_s.iloc[-2]) and (ema_f_now > ema_s_now) and (config.EMA_CROSS_RSI_MIN < rsi_now < config.EMA_CROSS_RSI_MAX)
     
     # Evaluación por Régimen
     is_inverted = asset_type == "inverted"
@@ -151,7 +155,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             confirmations.append(f"🎯 [{regime_label}] EMA Crossover {config.EMA_FAST}/{config.EMA_SLOW}")
 
     # Flash Crash / Capitulación
-    if eff_regime in ("TREND_DOWN", "CHAOS") and zscore_now < -2.5 and (is_hammer or is_engulf or is_bb_rev):
+    if eff_regime in ("TREND_DOWN", "CHAOS") and zscore_now < config.EMERGENCY_ZSCORE and (is_hammer or is_engulf or is_bb_rev):
         signal = SIGNAL_BUY
         confirmations.append(f"🔥 [{regime_label}] Capitulación (Z={zscore_now:.2f})")
 
@@ -175,13 +179,13 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'vol_ratio': vol_ratio, 'zscore_vwap': zscore_now,
         'num_confirmations': len(confirmations),
         'has_pattern': is_hammer or is_engulf or is_bb_rev,
-        'is_adx_rising': adx_now > adx_vals.iloc[-2]
+        'is_adx_rising': adx_now > adx_vals.iloc[-2],
+        'model_accuracy': getattr(ml_predictor, 'accuracy', 0.0),
+        'total_samples': ml_predictor.get_sample_count()
     }
 
     # AI Check (Random Forest dinámico)
-    is_ml_blocked = False
     if signal == SIGNAL_BUY:
-        from shared.strategy.ml_predictor import ml_predictor
         is_win_pred, prob_win = ml_predictor.predict_win(ml_features)
         if not is_win_pred:
             is_ml_blocked = True
@@ -217,18 +221,28 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         except Exception as e:
             log.error(f"Error crítico en Neural Filter: {e}")
 
-    # Filtros de Calidad (Mover después de IA)
-    is_quality_blocked = False
+    # Filtros de Calidad
     if signal == SIGNAL_BUY:
-        if (43 < rsi_now < 47 or adx_now < 10) and zscore_now > -2.3:
-            log.warning(f"{sym_prefix}🛑 Bloqueado por RSI Zona Muerta o ADX bajo (Será Ghost).")
+        # Solo bloqueamos si el mercado es NEUTRAL y el RSI está en la "zona muerta" (indecisión)
+        # O si el ADX es muy bajo y no es un "crash" (zscore bajo)
+        in_dead_zone = config.QUALITY_RSI_MIN < rsi_now < config.QUALITY_RSI_MAX
+        low_volatility = adx_now < config.QUALITY_ADX_THRESHOLD
+        no_clear_trend = current_regime == "NEUTRAL"
+        is_crash = zscore_now <= config.QUALITY_ZSCORE_MIN
+        
+        if (in_dead_zone and low_volatility) and no_clear_trend and not is_crash:
+            log.warning(f"{sym_prefix}🛑 Bloqueo Calidad: RSI={rsi_now:.1f}, ADX={adx_now:.1f}, Regime={current_regime}")
             is_quality_blocked = True
-            blocks.append("Filtro de calidad (RSI/ADX)")
+            blocks.append(f"Calidad (RSI+ADX en {current_regime})")
+
+    # Log de depuración final para saber qué estamos enviando
+    if signal == SIGNAL_BUY:
+        log.info(f"{sym_prefix}DEBUG: prob_win={prob_win}, is_ml_blocked={is_ml_blocked}, is_quality_blocked={is_quality_blocked}")
 
     return SignalResult(
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,
         rsi_value=rsi_now, macd_hist=macd_now, vwap_value=vwap_now, atr_value=atr_now,
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
         ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked,
-        is_ml_blocked=is_ml_blocked
+        is_ml_blocked=is_ml_blocked, ai_win_prob=round(prob_win if signal == SIGNAL_BUY else 0.5, 2)
     )

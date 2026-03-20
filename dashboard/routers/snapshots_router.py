@@ -173,6 +173,7 @@ async def delete_model_snapshot(snapshot_id: str):
 @router.post("/sim_history")
 async def save_sim_history(req: SimHistoryRequest):
     try:
+        DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True) # ASEGURAR DIRECTORIO
         history_file = DATA_CACHE_DIR / "sim_history.json"
         history = []
         if history_file.exists():

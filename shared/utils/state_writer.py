@@ -226,12 +226,12 @@ def update_state(
     # Estos son los valores que "llenan" los campos vacíos del Dashboard en tiempo real
     ts_trades  = _global_sim_trades + sum(s.total_trades for s in _symbol_states.values())
     ts_wins    = _global_sim_wins   + sum(s.winning_trades for s in _symbol_states.values())
-    ts_pnl     = _global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values())
+    ts_pnl     = round(_global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values()), 2)
     ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values())
-    ts_fees    = _global_sim_fees   + sum(s.total_fees for s in _symbol_states.values())
-    ts_slippage= _global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values())
-    ts_gross_profit = _global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values())
-    ts_gross_loss   = _global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values())
+    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values()), 2)
+    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values()), 2)
+    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values()), 2)
+    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values()), 2)
 
     # Persistir métricas de IA
     if model_accuracy is not None: _global_model_accuracy = model_accuracy

@@ -2158,6 +2158,7 @@
                                     <span
                                         style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite; flex-shrink:0;"></span>
                                     <span id="results-mode-text">SIMULACIÓN (HISTÓRICO)</span>
+                                    <span id="sim-progress-mini" style="margin-left:10px; color:var(--muted); font-weight:normal; font-size:10px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; display:none;"></span>
                                 </span>
                             </div>
                             <div style="font-size:12px; color:var(--muted); margin-bottom: 15px;">
@@ -2389,6 +2390,7 @@
         let isProcessingAction = false;
         window._historicalSessions = []; // Historial desde API
         window._lastFullState = {};      // Último estado desde WS
+        window._simSavedToHistory = false; // Bandera para evitar guardados duplicados
 
         function setProcessing(active) {
             isProcessingAction = active;
@@ -3666,9 +3668,10 @@
             if (window._lastFullState) {
                 Object.entries(window._lastFullState).forEach(([k, v]) => {
                     if (k !== 'force_symbols' && k !== '_main' && v && v.symbol && v.symbol !== '─') {
+                        const isActuallyActive = (v.status === 'running' || v.status === 'downloading');
                         activeData.push({
                             ...v,
-                            isActive: true,
+                            isActive: isActuallyActive,
                             gross_pnl: (v.gross_profit || 0) + (v.gross_loss || 0),
                             total_fees: v.total_fees || 0,
                             slippage_est: v.total_slippage || 0,
@@ -3701,6 +3704,43 @@
 
             // 3. Ordenar
             let rowsToRender = [...combined];
+
+            // ─── ACTUALIZAR PROGRESO MINIMALISTA ───
+            const miniProg = document.getElementById('sim-progress-mini');
+            if (miniProg) {
+                const totalTarget = (window.selectedSymbols && window.selectedSymbols.length > 0) ? window.selectedSymbols.length : combined.length;
+                const activeCount = combined.filter(d => d.isActive).length;
+                const completedCount = combined.filter(d => !d.isActive).length;
+                const isFinished = completedCount >= totalTarget && totalTarget > 0;
+                
+                miniProg.style.display = 'inline-block';
+                miniProg.style.background = 'rgba(255, 255, 255, 0.05)';
+                miniProg.style.padding = '2px 8px';
+                miniProg.style.borderRadius = '4px';
+                miniProg.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+
+                if (isFinished) {
+                    miniProg.innerHTML = `
+                        <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,255,163,0.1); padding:4px 12px; border-radius:20px; border:1px solid rgba(0,255,163,0.3); animation: pulse-green 2s infinite;">
+                            <span style="color:var(--green); font-weight:900; font-size:13px;">✓ SIMULACIÓN COMPLETADA</span>
+                            <span style="color:rgba(0,255,163,0.6); font-size:11px; font-weight:bold;">${completedCount}/${totalTarget}</span>
+                        </div>
+                    `;
+                    
+                    // El guardado ahora se maneja exclusivamente en el Backend (runner.py)
+                    // para evitar duplicados al refrescar la página.
+                } else {
+                    window._simSavedToHistory = false; // Reset si se inicia una nueva simulación (ej. WIPE)
+                    miniProg.innerHTML = `
+                        <span style="color:var(--accent); font-weight:bold; font-size:11px;">${activeCount} ACTIVOS</span> 
+                        <span style="color:rgba(255,255,255,0.2)">|</span> 
+                        <span style="color:var(--muted); font-size:11px;">${completedCount} FINALIZADOS</span>
+                        <span style="color:rgba(255,255,255,0.2)">|</span> 
+                        <span style="color:var(--muted); font-size:11px;">META: ${totalTarget}</span>
+                    `;
+                }
+            }
+
             if (window._sortByNetPnl !== undefined) {
                 rowsToRender.sort((a, b) => {
                     const netA = (a.gross_pnl || 0) - (a.total_fees || 0) - (a.slippage_est || 0);
@@ -3746,13 +3786,13 @@
                     <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
                     <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
                     <td style="padding:10px;">${row.total_trades}</td>
-                    <td style="padding:10px;">${row.win_rate}%</td>
+                    <td style="padding:10px;">${parseFloat(row.win_rate).toFixed(2)}%</td>
                     <td style="padding:10px; color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</td>
                     <td style="padding:10px; color:#ff9800;">-$${fees.toFixed(2)}</td>
                     <td style="padding:10px; color:#ff5722;">-$${slip.toFixed(2)}</td>
                     <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${prefix}$${netPnl.toFixed(2)}</td>
                     <td style="padding:10px; font-weight:bold;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
-                    <td style="padding:10px;">${row.drawdown || 0}%</td>
+                    <td style="padding:10px;">${parseFloat(row.drawdown || 0).toFixed(2)}%</td>
                     <td style="padding:10px;">
                         <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
                             ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
@@ -4012,7 +4052,7 @@
             const total = state.total_trades ?? 0;
             const wins = state.winning_trades ?? 0;
 
-            document.getElementById('wr-val').textContent = `${wr.toFixed(1)}% `;
+            document.getElementById('wr-val').textContent = `${parseFloat(wr).toFixed(2)}% `;
             document.getElementById('trades-val').textContent = `${total} trade${total !== 1 ? 's' : ''} `;
             document.getElementById('wins-val').textContent = wins;
             document.getElementById('losses-val').textContent = total - wins;
@@ -4029,7 +4069,7 @@
                 gpnlEl.textContent = `${gPnl >= 0 ? '+' : ''}$${gPnl.toFixed(2)}`;
                 gpnlEl.className = `kv-val ${gPnl > 0 ? 'g' : gPnl < 0 ? 'r' : ''}`;
             }
-            if (document.getElementById('global-wr-val')) document.getElementById('global-wr-val').textContent = `${gWr.toFixed(1)}%`;
+            if (document.getElementById('global-wr-val')) document.getElementById('global-wr-val').textContent = `${parseFloat(gWr).toFixed(2)}%`;
             
             // 🏆 BARRA DE RESUMEN SUPERIOR (Global Simulation Stats)
             const sWinsEl = document.getElementById('summary-gross-wins');
