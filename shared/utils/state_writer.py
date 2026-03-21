@@ -27,13 +27,10 @@ _global_sim_trades: int = 0
 _global_sim_wins:   int = 0
 _global_sim_pnl:    float = 0.0
 _global_sim_ghosts: int = 0
-<<<<<<< HEAD
-=======
-_global_sim_fees:   float = 0.0
-_global_sim_slippage: float = 0.0
+_global_sim_fees:         float = 0.0
+_global_sim_slippage:     float = 0.0
 _global_sim_gross_profit: float = 0.0
 _global_sim_gross_loss:   float = 0.0
->>>>>>> origin/main
 _global_model_accuracy: float = 0.0
 _global_total_samples:  int = 0
 

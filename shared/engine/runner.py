@@ -206,26 +206,8 @@ class SimulationRunner:
             if config.ML_DATASET_FILE.exists(): config.ML_DATASET_FILE.unlink()
 
     def _handle_completion(self):
-<<<<<<< HEAD
-        # Reportar estado final con TOTALES para que no se vea en cero
-        wr = (self.total_sim_wins / self.total_sim_trades * 100) if self.total_sim_trades > 0 else 0
-        update_state(
-            mode="SIMULATED", 
-            status="completed", 
-            symbol="─", 
-            session=self.session_num,
-            total_sim_trades=int(self.total_sim_trades or 0),
-            total_sim_wins=int(self.total_sim_wins or 0),
-            total_sim_pnl=float(round(float(self.total_sim_pnl or 0.0), 2)),
-            total_sim_ghosts=int(self.total_sim_ghosts or 0),
-            win_rate=float(round(float(wr or 0.0), 2))
-        )
-        log.info(f"🏁 Simulación finalizada. Total Trades: {self.total_sim_trades} | PnL: ${self.total_sim_pnl:.2f}")
-        smart_sleep(1)
-        return False
-=======
         """Se ejecuta cuando todos los símbolos de la lista han sido procesados."""
-        if self.all_done: return True # Ya reportado anteriormente
+        if getattr(self, "all_done", False): return True # Ya reportado anteriormente
         
         log.info("🏁 SIMULACIÓN GLOBAL FINALIZADA. Guardando resultados en el historial...")
         self._save_full_run_to_history()
@@ -235,7 +217,19 @@ class SimulationRunner:
         from shared.utils import checkpoint
         checkpoint.save_simulation_checkpoint(self.symbol_idx, "FIN", self.session_num, is_finished=True)
         
-        update_state("─", status="completed")
+        # Reportar estado final con TOTALES para que no se vea en cero
+        wr = (self.total_sim_wins / self.total_sim_trades * 100) if getattr(self, "total_sim_trades", 0) > 0 else 0
+        update_state(
+            mode="SIMULATED", 
+            status="completed", 
+            symbol="─", 
+            session=self.session_num,
+            total_sim_trades=int(getattr(self, "total_sim_trades", 0)),
+            total_sim_wins=int(getattr(self, "total_sim_wins", 0)),
+            total_sim_pnl=float(round(float(getattr(self, "total_sim_pnl", 0.0)), 2)),
+            total_sim_ghosts=int(getattr(self, "total_sim_ghosts", 0)),
+            win_rate=float(round(float(wr), 2))
+        )
         return True
 
     def _save_full_run_to_history(self):
@@ -258,16 +252,16 @@ class SimulationRunner:
                 with open(history_file, "r") as f:
                     history = json.load(f)
 
-            win_rate = (self.total_sim_wins / self.total_sim_trades * 100) if self.total_sim_trades > 0 else 0
+            win_rate = (getattr(self, "total_sim_wins", 0) / getattr(self, "total_sim_trades", 1) * 100) if getattr(self, "total_sim_trades", 0) > 0 else 0
             
             entry = {
                 "timestamp": datetime.now().isoformat(),
                 "symbols_count": len(self.all_symbols),
-                "trades_learned": self.total_sim_trades,
-                "total_ghosts": self.total_sim_ghosts,
+                "trades_learned": getattr(self, "total_sim_trades", 0),
+                "total_ghosts": getattr(self, "total_sim_ghosts", 0),
                 "win_rate": round(win_rate, 2),
                 "accuracy": round(accuracy, 2),
-                "pnl": round(self.total_sim_pnl, 2),
+                "pnl": round(getattr(self, "total_sim_pnl", 0.0), 2),
                 "symbols_list": self.all_symbols,
                 "detailed_results": detailed_results,
                 "sim_start": detailed_results[0].get("sim_start", "─") if detailed_results else "─",
@@ -284,7 +278,6 @@ class SimulationRunner:
             log.info(f"✅ Historial actualizado: {len(self.all_symbols)} activos, PnL: ${entry['pnl']}")
         except Exception as e:
             log.error(f"❌ Error guardando historial en backend: {e}")
->>>>>>> origin/main
 
     def _check_live_paper(self, args):
         is_lp = False

@@ -136,7 +136,7 @@ HEURISTIC_BOOST_CONF_H    = 0.25
 HEURISTIC_BOOST_CONF_M    = 0.15
 HEURISTIC_BOOST_VOL       = 0.15
 HEURISTIC_BOOST_TREND     = 0.15
->>>>>>> origin/main
+
 
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1
