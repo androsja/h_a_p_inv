@@ -35,6 +35,7 @@ def _connect() -> sqlite3.Connection:
             symbol_idx  INTEGER NOT NULL DEFAULT 0,
             symbol      TEXT    NOT NULL DEFAULT '',
             session_num INTEGER NOT NULL DEFAULT 0,
+            is_finished INTEGER NOT NULL DEFAULT 0,
             created_at  TEXT    NOT NULL
         )
     """)
@@ -48,15 +49,19 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
-def save_simulation_checkpoint(symbol_idx: int, symbol: str, session_num: int) -> None:
+def save_simulation_checkpoint(symbol_idx: int, symbol: str, session_num: int, is_finished: bool = False) -> None:
     """Guarda el progreso actual de la simulación en SQLite."""
     with _lock:
         try:
             conn = _connect()
+            # Migración rápida si no existe la columna (por si acaso)
+            try: conn.execute("ALTER TABLE checkpoints ADD COLUMN is_finished INTEGER DEFAULT 0")
+            except: pass
+            
             conn.execute(
-                "INSERT INTO checkpoints (mode, symbol_idx, symbol, session_num, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                ("SIMULATED", symbol_idx, symbol, session_num,
+                "INSERT INTO checkpoints (mode, symbol_idx, symbol, session_num, is_finished, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                ("SIMULATED", symbol_idx, symbol, session_num, 1 if is_finished else 0,
                  datetime.now(timezone.utc).isoformat())
             )
             conn.commit()
@@ -75,7 +80,7 @@ def load_simulation_checkpoint() -> dict:
         try:
             conn = _connect()
             row = conn.execute(
-                "SELECT symbol_idx, symbol, session_num FROM checkpoints "
+                "SELECT symbol_idx, symbol, session_num, is_finished FROM checkpoints "
                 "WHERE mode = 'SIMULATED' ORDER BY id DESC LIMIT 1"
             ).fetchone()
             conn.close()
@@ -84,11 +89,12 @@ def load_simulation_checkpoint() -> dict:
                     "symbol_idx":  row["symbol_idx"],
                     "symbol":      row["symbol"],
                     "session_num": row["session_num"],
+                    "is_finished": bool(row.get("is_finished", 0))
                 }
         except Exception as e:
             import logging
             logging.getLogger("trading_bot").warning(f"Checkpoint load error: {e}")
-    return {"symbol_idx": 0, "symbol": "", "session_num": 0}
+    return {"symbol_idx": 0, "symbol": "", "session_num": 0, "is_finished": False}
 
 
 def clear_simulation_checkpoints() -> None:

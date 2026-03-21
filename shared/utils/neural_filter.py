@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 # ── Constantes ────────────────────────────────────────────────────────────────
 MODEL_PATH          = config.DATA_DIR / "neural_model.joblib"
 CONFIDENCE_THRESHOLD = config.CONFIDENCE_THRESHOLD 
-MIN_SAMPLES         = 8       # Mínimo de trades antes de confiar en el MLP
+MIN_SAMPLES         = config.COLD_START_MIN_SAMPLES
 
 # Encoding de regímenes (debe coincidir con detect_regime en indicators.py)
 REGIME_ENCODING = {
@@ -277,40 +277,40 @@ class NeuralTradeFilter:
         regime_enc  = round(regime_enc_norm * 5)  # 0-5
         num_conf    = round(num_conf_norm * 7)
 
-        score = 0.60  # Inicio neutro (permite que trades normales pasen el umbral para que la IA pueda aprender rápido)
+        score = config.COLD_START_BASE_SCORE
         reasons = []
 
-        # RSI > 72 en TREND_UP (antes 68) → penalizar si es extremo
-        if regime_enc == 0 and rsi > 72:   # TREND_UP muy tardío
-            score -= 0.25
+        # RSI > HEURISTIC_RSI_UPPER en TREND_UP → penalizar si es extremo
+        if regime_enc == 0 and rsi > config.HEURISTIC_RSI_UPPER:
+            score += config.HEURISTIC_PENALTY_RSI
             reasons.append(f"TREND_UP muy tardío RSI={rsi:.0f}")
 
         # RANGE con MACD sin fuerza → falsas señales
-        if regime_enc == 2 and abs(macd_norm) < 0.1:
-            score -= 0.15
+        if regime_enc == 2 and abs(macd_norm) < config.HEURISTIC_MACD_MIN:
+            score += config.HEURISTIC_PENALTY_MACD
             reasons.append("RANGE: MACD débil")
 
         # Buenas confirmaciones → subir score sustancialmente
-        if num_conf >= 5:
-            score += 0.25
+        if num_conf >= config.HEURISTIC_CONF_HIGH:
+            score += config.HEURISTIC_BOOST_CONF_H
             reasons.append(f"{num_conf} confirmaciones")
-        elif num_conf == 4:
-            score += 0.15
+        elif num_conf == config.HEURISTIC_CONF_MID:
+            score += config.HEURISTIC_BOOST_CONF_M
             reasons.append(f"{num_conf} confirmaciones")
 
         # Volumen expansivo → impulso real
-        if vol_norm > 0.7:
-            score += 0.15
+        if vol_norm > config.HEURISTIC_VOL_MIN:
+            score += config.HEURISTIC_BOOST_VOL
             reasons.append("volumen expansivo")
 
         # ATR muy alto → volatilidad destructiva
-        if atr_norm > 0.7:
-            score -= 0.15
+        if atr_norm > config.HEURISTIC_ATR_MAX:
+            score += config.HEURISTIC_PENALTY_ATR
             reasons.append("ATR destructor")
 
         # TREND_DOWN histórico es muy rentable → beneficiar agresivo
         if regime_enc == 1:
-            score += 0.15
+            score += config.HEURISTIC_BOOST_TREND
             reasons.append("TREND_DOWN (históricamente favorable)")
 
         score = float(np.clip(score, 0.0, 1.0))

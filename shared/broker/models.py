@@ -41,7 +41,7 @@ class SessionStats:
     def win_rate(self) -> float:
         if self.total_trades == 0:
             return 0.0
-        return (self.winning_trades / self.total_trades) * 100
+        return round((self.winning_trades / self.total_trades) * 100, 2)
 
     @property
     def profit_factor(self) -> float:

@@ -173,6 +173,7 @@ async def delete_model_snapshot(snapshot_id: str):
 @router.post("/sim_history")
 async def save_sim_history(req: SimHistoryRequest):
     try:
+        DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True) # ASEGURAR DIRECTORIO
         history_file = DATA_CACHE_DIR / "sim_history.json"
         history = []
         if history_file.exists():
@@ -210,3 +211,15 @@ async def get_sim_history():
         return {"status": "success", "history": []}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@router.post("/clear_sim_history")
+async def clear_sim_history():
+    """Borra únicamente el historial de simulaciones (sim_history.json)."""
+    try:
+        history_file = DATA_CACHE_DIR / "sim_history.json"
+        if history_file.exists():
+            history_file.unlink()
+            return {"status": "success", "message": "✅ Historial de simulaciones borrado correctamente."}
+        return {"status": "success", "message": "El historial ya estaba vacío."}
+    except Exception as e:
+        return {"status": "error", "message": f"Error al borrar el historial: {str(e)}"}

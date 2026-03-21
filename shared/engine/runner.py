@@ -8,6 +8,7 @@ import importlib
 import argparse
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from shared import config
 from shared.utils.logger import log
@@ -40,6 +41,7 @@ class SimulationRunner:
         self.total_sim_wins = 0
         self.total_sim_pnl = 0.0
         self.total_sim_ghosts = 0
+        self.all_done = False  # 🏁 Bandera de finalización global
         
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 SISTEMA INICIADO: Preparando motores de trading...")
@@ -49,6 +51,11 @@ class SimulationRunner:
         self._restore_checkpoint()
         
         while True:
+            if self.all_done:
+                smart_sleep(10)
+                self._process_global_commands() # Para permitir reinicio
+                continue
+
             # 1. Recarga Dinámica
             self._reload_symbols()
             
@@ -58,8 +65,8 @@ class SimulationRunner:
             
             # 3. Fin de lista?
             if self.is_simulated and self.all_symbols and self.symbol_idx >= len(self.all_symbols):
-                if not self._handle_completion():
-                    continue
+                self._handle_completion()
+                continue # Ir al inicio del bucle donde se chequea self.all_done
             
             # 4. Siguiente Sesión
             if self.is_simulated and self.all_symbols:
@@ -90,10 +97,14 @@ class SimulationRunner:
     def _restore_checkpoint(self):
         try:
             ckpt = load_simulation_checkpoint()
-            if ckpt["symbol_idx"] > 0 and self.is_simulated:
-                self.symbol_idx = ckpt["symbol_idx"]
-                self.session_num = ckpt["session_num"]
-                log.info(f"💾 CHECKPOINT restaurado: reanudando desde {ckpt['symbol']} (idx={self.symbol_idx})")
+            if self.is_simulated:
+                self.symbol_idx = ckpt.get("symbol_idx", 0)
+                self.session_num = ckpt.get("session_num", 0)
+                if ckpt.get("is_finished"):
+                    self.all_done = True
+                    log.info("🏁 Checkpoint indica SIMULACIÓN YA COMPLETADA.")
+                elif self.symbol_idx > 0:
+                    log.info(f"💾 CHECKPOINT restaurado: reanudando desde {ckpt.get('symbol','─')} (idx={self.symbol_idx})")
         except: pass
 
     def _reload_symbols(self):
@@ -108,11 +119,9 @@ class SimulationRunner:
                 
                 # Report total to dashboard
                 update_state(
-                    mode="SIMULATED", status="starting", symbol="─", 
+                    "─", # Positional
+                    mode="SIMULATED", status="starting", 
                     total_sim_trades=0, total_sim_pnl=0,
-                    # HACK: Using a kwarg to pass the total count to index.html logic if needed
-                    # but index.html usually derives it from assets.json or history.
-                    # We ensure we have symbols to start.
                 )
                 # Solo loguear si es la primera vez o si cambió la lista
                 if not getattr(self, '_last_symbols_count', None) == len(self.all_symbols):
@@ -139,6 +148,20 @@ class SimulationRunner:
                 cmds["restart_sim"] = False
                 with open(cmd_file, "w") as f: json.dump(cmds, f)
                 
+                # 🔄 RECARGA DINÁMICA DE CÓDIGO (Estrategia e IA)
+                try:
+                    import shared.strategy.indicators
+                    import shared.strategy.ml_predictor
+                    import shared.utils.neural_filter
+                    import shared.engine.trading_engine
+                    importlib.reload(shared.strategy.indicators)
+                    importlib.reload(shared.strategy.ml_predictor)
+                    importlib.reload(shared.utils.neural_filter)
+                    importlib.reload(shared.engine.trading_engine)
+                    log.info("✅ Módulos de estrategia e IA recargados satisfactoriamente.")
+                except Exception as e:
+                    log.warning(f"⚠️ Error recargando módulos de código: {e}")
+
                 clear_state()
                 self._cleanup_files(is_purgue)
                 
@@ -148,7 +171,8 @@ class SimulationRunner:
                 self.total_sim_wins = 0
                 self.total_sim_pnl = 0.0
                 self.total_sim_ghosts = 0
-                update_state(mode="SIMULATED", status="restarting", symbol="─", mock_time_930=_is_mock_time_active())
+                self.all_done = False # Reset bandera al reiniciar manualmente
+                update_state("─", mode="SIMULATED", status="restarting", mock_time_930=_is_mock_time_active())
                 return True
         except: pass
         return False
@@ -182,6 +206,7 @@ class SimulationRunner:
             if config.ML_DATASET_FILE.exists(): config.ML_DATASET_FILE.unlink()
 
     def _handle_completion(self):
+<<<<<<< HEAD
         # Reportar estado final con TOTALES para que no se vea en cero
         wr = (self.total_sim_wins / self.total_sim_trades * 100) if self.total_sim_trades > 0 else 0
         update_state(
@@ -198,6 +223,68 @@ class SimulationRunner:
         log.info(f"🏁 Simulación finalizada. Total Trades: {self.total_sim_trades} | PnL: ${self.total_sim_pnl:.2f}")
         smart_sleep(1)
         return False
+=======
+        """Se ejecuta cuando todos los símbolos de la lista han sido procesados."""
+        if self.all_done: return True # Ya reportado anteriormente
+        
+        log.info("🏁 SIMULACIÓN GLOBAL FINALIZADA. Guardando resultados en el historial...")
+        self._save_full_run_to_history()
+        
+        self.all_done = True
+        # PERSISTIR el hecho de que ya terminamos para evitar bucles tras reinicio
+        from shared.utils import checkpoint
+        checkpoint.save_simulation_checkpoint(self.symbol_idx, "FIN", self.session_num, is_finished=True)
+        
+        update_state("─", status="completed")
+        return True
+
+    def _save_full_run_to_history(self):
+        """Persiste el resumen de la simulación actual en sim_history.json para Analytics."""
+        try:
+            from shared.utils.neural_filter import get_neural_filter
+            accuracy = get_neural_filter().get_stats().get('model_accuracy', 0.0)
+            
+            # Leer resultados detallados (símbolo por símbolo) del backtest actual
+            detailed_results = []
+            if config.RESULTS_FILE.exists():
+                with open(config.RESULTS_FILE, "r") as f:
+                    detailed_results = json.load(f)
+
+            history_file = config.DATA_CACHE_DIR / "sim_history.json"
+            config.DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            
+            history = []
+            if history_file.exists():
+                with open(history_file, "r") as f:
+                    history = json.load(f)
+
+            win_rate = (self.total_sim_wins / self.total_sim_trades * 100) if self.total_sim_trades > 0 else 0
+            
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "symbols_count": len(self.all_symbols),
+                "trades_learned": self.total_sim_trades,
+                "total_ghosts": self.total_sim_ghosts,
+                "win_rate": round(win_rate, 2),
+                "accuracy": round(accuracy, 2),
+                "pnl": round(self.total_sim_pnl, 2),
+                "symbols_list": self.all_symbols,
+                "detailed_results": detailed_results,
+                "sim_start": detailed_results[0].get("sim_start", "─") if detailed_results else "─",
+                "sim_end": detailed_results[-1].get("sim_end", "─") if detailed_results else "─",
+                "investment_style": "Normal" # Opcional: detectar del engine
+            }
+
+            history.append(entry)
+            history = history[-500:] # Mantener últimas 500
+            
+            with open(history_file, "w") as f:
+                json.dump(history, f, indent=2)
+            
+            log.info(f"✅ Historial actualizado: {len(self.all_symbols)} activos, PnL: ${entry['pnl']}")
+        except Exception as e:
+            log.error(f"❌ Error guardando historial en backend: {e}")
+>>>>>>> origin/main
 
     def _check_live_paper(self, args):
         is_lp = False
@@ -309,15 +396,14 @@ class SimulationRunner:
 
             # Update dashboard with global report
             update_state(
+                "─", # Positional
                 mode="SIMULATED", 
-                symbol=engine.symbol,
-                session=self.session_num,
-                status="running",
-                total_sim_trades=int(self.total_sim_trades),
-                total_sim_wins=int(self.total_sim_wins),
-                total_sim_pnl=float(round(self.total_sim_pnl, 2)),
-                total_sim_ghosts=int(self.total_sim_ghosts),
+                total_sim_trades=self.total_sim_trades,
+                total_sim_wins=self.total_sim_wins,
+                total_sim_pnl=round(self.total_sim_pnl, 2),
+                total_sim_ghosts=self.total_sim_ghosts,
                 report=session_result
+
             )
 
             results = []

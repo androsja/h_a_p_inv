@@ -93,5 +93,50 @@ SCAN_INTERVAL_SEC  = 1    # Evaluar cada 1 segundo en LIVE (entre velas de 5min)
 REST_INTERVAL_SEC  = 1    # Descanso fuera de ventana de trading (1s para no bloquear en LIVE)
 SESSION_PAUSE      = 0    # Segundos entre sesiones de simulación (0 = máxima velocidad)
 
+
+# ─── Parámetros de Estrategia (Refactorización) ──────────────────────────────
+MIN_BARS_REQUIRED   = 80
+EMA_MEDIUM_PERIOD   = 20
+EMA_LONG_PERIOD     = 200
+ADX_PERIOD          = 14
+VOLUME_ROLLING_WIN  = 20
+REGIME_LOG_INTERVAL = 10  # segundos
+
+# Umbrales de Señal
+VELEZ_BOUNCE_MULT    = 1.002
+VWAP_BOUNCE_ZSCORE   = -2.0
+EMERGENCY_ZSCORE     = -2.5
+EMA_CROSS_RSI_MIN    = 35
+EMA_CROSS_RSI_MAX    = 70
+
+# Filtros de Calidad
+QUALITY_RSI_MIN      = 43
+QUALITY_RSI_MAX      = 47
+QUALITY_ADX_THRESHOLD = 5
+QUALITY_ZSCORE_MIN   = -2.3
+
+# ─── Heurísticas de IA (Cold-Start) ──────────────────────────────────────────
+# Parámetros para neural_filter.py cuando hay < 8 muestras
+COLD_START_MIN_SAMPLES    = 8
+COLD_START_BASE_SCORE     = 0.55
+
+# Umbrales Heurísticos
+HEURISTIC_RSI_UPPER       = 72
+HEURISTIC_MACD_MIN        = 0.1
+HEURISTIC_CONF_HIGH       = 5
+HEURISTIC_CONF_MID        = 4
+HEURISTIC_VOL_MIN         = 0.7
+HEURISTIC_ATR_MAX         = 0.7
+
+# Ajustes de Score (Bloques de probabilidad)
+HEURISTIC_PENALTY_RSI     = -0.25
+HEURISTIC_PENALTY_MACD    = -0.15
+HEURISTIC_PENALTY_ATR     = -0.15
+HEURISTIC_BOOST_CONF_H    = 0.25
+HEURISTIC_BOOST_CONF_M    = 0.15
+HEURISTIC_BOOST_VOL       = 0.15
+HEURISTIC_BOOST_TREND     = 0.15
+>>>>>>> origin/main
+
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1

@@ -23,6 +23,7 @@ class SignalResult:
     regime:        str = "NEUTRAL"
     is_quality_blocked: bool = False
     is_ml_blocked: bool = False
+    ai_win_prob: float = 0.5  # Neutral por defecto
 
     def __repr__(self) -> str:
         return (
