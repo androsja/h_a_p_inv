@@ -188,7 +188,6 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     is_ml_blocked = False
     prob_win = 0.5
     if signal == SIGNAL_BUY:
-        from shared.strategy.ml_predictor import ml_predictor
         is_win_pred, prob_win = ml_predictor.predict_win(ml_features)
         if not is_win_pred:
             is_ml_blocked = True
