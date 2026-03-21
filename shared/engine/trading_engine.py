@@ -60,6 +60,8 @@ class TradingEngine:
         
         set_symbol_log(self.symbol)
         
+        self._engine_start_time = time.time()
+        
         # Inicializar componentes
         acct_info = self.broker.get_account_info()
         self.account = AccountState(total_cash=acct_info.total_cash)
@@ -147,7 +149,8 @@ class TradingEngine:
                         regime=signal.regime, blocks=signal.blocks,
                         investment_style=self.investment_style,
                         model_accuracy=ml_predictor.accuracy * 100,
-                        total_samples=ml_predictor.get_sample_count()
+                        total_samples=ml_predictor.get_sample_count(),
+                        sim_duration=time.time() - getattr(self, '_engine_start_time', time.time())
                     )
 
         except SessionInterrupted:

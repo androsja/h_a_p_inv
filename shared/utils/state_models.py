@@ -85,6 +85,7 @@ class BotState:
     blocks: list[str] = field(default_factory=list)
     sim_start: str = ""
     sim_end:   str = ""
+    sim_duration: float = 0.0
 
     # 🧠 Información de la IA Asesora
     ai_win_prob: float = 0.0

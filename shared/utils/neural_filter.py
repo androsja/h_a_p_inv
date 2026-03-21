@@ -203,6 +203,12 @@ class NeuralTradeFilter:
             log.info(f"🧠 Red Neuronal — nuevo trade registrado ({'WIN' if won else 'LOSS'}). Total: {n} muestras.")
 
             if n >= MIN_SAMPLES:
+                # Evitar entrenar si no tenemos ambas clases (Wins y Losses)
+                if len(set(self._y)) < 2:
+                    log.info(f"🧠 MLP pospuesto: Aún no hay ambas clases (Wins/Losses) para entrenar ({n} muestras, todas clase {self._y[0]}).")
+                    self._save()
+                    return
+
                 # Re-entrenar con warm_start para aprendizaje incremental
                 try:
                     X_arr = np.array(self._X)
@@ -271,9 +277,8 @@ class NeuralTradeFilter:
         regime_enc  = round(regime_enc_norm * 5)  # 0-5
         num_conf    = round(num_conf_norm * 7)
 
-        score = 0.45  # Inicio restrictivo perdonado (permite que trades excepcionales lleguen a 0.60)
+        score = 0.60  # Inicio neutro (permite que trades normales pasen el umbral para que la IA pueda aprender rápido)
         reasons = []
-
 
         # RSI > 72 en TREND_UP (antes 68) → penalizar si es extremo
         if regime_enc == 0 and rsi > 72:   # TREND_UP muy tardío

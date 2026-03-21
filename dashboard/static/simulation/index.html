@@ -2303,6 +2303,7 @@
                                                 id="netpnl-sort-icon">&#x21D5;</span></th>
                                         <th style="padding:10px;">Saldo Final</th>
                                         <th style="padding:10px;">Drawdown</th>
+                                        <th style="padding:10px;">⏱️ Tiempo Sim.</th>
                                         <th style="padding:10px;">🛡️ Filtros Activos</th>
                                         <th style="padding:10px; text-align:left;">🌍 Tipo de Mercado</th>
                                     </tr>
@@ -2338,16 +2339,17 @@
         'use strict';
 
         // ═══════════════════════════════════════════════════════
-        // RELOJ
+        // SISTEMA DE TIEMPOS
         // ═══════════════════════════════════════════════════════
-        setInterval(() => {
-            const clock = document.getElementById('clock');
-            if (clock) {
-                clock.textContent = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
-            }
-        }, 1000);
+        function formatDuration(sec) {
+            if (sec == null || isNaN(sec) || sec === 0) return '─';
+            if (sec < 60) return `${sec.toFixed(1)}s`;
+            const m = Math.floor(sec / 60);
+            const s = Math.round(sec % 60);
+            return `${m}m ${s}s`;
+        }
 
-        // ═══════════════════════════════════════════════════════
+        // Reloj simulado actualizado en updateUI() en lugar de setInterval
         // SISTEMA DE PESTAÑAS
         // ═══════════════════════════════════════════════════════
         const TAB_IDS = ['candles', 'pnl', 'indicators', 'trades', 'results', 'log'];
@@ -3173,6 +3175,7 @@
             ${prefix}$${netPnl.toFixed(2)}</td>
         <td style="padding:10px; font-weight:bold; color:var(--text);">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
         <td style="padding:10px;">${row.drawdown}%</td>
+        <td style="padding:10px; font-family:'JetBrains Mono',monospace;">${formatDuration(row.sim_duration)}</td>
         <td style="padding:10px;">
             <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
                 ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
@@ -4047,7 +4050,19 @@
             if (simDateDisplay && state.timestamp) {
                 try {
                     const d = new Date(state.timestamp);
-                    simDateDisplay.textContent = d.toISOString().split('T')[0];
+                    // Mostrar fecha en formato YYYY-MM-DD
+                    const dateStr = d.toISOString().split('T')[0];
+                    simDateDisplay.textContent = dateStr;
+                    
+                    // Mostrar hora simulada en el reloj (usando la hora del timestamp, ajustada opcionalmente al timezone)
+                    const clock = document.getElementById('clock');
+                    if (clock) {
+                        try {
+                            clock.textContent = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+                        } catch(e) {
+                            clock.textContent = d.toISOString().split('T')[1].split('.')[0];
+                        }
+                    }
                 } catch (e) { }
             }
 
@@ -4176,6 +4191,7 @@
                     ${pnlSign}$${pnl.toFixed(2)}</td>
                 <td style="padding:10px;">$${(sState.available_cash || window.INITIAL_CAPITAL || 10000).toFixed(2)}</td>
                 <td style="padding:10px;">${drawdown.toFixed(1)}%</td>
+                <td style="padding:10px; font-family:'JetBrains Mono',monospace;">${formatDuration(sState.sim_duration)}</td>
                 <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
                     ${(() => {
                                 const allBlocks = (sState.blocks && sState.blocks.length > 0) ? sState.blocks : [];

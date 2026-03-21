@@ -7,6 +7,7 @@ import json
 import importlib
 import argparse
 import threading
+import time
 from pathlib import Path
 from shared import config
 from shared.utils.logger import log
@@ -171,7 +172,12 @@ class SimulationRunner:
             if f.exists(): f.unlink()
         if is_purgue:
             clear_simulation_checkpoints()
-            # Borrar modelos y dataset de IA
+            # Borrar modelos y dataset de IA en memoria y disco
+            try:
+                from shared.utils.neural_filter import reset_neural_filter
+                reset_neural_filter()
+            except Exception as e:
+                log.error(f"Error reseteando Neural Filter: {e}")
             if config.NEURAL_MODEL_FILE.exists(): config.NEURAL_MODEL_FILE.unlink()
             if config.ML_DATASET_FILE.exists(): config.ML_DATASET_FILE.unlink()
 
@@ -286,6 +292,7 @@ class SimulationRunner:
                 "insight": insight,
                 "sim_start": engine.sim_start_date,
                 "sim_end": engine.sim_end_date,
+                "sim_duration": round(time.time() - getattr(engine, '_engine_start_time', time.time()), 2),
                 "investment_style": engine.investment_style,
                 "blocking_summary": dict(engine.blocking_history or {}),
                 "ghost_trades_count": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
