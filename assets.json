@@ -2,17 +2,17 @@
     "assets": [
         {
             "symbol": "SPY",
-            "enabled": false,
+            "enabled": true,
             "type": "index"
         },
         {
             "symbol": "QQQ",
-            "enabled": false,
+            "enabled": true,
             "type": "index"
         },
         {
             "symbol": "DIA",
-            "enabled": false,
+            "enabled": true,
             "type": "index"
         },
         {
@@ -85,7 +85,7 @@
         },
         {
             "symbol": "BA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BAC",
@@ -109,7 +109,7 @@
         },
         {
             "symbol": "CAT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CDNS",
@@ -165,7 +165,7 @@
         },
         {
             "symbol": "DE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DHR",
@@ -173,7 +173,7 @@
         },
         {
             "symbol": "DIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DOCU",
@@ -185,7 +185,7 @@
         },
         {
             "symbol": "FDX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "FTNT",
@@ -193,11 +193,11 @@
         },
         {
             "symbol": "GD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GIS",
@@ -225,7 +225,7 @@
         },
         {
             "symbol": "HON",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HOOD",
@@ -277,7 +277,7 @@
         },
         {
             "symbol": "LMT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LOW",
@@ -317,7 +317,7 @@
         },
         {
             "symbol": "MMM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MNDY",
@@ -357,11 +357,11 @@
         },
         {
             "symbol": "NKE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NOC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NOW",
@@ -430,7 +430,7 @@
         },
         {
             "symbol": "RTX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SAP",
@@ -438,7 +438,7 @@
         },
         {
             "symbol": "SBUX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SH",
@@ -532,7 +532,7 @@
         },
         {
             "symbol": "UPS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "V",

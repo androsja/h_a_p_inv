@@ -52,17 +52,16 @@ class SimulationRunner:
         
         while True:
             try:
+                # 1. Comandos Globales (Prioridad Máxima - Procesa reinicios)
+                if self._process_global_commands():
+                    continue # Se reinició el estado, volver al inicio
+                
                 if self.all_done:
-                    smart_sleep(3) # Reducido de 10 para mayor reactividad
-                    self._process_global_commands() # Para permitir reinicio
+                    smart_sleep(3) # Idle mientras esperamos nuevos comandos (interrumpible)
                     continue
 
-                # 1. Recarga Dinámica
+                # 2. Recarga Dinámica
                 self._reload_symbols()
-                
-                # 2. Comandos Globales
-                if self._process_global_commands():
-                    continue # Restart loop if requested
                 
                 # 3. Fin de lista?
                 if self.is_simulated and self.all_symbols and self.symbol_idx >= len(self.all_symbols):
