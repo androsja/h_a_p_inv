@@ -209,7 +209,7 @@ async def live_index():
 
 @app.get("/algorithm", response_class=HTMLResponse)
 async def algorithm_logic():
-    logic_file = Path(__file__).parent / "static" / "simulation" / "logic.html"
+    logic_file = Path(__file__).parent / "static" / "algoritmo.html"
     if not logic_file.exists():
         return HTMLResponse("Algorithm Logic page missing", status_code=404)
     return HTMLResponse(content=logic_file.read_text(encoding="utf-8"))

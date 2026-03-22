@@ -18,7 +18,9 @@ except ImportError:
         BASE_DIR = BASE_DIR.parent
 
 # URL base de la API de Hapi Trade
-HAPI_BASE_URL   = "https://api.hapitrade.com/v1"
+HAPI_BASE_URL     = os.getenv("HAPI_BASE_URL", "https://api.hapitrade.com/v1")
+HAPI_API_KEY      = os.getenv("HAPI_API_KEY", "")
+HAPI_API_SECRET   = os.getenv("HAPI_API_SECRET", "")
 
 # ─── Credenciales Alpaca (para datos de mercado) ──────────────────────────
 ALPACA_API_KEY      = os.getenv("APCA_API_KEY_ID", "")

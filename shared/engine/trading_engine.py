@@ -145,7 +145,7 @@ class TradingEngine:
                         position=self.position.__dict__ if self.position else None,
                         total_ghosts=self.total_ghosts,
                         ghost_trades_count=len(self.active_ghosts),
-                        candles=get_candles_json(df), timestamp=quote.timestamp,
+                        candles=[], timestamp=quote.timestamp,
                         regime=signal.regime, blocks=signal.blocks,
                         blocking_summary=dict(self.blocking_history),
                         investment_style=self.investment_style,

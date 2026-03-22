@@ -2,22 +2,22 @@
     "assets": [
         {
             "symbol": "SPY",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
             "symbol": "QQQ",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
             "symbol": "DIA",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
             "symbol": "AAPL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ABBV",
@@ -33,7 +33,7 @@
         },
         {
             "symbol": "ADBE",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ADI",

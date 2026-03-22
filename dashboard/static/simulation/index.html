@@ -9,8 +9,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
         rel="stylesheet" />
-    <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Scripts remotos (Optimizado: Librerías de gráficas eliminadas) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="/static/simulation/js/calendar.js"></script>
     <script>
         console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
@@ -1991,12 +1991,6 @@
                     <button class="tab-btn active" data-tab="results" id="tbtn-results">
                         <span class="tab-icon">🧠</span> Resultados y ML
                     </button>
-                    <button class="tab-btn" data-tab="candles" id="tbtn-candles">
-                        <span class="tab-icon">🕯️</span> Velas Japonesas
-                    </button>
-                    <button class="tab-btn" data-tab="pnl" id="tbtn-pnl">
-                        <span class="tab-icon">📈</span> PnL en el Tiempo
-                    </button>
                     <button class="tab-btn" data-tab="indicators" id="tbtn-indicators">
                         <span class="tab-icon">📊</span> Indicadores
                     </button>
@@ -2008,26 +2002,7 @@
                     </button>
                 </div>
 
-                <!-- ═══ TAB: VELAS ═══ -->
-                <div class="tab-content" id="tab-candles">
-                    <div id="candle-chart"></div>
-                    <div class="candle-overlay">
-                        <div class="candle-legend">
-                            <div class="legend-line" style="background:var(--yellow);"></div>EMA 200
-                        </div>
-                        <div class="candle-legend">
-                            <div class="legend-line"
-                                style="background:var(--purple);border-top:1px dashed var(--purple);"></div>VWAP
-                        </div>
-                        <div class="candle-legend"><span style="color:var(--green);">▲</span>Compra</div>
-                        <div class="candle-legend"><span style="color:var(--red);">▼</span>Venta</div>
-                    </div>
-                </div>
 
-                <!-- ═══ TAB: PnL ═══ -->
-                <div class="tab-content" id="tab-pnl" style="padding:16px;">
-                    <canvas id="pnl-chart"></canvas>
-                </div>
 
                 <!-- ═══ TAB: INDICADORES ═══ -->
                 <div class="tab-content" id="tab-indicators">
@@ -2354,6 +2329,12 @@
     </div>
     <script>
         'use strict';
+        
+        // --- GLOBALES DE ESTADO (Inicializado temprano para evitar ReferenceErrors en WS) ---
+        let lastResultCount = 0;
+        let totalNetValue = 0;
+        let TOTAL_SYMBOLS = 46;
+        let liveRegimes = {};
 
         // ═══════════════════════════════════════════════════════
         // RELOJ
@@ -2398,7 +2379,7 @@
                     }, 50);
                 }
                 if (tab === 'pnl') {
-                    setTimeout(() => pnlChart.resize(), 50);
+
                 }
             });
         });
@@ -2528,29 +2509,7 @@
                 fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
             }]
         };
-        const pnlChart = new Chart(pnlCtx, {
-            type: 'line', data: pnlDataset,
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                animation: { duration: 400 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0d1626', borderColor: 'rgba(255,255,255,0.1)',
-                        borderWidth: 1, titleColor: '#546180', bodyColor: '#e2e8f0',
-                        callbacks: { label: i => ` PnL: $${i.raw.toFixed(2)}` }
-                    }
-                },
-                scales: {
-                    x: { display: false },
-                    y: {
-                        position: 'right',
-                        grid: { color: 'rgba(255,255,255,0.04)' },
-                        ticks: { color: '#546180', font: { family: 'JetBrains Mono', size: 11 }, callback: v => `$${v.toFixed(0)}` }
-                    }
-                }
-            }
-        });
+        const pnlChart = { resize: () => {} }; // No-op for pnlChart
         let pnlHistory = [];
 
         // ═══════════════════════════════════════════════════════
@@ -2569,99 +2528,8 @@
         let prevCandleTs = 0;
         let tradeMarkersList = [];
 
-        function initCandleChartIfNeeded() {
-            if (candleChart !== null) return;
-
-            candleChart = LightweightCharts.createChart(candleEl, {
-                width: candleEl.clientWidth || 800,
-                height: candleEl.clientHeight || 480,
-                layout: { background: { color: '#07101f' }, textColor: '#546180' },
-                grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: 'rgba(255,255,255,0.07)' },
-                timeScale: { borderColor: 'rgba(255,255,255,0.07)', timeVisible: true, secondsVisible: false },
-            });
-
-            candleSeries = candleChart.addCandlestickSeries({
-                upColor: '#00e676', downColor: '#ff3d5a',
-                borderUpColor: '#00e676', borderDownColor: '#ff3d5a',
-                wickUpColor: 'rgba(0,230,118,0.6)', wickDownColor: 'rgba(255,61,90,0.6)',
-            });
-            ema200Series = candleChart.addLineSeries({
-                color: '#ffd740', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'EMA200',
-            });
-            vwapSeries = candleChart.addLineSeries({
-                color: '#a78bfa', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'VWAP',
-            });
-            aiTargetUpSeries = candleChart.addLineSeries({
-                color: 'rgba(0, 255, 163, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Objetivo',
-            });
-            aiTargetDownSeries = candleChart.addLineSeries({
-                color: 'rgba(255, 43, 94, 0.4)', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'IA Suelo',
-            });
-
-            // Redimensionar al cambiar tamaño de ventana
-            new ResizeObserver(() => {
-                if (document.getElementById('tab-candles').classList.contains('visible') && candleChart) {
-                    candleChart.applyOptions({ width: candleEl.clientWidth, height: candleEl.clientHeight });
-                }
-            }).observe(candleEl);
-        }
-
-        function updateCandleChart(state) {
-            if (candleChart === null) return; // Gráfico todavía no inicializado
-
-            const candles = state.candles;
-            if (!candles || candles.length < 2) return;
-            const sym = state.symbol || '';
-            const lastTs = candles[candles.length - 1]?.time || 0;
-            const symbolChanged = sym !== prevSymbol;
-
-            // SANITIZACIÓN FRONTEND (Protección estricta contra backend desincronizado)
-            const cleanCandles = [];
-            let lastSanitizeT = -1;
-            for (let i = 0; i < candles.length; i++) {
-                if (candles[i] && candles[i].time > lastSanitizeT) {
-                    cleanCandles.push(candles[i]);
-                    lastSanitizeT = candles[i].time;
-                }
-            }
-            if (cleanCandles.length < 2) return;
-
-            if (symbolChanged || window._forceChartRedraw) {
-                // Símbolo nuevo o pestaña recién abierta: cargar todo desde cero 
-                prevSymbol = sym; prevCandleTs = 0; tradeMarkersList = [];
-                window._forceChartRedraw = false;
-                try {
-                    candleSeries.setData(cleanCandles);
-                    if (state.ema_200 > 0) ema200Series.setData(cleanCandles.map(c => ({ time: c.time, value: state.ema_200 })));
-                    if (state.vwap > 0) vwapSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.vwap })));
-                    if (state.ai_expected_up > 0) aiTargetUpSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_up })));
-                    if (state.ai_expected_down > 0) aiTargetDownSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_down })));
-
-                    candleChart.timeScale().fitContent();
-                } catch (e) { console.error("LTW Chart Mount Error:", e); }
-            } else if (lastTs > prevCandleTs) {
-                // Solo actualizar la última vela
-                try {
-                    const last = cleanCandles[cleanCandles.length - 1];
-                    candleSeries.update(last);
-                    if (state.ema_200 > 0) ema200Series.update({ time: last.time, value: state.ema_200 });
-                    if (state.vwap > 0) vwapSeries.update({ time: last.time, value: state.vwap });
-
-                    // IA Targets en el gráfico
-                    if (state.ai_expected_up > 0) aiTargetUpSeries.update({ time: last.time, value: state.ai_expected_up });
-                    if (state.ai_expected_down > 0) aiTargetDownSeries.update({ time: last.time, value: state.ai_expected_down });
-                } catch (e) { console.error("LTW Chart Update Error:", e); }
-            }
-            prevCandleTs = lastTs;
-
-            // Actualizar líneas completas si cambió de símbolo
-            if (symbolChanged && window._forceChartRedraw === false) {
-                if (state.ai_expected_up > 0) aiTargetUpSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_up })));
-                if (state.ai_expected_down > 0) aiTargetDownSeries.setData(cleanCandles.map(c => ({ time: c.time, value: state.ai_expected_down })));
-            }
-        }
+        function initCandleChartIfNeeded() { return; }
+        function updateCandleChart(state) { return; }
 
         const MAX_LOG = 1000;
         let logLines = [];
@@ -2735,13 +2603,8 @@
         // ═══════════════════════════════════════════════════════
         // RESULTADOS Y TABLA DE BITÁCORA ML
         // ═══════════════════════════════════════════════════════
-        let lastResultCount = 0;
-        let totalNetValue = 0;
-        let TOTAL_SYMBOLS = 46; // Fallback default
-
-        // Mapa vivo de régimen por símbolo (se actualiza con cada tick del WebSocket)
-        let liveRegimes = {};
-
+        // (Variables movidas al inicio del script para estabilidad)
+        
         // Mapeo de códigos de régimen a etiqueta y color
         const REGIME_META = {
             TREND_UP: { label: '🚀 Tendencia Alcista', color: '#00c781', bg: 'rgba(0,199,129,0.12)' },
@@ -3502,7 +3365,7 @@
                 gridCont.style.display = 'none';
                 listCont.style.display = 'block';
                 btnGrid.style.background = 'transparent';
-                btnGrid.style.color = 'white';
+                btnList.style.color = 'white';
                 btnList.style.background = 'var(--accent)';
                 btnList.style.color = 'black';
                 if (focusSymbol) loadNewsHistory(focusSymbol);
@@ -4286,12 +4149,12 @@
             pnlDataset.datasets[0].data = pnlHistory.map(p => p.y);
             // Solo actualizar el PnL chart si la pestaña está visible (para no gastar CPU)
             if (document.getElementById('tab-pnl').classList.contains('visible')) {
-                pnlChart.update('none');
+
             }
 
             // Candlestick
             try {
-                updateCandleChart(state);
+
             } catch (e) { }
 
             // Confluencias
@@ -4539,9 +4402,19 @@
             box.style.maxWidth = '450px';
             box.style.boxShadow = '0 10px 40px rgba(0,0,0,0.8)';
 
-            let selectedDate = null;
+            let savedDate = localStorage.getItem('hapi_sim_start_date') || null;
+            let selectedDate = savedDate;
+            
             let displayMonth = new Date().getMonth();
             let displayYear = new Date().getFullYear();
+            
+            if (savedDate) {
+                const parts = savedDate.split('-');
+                if (parts.length === 3) {
+                    displayYear = parseInt(parts[0], 10);
+                    displayMonth = parseInt(parts[1], 10) - 1;
+                }
+            }
 
             const renderCalendar = () => {
                 const calContainer = box.querySelector('#cal-picker-grid');
@@ -4608,7 +4481,7 @@
                 </div>
 
                 <div id="selected-date-display" style="color:#00bcd4; font-size:13px; font-weight:bold; margin-bottom:15px;">
-                    📅 Seleccionado: (Últimos 60 días)
+                    📅 Seleccionado: ${selectedDate ? selectedDate : '(Últimos 60 días)'}
                 </div>
 
                 <div style="color:#9aa0a6; font-size:11px; margin-bottom:25px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; text-align:left;">
@@ -4639,6 +4512,12 @@
             document.getElementById('btn-cancelar-sim').onclick = () => overlay.remove();
             document.getElementById('btn-confirmar-sim').onclick = () => {
                 setProcessing(true);
+                if (selectedDate) {
+                    localStorage.setItem('hapi_sim_start_date', selectedDate);
+                } else {
+                    localStorage.removeItem('hapi_sim_start_date');
+                }
+                
                 fetch('/api/restart_sim', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

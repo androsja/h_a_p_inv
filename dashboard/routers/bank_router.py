@@ -17,6 +17,8 @@ from shared.config import (
     LOG_FILE, CHECKPOINT_DB, STATE_FILE
 )
 
+from dashboard.routers.simulation_router import ResetRequest
+
 router = APIRouter(prefix="/api", tags=["bank"])
 
 
@@ -64,9 +66,10 @@ async def bank_withdraw(req: DepositRequest):
 
 
 @router.post("/wipe_total")
-async def wipe_total():
+async def wipe_total(req: ResetRequest = None):
     """Borra ABSOLUTAMENTE TODO y reinicia el sistema desde cero."""
     import shutil
+    import asyncio
     deleted = []
     errors = []
 
@@ -75,18 +78,27 @@ async def wipe_total():
         if COMMAND_FILE.exists():
             with open(COMMAND_FILE) as f:
                 cmd_data = json.load(f)
+        
         cmd_data.update({
-            "live_stop": True, "live_start": False,
-            "reset_all": True, "reset_neural": True,
+            "live_stop": True, 
+            "live_start": False,
+            "reset_all": True, 
+            "reset_neural": True,
             "strategy_frozen": False
         })
+        
+        if req and req.sim_start_date:
+            cmd_data["sim_start_date"] = req.sim_start_date
+
         with open(COMMAND_FILE, "w") as f:
             json.dump(cmd_data, f)
     except Exception as e:
         errors.append(f"config_reset: {e}")
 
+    # Pequeño delay para que el bot sim o live detecten el comando de parada antes del borrado
+    await asyncio.sleep(0.1)
+
     files_to_delete = [
-        # Reiniciar logs y modelos
         ("neural_model.joblib",   NEURAL_MODEL_FILE),
         ("ai_model.joblib",       config.AI_MODEL_FILE),
         ("ml_dataset.csv",        ML_DATASET_FILE),
@@ -101,8 +113,8 @@ async def wipe_total():
 
     for name, path in files_to_delete:
         try:
-            if path.exists():
-                path.unlink()
+            if path and path.exists():
+                path.unlink(missing_ok=True)
                 deleted.append(name)
         except Exception as e:
             errors.append(f"{name}: {e}")
@@ -110,26 +122,35 @@ async def wipe_total():
     # Borrar snapshots guardados
     try:
         if config.MODEL_SNAPSHOTS_DIR.exists():
-            shutil.rmtree(config.MODEL_SNAPSHOTS_DIR)
+            shutil.rmtree(config.MODEL_SNAPSHOTS_DIR, ignore_errors=True)
             config.MODEL_SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
             deleted.append("snapshots_dir")
     except Exception as e:
         errors.append(f"snapshots_dir: {e}")
 
     try:
-        if LOG_FILE.exists(): LOG_FILE.write_text("")
+        if LOG_FILE.exists():
+            with open(LOG_FILE, "w") as f:
+                f.write("")
     except: pass
 
+    # Forzar recreación de directorios base
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    config.DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
     verify_ok = not ML_DATASET_FILE.exists()
+    
+    # Breve delay final para asegurar sincronización de FS antes de reportar 200 OK
+    await asyncio.sleep(0.1)
+    
     return {
         "status": "success" if not errors else "partial",
         "deleted": deleted,
         "errors": errors,
         "verify": verify_ok,
-        "message": f"✅ WIPE TOTAL completado. {len(deleted)} componentes eliminados (incluyendo historial y snapshots)."
+        "message": f"✅ WIPE TOTAL completado. {len(deleted)} componentes eliminados."
     }
 
-
 @router.post("/wipe_neural")
-async def wipe_neural_alias():
-    return await wipe_total()
+async def wipe_neural_alias(req: ResetRequest = None):
+    return await wipe_total(req)
