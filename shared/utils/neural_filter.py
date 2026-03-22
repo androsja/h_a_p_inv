@@ -128,8 +128,7 @@ class NeuralTradeFilter:
         macd_hist: float,
         atr_pct: float,
         vol_ratio: float,
-        ema_fast: float,
-        ema_slow: float,
+        ema_spread_pct: float,
         zscore_vwap: float,
         regime: str,
         num_confirmations: int,
@@ -138,7 +137,6 @@ class NeuralTradeFilter:
         is_adx_rising: bool = False,
     ) -> list[float]:
         """Construye el vector de features normalizado para el modelo."""
-        ema_spread_pct = ((ema_fast - ema_slow) / ema_slow * 100) if ema_slow else 0.0
         regime_enc = REGIME_ENCODING.get(regime, 3)  # Default NEUTRAL=3
         
         # Normalización de Hora Militar Cíclica (0-23)

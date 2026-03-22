@@ -332,14 +332,23 @@ class TradingEngine:
             "entry_price": self.position.entry_price
         }
 
+    def _get_net_pnl(self, gross_pnl: float, qty: float, entry_price: float) -> float:
+        """Calcula el PnL neto aproximado descontando comisiones y slippage para el aprendizaje de la IA."""
+        # Costo mínimo Hapi (Tiered IBKR aprox $0.15 entrada + $0.15 salida + comisiones SEC/FINRA)
+        fees = 0.35
+        # Slippage estimado: 0.1% del valor nocional total (ida y vuelta)
+        slippage = (qty * entry_price) * 0.001
+        return gross_pnl - fees - slippage
+
     def _process_closed_trade(self, sell_price, reason, timestamp):
         pnl = (sell_price - self.position.entry_price) * self.position.qty
         log.info(f"🔴 SELL | {self.symbol} | PnL: ${pnl:+.2f} | Reason: {reason}")
         
-        # ML feedback
+        # ML feedback (Aprender del PnL Neto, no Bruto, para no engañar a la IA con micro-movimientos)
         if hasattr(self.position, 'ml_features'):
-            ml_predictor.save_trade(self.symbol, self.position.ml_features, pnl)
-            self._train_neural_filter(pnl)
+            net_pnl = self._get_net_pnl(pnl, self.position.qty, self.position.entry_price)
+            ml_predictor.save_trade(self.symbol, self.position.ml_features, net_pnl)
+            self._train_neural_filter(net_pnl)
             
             journal_record_trade(
                 symbol=self.symbol, session=self.session_num,
@@ -369,8 +378,7 @@ class TradingEngine:
                 vwap_dist_pct=ml_f.get('vwap_dist_pct', 0.0),
                 rsi=ml_f.get('rsi', 50.0), macd_hist=ml_f.get('macd_hist', 0.0),
                 atr_pct=ml_f.get('atr_pct', 0.0), vol_ratio=ml_f.get('vol_ratio', 1.0),
-                ema_fast=ml_f.get('ema_fast', 0.0), 
-                ema_slow=ml_f.get('ema_slow', 0.0),
+                ema_spread_pct=ml_f.get('ema_diff_pct', 0.0),
                 zscore_vwap=ml_f.get('zscore_vwap', 0.0), regime=ml_f.get('regime', 'NEUTRAL'),
                 num_confirmations=ml_f.get('num_confirmations', 2),
                 adx=ml_f.get('adx', 20.0),
@@ -393,12 +401,13 @@ class TradingEngine:
                 pnl = gp.pnl(quote.bid)
                 log.info(f"👻 GHOST EXIT | {self.symbol} | PnL: ${pnl:+.2f} | Reason: {reason}")
                 
-                # Aprender del trade fantasma (Ambos modelos)
+                # Aprender del trade fantasma (Ambos modelos usan el PnL Neto)
                 if hasattr(gp, 'ml_features'):
-                    ml_predictor.save_trade(self.symbol, gp.ml_features, pnl)
+                    net_pnl = self._get_net_pnl(pnl, gp.qty, gp.entry_price)
+                    ml_predictor.save_trade(self.symbol, gp.ml_features, net_pnl)
                     # AHORA SÍ entrenamos el NeuralFilter con fantasmas
                     # De lo contrario nunca saldrá de su fase Cold-Start
-                    self._train_neural_filter(pnl, pos=gp)
+                    self._train_neural_filter(net_pnl, pos=gp)
                 
                 self.ghost_history.append({
                     "pnl": pnl,
