@@ -51,48 +51,49 @@ class SimulationRunner:
         self._restore_checkpoint()
         
         while True:
-            if self.all_done:
-                smart_sleep(10)
-                self._process_global_commands() # Para permitir reinicio
-                continue
-
-            # 1. Recarga Dinámica
-            self._reload_symbols()
-            
-            # 2. Comandos Globales
-            if self._process_global_commands():
-                continue # Restart loop if requested
-            
-            # 3. Fin de lista?
-            if self.is_simulated and self.all_symbols and self.symbol_idx >= len(self.all_symbols):
-                self._handle_completion()
-                continue # Ir al inicio del bucle donde se chequea self.all_done
-            
-            # 4. Siguiente Sesión
-            if self.is_simulated and self.all_symbols:
-                args.symbol = self.all_symbols[self.symbol_idx]
-            
-            self.session_num += 1
-            
-            # 5. Live Paper Parallel?
-            if self._check_live_paper(args):
-                continue
-                
-            # 6. Ejecución Serial (Simulación)
             try:
+                if self.all_done:
+                    smart_sleep(3) # Reducido de 10 para mayor reactividad
+                    self._process_global_commands() # Para permitir reinicio
+                    continue
+
+                # 1. Recarga Dinámica
+                self._reload_symbols()
+                
+                # 2. Comandos Globales
+                if self._process_global_commands():
+                    continue # Restart loop if requested
+                
+                # 3. Fin de lista?
+                if self.is_simulated and self.all_symbols and self.symbol_idx >= len(self.all_symbols):
+                    self._handle_completion()
+                    continue # Ir al inicio del bucle donde se chequea self.all_done
+                
+                # 4. Siguiente Sesión
+                if self.is_simulated and self.all_symbols:
+                    args.symbol = self.all_symbols[self.symbol_idx]
+                
+                self.session_num += 1
+                
+                # 5. Live Paper Parallel?
+                if self._check_live_paper(args):
+                    continue
+                    
+                # 6. Ejecución Serial (Simulación)
                 self._run_single_session(args)
+
+                if not self.is_simulated: break
+                
+                # 7. Siguiente Activo
+                self._advance_to_next()
+                smart_sleep(self.session_pause)
+
             except SessionInterrupted:
-                log.info("📢 Sesión interrumpida. Reiniciando bucle...")
+                log.info("📢 Interrupción detectada (Reinicio/Cambio de modo). Volviendo al inicio del bucle...")
                 continue
             except Exception as e:
-                log.error(f"❌ Error en sesión: {e}")
-                update_state(mode=args.mode, status="error", symbol=args.symbol, session=self.session_num)
-
-            if not self.is_simulated: break
-            
-            # 7. Siguiente Activo
-            self._advance_to_next()
-            smart_sleep(self.session_pause)
+                log.error(f"❌ Error crítico en bucle principal: {e}", exc_info=True)
+                smart_sleep(5) # Evitar bucle infinito de errores rápidos
 
     def _restore_checkpoint(self):
         try:
