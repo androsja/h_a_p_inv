@@ -191,10 +191,14 @@ def update_state(
     gross_loss: float = 0.0,
     total_fees: float = 0.0,
     total_slippage: float = 0.0,
-    total_sim_trades: int = None,
-    total_sim_wins: int = None,
-    total_sim_pnl: float = None,
-    total_sim_ghosts: int = None,
+    total_sim_trades: int | None = None,
+    total_sim_wins: int | None = None,
+    total_sim_pnl: float | None = None,
+    total_sim_ghosts: int | None = None,
+    total_sim_fees: float | None = None,
+    total_sim_slippage: float | None = None,
+    total_sim_gross_profit: float | None = None,
+    total_sim_gross_loss: float | None = None,
     total_ghosts: int = 0,
     ghost_trades_count: int = 0,
     position: dict | None = None,
@@ -212,30 +216,45 @@ def update_state(
     ai_recommendation: str = "",
     ai_expected_up: float = 0.0,
     ai_expected_down: float = 0.0,
-    model_accuracy: float = 0.0,
-    total_samples: int = 0,
+    model_accuracy: float | None = None,
+    total_samples: int | None = None,
     **kwargs
 ) -> None:
-    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _global_model_accuracy, _global_total_samples
+    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _global_model_accuracy, _global_total_samples, _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
     
+    # Actualizar acumulados globales solo si se proporcionan
     if total_sim_trades is not None: _global_sim_trades = total_sim_trades
     if total_sim_wins   is not None: _global_sim_wins   = total_sim_wins
     if total_sim_pnl    is not None: _global_sim_pnl    = total_sim_pnl
     if total_sim_ghosts is not None: _global_sim_ghosts = total_sim_ghosts
-    # ─── CÁLCULO DE TOTALES VISUALES (Base + Suma de Activos) ───
-    # Estos son los valores que "llenan" los campos vacíos del Dashboard en tiempo real
-    ts_trades  = _global_sim_trades + sum(s.total_trades for s in _symbol_states.values())
-    ts_wins    = _global_sim_wins   + sum(s.winning_trades for s in _symbol_states.values())
-    ts_pnl     = round(_global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values()), 2)
-    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values())
-    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values()), 2)
-    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values()), 2)
-    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values()), 2)
-    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values()), 2)
+    if total_sim_fees   is not None: _global_sim_fees   = total_sim_fees
+    if total_sim_slippage is not None: _global_sim_slippage = total_sim_slippage
+    if total_sim_gross_profit is not None: _global_sim_gross_profit = total_sim_gross_profit
+    if total_sim_gross_loss is not None: _global_sim_gross_loss = total_sim_gross_loss
 
-    # Persistir métricas de IA
     if model_accuracy is not None: _global_model_accuracy = model_accuracy
     if total_samples is not None: _global_total_samples = total_samples
+
+    # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
+    # Estos valores son los que el Dashboard muestra en la franja superior
+    ts_trades  = _global_sim_trades + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_wins    = _global_sim_wins   + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_pnl     = round(_global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
+    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+
+    # Añadir los datos del símbolo actual (que aún no está en _symbol_states con sus valores nuevos)
+    ts_trades += total_trades
+    ts_wins += winning_trades
+    ts_pnl += round(gross_profit + gross_loss, 2)
+    ts_ghosts += total_ghosts
+    ts_fees += total_fees
+    ts_slippage += total_slippage
+    ts_gross_profit += gross_profit
+    ts_gross_loss += gross_loss
 
     new_s = BotState(
         mode=mode,
@@ -306,9 +325,9 @@ def _flush() -> None:
         output = {}
         for sym, st in _symbol_states.items():
             d = asdict(st)
-            # Forzar campos críticos si no están (redundancia de seguridad)
-            d["model_accuracy"] = getattr(st, "model_accuracy", 0.0)
-            d["total_samples"] = getattr(st, "total_samples", 0)
+            # Inyectar métricas globales para que el dashboard siempre las vea
+            d["model_accuracy"] = _global_model_accuracy
+            d["total_samples"] = _global_total_samples
             output[sym] = d
         
         # Inyectar una vista "global" (el primer símbolo o una mezcla relevante)

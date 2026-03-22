@@ -2335,6 +2335,20 @@
         let totalNetValue = 0;
         let TOTAL_SYMBOLS = 46;
         let liveRegimes = {};
+        var prevBid = 0;
+        var lastTradeCount = 0;
+        var pnlHistory = [];
+        var pnlChart = { resize: () => {} };
+        var pnlDataset = { labels: [], datasets: [{ data: [], borderColor: '#00d4aa' }] };
+        var candleChart = null;
+        var candleSeries = null;
+        var ema200Series = null;
+        var vwapSeries = null;
+        var aiTargetUpSeries = null;
+        var aiTargetDownSeries = null;
+        var prevSymbol = '';
+        var prevCandleTs = 0;
+        var tradeMarkersList = [];
 
         // ═══════════════════════════════════════════════════════
         // RELOJ
@@ -2494,8 +2508,9 @@
         // ═══════════════════════════════════════════════════════
         // MINI PnL CHART (Chart.js)
         // ═══════════════════════════════════════════════════════
-        const pnlCtx = document.getElementById('pnl-chart').getContext('2d');
-        const pnlDataset = {
+        const pnlCtxEl = document.getElementById('pnl-chart');
+        const pnlCtx = pnlCtxEl ? pnlCtxEl.getContext('2d') : null;
+        pnlDataset = {
             labels: [], datasets: [{
                 data: [], borderColor: '#00d4aa',
                 backgroundColor: (c) => {
@@ -2509,24 +2524,7 @@
                 fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
             }]
         };
-        const pnlChart = { resize: () => {} }; // No-op for pnlChart
-        let pnlHistory = [];
-
-        // ═══════════════════════════════════════════════════════
-        // CANDLESTICK CHART (TradingView Lightweight Charts) - LAZY LOAD
-        // ═══════════════════════════════════════════════════════
-        const candleEl = document.getElementById('candle-chart');
-        let candleChart = null;
-        let candleSeries = null;
-        let ema200Series = null;
-        let vwapSeries = null;
-        let aiTargetUpSeries = null;
-        let aiTargetDownSeries = null;
-
-        // Estado del gráfico
-        let prevSymbol = '';
-        let prevCandleTs = 0;
-        let tradeMarkersList = [];
+        // Estado del gráfico...
 
         function initCandleChartIfNeeded() { return; }
         function updateCandleChart(state) { return; }
@@ -2566,7 +2564,7 @@
         // ═══════════════════════════════════════════════════════
         // OPERACIONES Y NOTIFICACIONES
         // ═══════════════════════════════════════════════════════
-        let lastTradeCount = 0;
+        // operativas...
 
         function showToast(trade) {
             const container = document.getElementById('toast-container');
@@ -3341,7 +3339,7 @@
         // ═══════════════════════════════════════════════════════
         // ACTUALIZACIÓN PRINCIPAL
         // ═══════════════════════════════════════════════════════
-        let prevBid = 0;
+        // bid...
         // Seleccionador manual de symbol eliminado: la estrategia corre en estricto modo secuencial.
 
         let currentNewsView = 'grid'; // 'grid' | 'list'
@@ -4148,7 +4146,7 @@
             pnlDataset.labels = pnlHistory.map(p => p.x);
             pnlDataset.datasets[0].data = pnlHistory.map(p => p.y);
             // Solo actualizar el PnL chart si la pestaña está visible (para no gastar CPU)
-            if (document.getElementById('tab-pnl').classList.contains('visible')) {
+            if (document.getElementById('tab-pnl')?.classList.contains('visible')) {
 
             }
 
@@ -4330,7 +4328,7 @@
             const ws = new WebSocket(`${proto}://${location.host}/ws/sim`);
 
             ws.onopen = () => {
-                document.getElementById('status-dot').classList.remove('off');
+                document.getElementById('status-dot')?.classList.remove('off');
                 document.getElementById('status-text').textContent = 'Bot activo';
                 document.getElementById('status-text').style.color = 'var(--green)';
                 setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
@@ -4354,7 +4352,7 @@
             };
 
             ws.onclose = () => {
-                document.getElementById('status-dot').classList.add('off');
+                document.getElementById('status-dot')?.classList.add('off');
                 document.getElementById('status-text').textContent = 'Reconectando…';
                 document.getElementById('status-text').style.color = 'var(--muted)';
                 setTimeout(connectWS, 3000);

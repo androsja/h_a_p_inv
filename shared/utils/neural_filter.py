@@ -253,7 +253,7 @@ class NeuralTradeFilter:
                 "losses":          n - wins,
                 "win_rate_hist":   round(wins / n * 100, 1) if n > 0 else 0.0,
                 "model_accuracy":  round(acc * 100, 1),
-                "mode":            "MLP" if (n >= MIN_SAMPLES and self._model) else "cold-start",
+                "ai_mode":         "MLP" if (n >= MIN_SAMPLES and self._model) else "cold-start",
                 "threshold":       CONFIDENCE_THRESHOLD,
             }
 

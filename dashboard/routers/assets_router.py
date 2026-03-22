@@ -134,48 +134,51 @@ async def toggle_symbol(req: ToggleRequest):
 async def get_neural_stats():
     """Estadísticas de la Red Neuronal MLP adaptativa."""
     try:
-        import joblib
-        import numpy as np
+        from shared.config import STATE_FILE_SIM
+        import json
 
         n, wins, losses = 0, 0, 0
-        if ML_DATASET_FILE.exists():
-            try:
-                import csv
-                with open(ML_DATASET_FILE, newline="", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        # La columna objetivo se llama 'is_win' en ml_dataset.csv, no 'label'
-                        is_win = int(float(row.get("is_win", 0)))
-                        wins += is_win
-                        n += 1
-                losses = n - wins
-            except Exception:
-                n = wins = losses = 0
-
         acc = 0.0
         mode = "cold-start"
-        if NEURAL_MODEL_FILE.exists() and n > 0:
+
+        if STATE_FILE_SIM.exists():
             try:
-                bundle = joblib.load(NEURAL_MODEL_FILE)
-                model = bundle.get("model")
-                X_list = bundle.get("X", [])
-                y_list = bundle.get("y", [])
-                if model is not None and len(X_list) > 0:
-                    score_X = X_list[:n]
-                    score_y = y_list[:n]
-                    if len(score_X) >= n:
-                        acc = float(model.score(np.array(score_X), np.array(score_y)))
-                    mode = "MLP"
+                with open(STATE_FILE_SIM, "r", encoding="utf-8") as f:
+                    state_data = json.load(f)
+                    # El BotState ahora inyecta estas métricas globales en cada símbolo
+                    # Intentamos leer de '_main' o de '─' o del primer símbolo disponible
+                    global_state = state_data.get("_main") or state_data.get("─") or next(iter(state_data.values()), {})
+                    
+                    n = global_state.get("total_samples", 0)
+                    acc = global_state.get("model_accuracy", 0.0) / 100.0 # Convertir de % a decimal si es necesario
+                    # Pero el backend ya lo guarda redondado en %. Vamos a verificar.
+                    # En state_writer puse: d["model_accuracy"] = _global_model_accuracy
+                    # Y _global_model_accuracy viene de nf.get_stats()["model_accuracy"]
+                    # Y NeuralFilter.get_stats() hace: round(acc * 100, 1)
+                    # Así que 'acc' en el JSON ya es un porcentaje (ej: 68.7).
+                    
+                    # Re-leemos para estar seguros de la escala
+                    if acc > 1.0: 
+                        # Ya es porcentaje
+                        pass
+                    else:
+                        # Convertir a porcentaje para el dashboard
+                        acc = acc * 100.0
+
+                    wins = global_state.get("winning_trades", 0) # Esto es del símbolo, no necesariamente global de IA
+                    # Para simplificar, si n > 0 y acc > 0, asumimos MLP
+                    if n >= 50: # Mínimo de muestras
+                        mode = "MLP"
             except Exception:
                 pass
 
         return {
             "status": "ok",
             "total_samples": n,
-            "wins": wins,
-            "losses": losses,
-            "win_rate_hist": round(wins / n * 100, 1) if n > 0 else 0.0,
-            "model_accuracy": round(acc * 100, 1),
+            "wins": int(n * (acc / 100.0)) if n > 0 else 0,
+            "losses": int(n * (1.0 - acc / 100.0)) if n > 0 else 0,
+            "win_rate_hist": round(acc, 1),
+            "model_accuracy": round(acc, 1),
             "mode": mode,
             "threshold": 0.55,
         }

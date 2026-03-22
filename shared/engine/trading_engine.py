@@ -113,6 +113,9 @@ class TradingEngine:
                 signal = analyze(df, symbol=self.symbol, asset_type=self.asset_type)
                 self._record_blocks(signal)
 
+                from shared.utils.neural_filter import get_neural_filter
+                nf = get_neural_filter()
+
                 # 4. Gestión de Posición
                 if self.position:
                     self._handle_exit(quote, signal)
@@ -149,8 +152,8 @@ class TradingEngine:
                         regime=signal.regime, blocks=signal.blocks,
                         blocking_summary=dict(self.blocking_history),
                         investment_style=self.investment_style,
-                        model_accuracy=getattr(ml_predictor, 'accuracy', 0.0),
-                        total_samples=ml_predictor.get_sample_count(),
+                        # Reportar estadísticas de aprendizaje de la IA (del NeuralFilter, que es el que aprende dinámicamente)
+                        **(nf.get_stats() if 'nf' in locals() else {"total_samples": 0, "model_accuracy": 0.0}),
                         ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5,
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time())
                     )

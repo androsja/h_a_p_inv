@@ -120,8 +120,7 @@ class SimulationRunner:
                 # Report total to dashboard
                 update_state(
                     "─", # Positional
-                    mode="SIMULATED", status="starting", 
-                    total_sim_trades=0, total_sim_pnl=0,
+                    mode="SIMULATED", status="starting"
                 )
                 # Solo loguear si es la primera vez o si cambió la lista
                 if not getattr(self, '_last_symbols_count', None) == len(self.all_symbols):
