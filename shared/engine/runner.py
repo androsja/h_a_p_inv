@@ -389,14 +389,21 @@ class SimulationRunner:
 
             # Update dashboard with global report
             update_state(
-                "─", # Positional
+                symbol=engine.symbol,
+                status="completed",
+                session=session_result.get("session_num", self.session_num),
+                blocking_summary=session_result.get("blocking_summary"),
+                **{k:v for k,v in session_result.items() if k not in ["symbol", "status", "blocking_summary", "timestamp", "session_num"]}
+            )
+
+            update_state(
+                "─", 
                 mode="SIMULATED", 
                 total_sim_trades=self.total_sim_trades,
                 total_sim_wins=self.total_sim_wins,
                 total_sim_pnl=round(self.total_sim_pnl, 2),
                 total_sim_ghosts=self.total_sim_ghosts,
                 report=session_result
-
             )
 
             results = []

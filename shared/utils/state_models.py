@@ -87,6 +87,7 @@ class BotState:
     is_waiting: bool = False
     mock_time_930: bool = False
     blocks: list[str] = field(default_factory=list)
+    blocking_summary: dict = field(default_factory=dict)
     sim_start: str = ""
     sim_end:   str = ""
     sim_duration: float = 0.0

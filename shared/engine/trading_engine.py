@@ -147,6 +147,7 @@ class TradingEngine:
                         ghost_trades_count=len(self.active_ghosts),
                         candles=get_candles_json(df), timestamp=quote.timestamp,
                         regime=signal.regime, blocks=signal.blocks,
+                        blocking_summary=dict(self.blocking_history),
                         investment_style=self.investment_style,
                         model_accuracy=getattr(ml_predictor, 'accuracy', 0.0),
                         total_samples=ml_predictor.get_sample_count(),
@@ -189,6 +190,8 @@ class TradingEngine:
     def _record_blocks(self, signal):
         if signal.blocks:
             for b in signal.blocks:
+                if "⏳ Cargando datos" in b:
+                    continue
                 clean_b = b.split(":")[0].strip()
                 self.blocking_history[clean_b] += 1
 
@@ -264,6 +267,15 @@ class TradingEngine:
                     is_ghost=False
                 )
         else:
+            if buy_plan.block_reason:
+                if "Ganancia esperada" in buy_plan.block_reason:
+                    clean_b = "Filtro Rentabilidad Mínima"
+                elif "Sin capital" in buy_plan.block_reason:
+                    clean_b = "Sin capital suficiente"
+                else:
+                    clean_b = buy_plan.block_reason.split(":")[0].strip()
+                self.blocking_history[clean_b] += 1
+
             # 👻 No es viable para trade real (riesgo/capital/comisión) -> Crear Ghost Trade para aprender
             if len(self.ghost_positions) < 5:
                 # Log extra si el bloqueo fue por profit insuficiente
