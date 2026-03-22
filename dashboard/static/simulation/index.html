@@ -1405,6 +1405,19 @@
             box-shadow: 0 0 10px rgba(255, 43, 94, 0.2);
         }
 
+        .hdr-btn.btn-accent {
+            background: var(--accent);
+            color: #0d1626;
+            border-color: var(--accent);
+            font-weight: 800;
+        }
+
+        .hdr-btn.btn-accent:hover {
+            background: #00ffd5;
+            box-shadow: 0 0 15px rgba(0, 255, 213, 0.5);
+            transform: translateY(-2px);
+        }
+
         .hdr-btn.btn-warning {
             background: rgba(253, 224, 71, 0.15);
             border-color: rgba(253, 224, 71, 0.3);
@@ -1739,6 +1752,10 @@
 
                 <!-- GRUPO 3: Control y Reinicio -->
                 <div class="btn-group">
+                    <button onclick="startLiveWithRecommended()" class="hdr-btn btn-accent"
+                        title="Iniciar Live Paper Trading con los símbolos RECOMENDADOS">
+                        🚀 ACTIVAR RECOMENDADOS
+                    </button>
                     <button onclick="restartSim()" class="hdr-btn btn-primary"
                         title="Reiniciar sesión sin borrar memoria (Keep ML)">
                         🔄 REINICIAR
@@ -3049,6 +3066,60 @@
                 onConfirm();
                 document.getElementById('custom-confirm-modal').remove();
             };
+        }
+
+        async function startLiveWithRecommended() {
+            const results = window._lastFullState.results || [];
+            if (results.length === 0) return alert("Simulación no iniciada aún.");
+
+            const recommended = results.filter(row => {
+                const grossPnl = row.gross_pnl || 0;
+                const fees = row.total_fees || 0;
+                const slip = row.slippage_est || 0;
+                const netPnl = grossPnl - fees - slip;
+                const winRate = parseFloat(row.win_rate || 0);
+                const trades = row.total_trades || 0;
+                const dd = parseFloat(row.drawdown || 0);
+                // Criterio: VIABLE o RECOMENDADO
+                return (netPnl > 0 && winRate >= 45 && trades >= 2);
+            }).map(row => row.symbol);
+
+            if (recommended.length === 0) {
+                return _showConfirmModal(
+                    "Sin Recomendaciones",
+                    "Aún no hay símbolos con desempeño positivo suficiente para recomendar. Deja que la simulación termine o encuentre ganadores.",
+                    "Entendido",
+                    () => {}
+                );
+            }
+
+            const symbolsList = recommended.join(', ');
+            _showConfirmModal(
+                "🚀 Activar en Live",
+                `Se han detectado <strong style="color:var(--accent)">${recommended.length} símbolos</strong> con buen desempeño:<br><br><strong style="color:var(--accent)">${symbolsList}</strong><br><br>¿Deseas iniciar Live Paper con ellos ahora?`,
+                "Iniciar Live Paper",
+                async () => {
+                    _showLoadingOverlay('INICIANDO LIVE PAPER...');
+                    try {
+                        const res = await fetch('/api/paper_trade_start', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ symbols: recommended.join(','), mockTime: false })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            _showLoadingOverlay('REDIRECCIONANDO...');
+                            setTimeout(() => { window.location.href = '/live'; }, 1000);
+                        } else {
+                            _hideLoadingOverlay();
+                            alert("Error: " + data.message);
+                        }
+                    } catch (e) {
+                        _hideLoadingOverlay();
+                        alert("Error de conexión");
+                    }
+                }
+            );
         }
 
         async function startPaperTrade() {
