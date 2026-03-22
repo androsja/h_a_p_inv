@@ -1402,8 +1402,8 @@
                     <div class="feat-row">
                         <div class="feat-idx">4</div>
                         <div class="feat-info">
-                            <h5>EMA Spread %</h5>
-                            <p><code>tanh((ema_fast - ema_slow) / ema_slow × 100)</code></p>
+                            <h5>EMA Spread % (Corregido)</h5>
+                            <p><code>ema_diff_pct</code> → Medida viva que alimenta al filtro sin perder escala de precios en tiempo real</p>
                         </div>
                     </div>
                     <div class="feat-row">
@@ -1461,6 +1461,62 @@
                             style="color:#6ee7b7">CONFIDENCE_THRESHOLD</code> (default: <strong>0.60 = 60%</strong>)</p>
                 </div>
 
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ────────────────────── NET PNL & GHOST TRADES ────────────────────── -->
+    <section id="net-pnl">
+        <div class="container">
+            <div class="neural-wrap" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(245, 158, 11, 0.04) 100%); border-color: rgba(239, 68, 68, 0.2);">
+                <div class="neural-header">
+                    <div class="section-badge" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); margin-bottom: 16px;">Arquitectura Anti-Engaño</div>
+                    <h2>🛡️ Filtro Net PnL & Ghost Trades</h2>
+                    <p>La IA está entrenada estrictamente para identificar movimientos que venzan las comisiones de los brokers y el slippage en el mundo real, ignorando la <em>falsa volatilidad</em> o micro-ganancias (Gross PnL).</p>
+                </div>
+
+                <div class="nn-viz" style="align-items: flex-start; gap: 30px;">
+                    <!-- Caja 1 -->
+                    <div class="strat-card" style="flex:1; border-top: 3px solid #64748b; padding: 24px;">
+                        <h3 style="font-size:1rem; color:#e2e8f0; margin-bottom:12px;">1. Trading Engine (Simulación)</h3>
+                        <p style="font-size:0.85rem; color:var(--muted); margin-bottom: 10px;">Se cierran operaciones, incluyendo <strong>Ghost Trades</strong> (operaciones viables bloqueadas temporalmente por falta de momentum).</p>
+                        <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; text-align:center;">
+                            <span style="display:block; font-size:0.75rem; color:var(--muted);">Ganancia Bruta (Gross PnL)</span>
+                            <strong style="color:#6ee7b7; font-size:1.1rem;">+$0.50 (AAPL)</strong>
+                        </div>
+                    </div>
+
+                    <div class="nn-arrow" style="align-self:center;">⟶</div>
+
+                    <!-- Caja 2 -->
+                    <div class="strat-card" style="flex:1; border-top: 3px solid #ef4444; padding: 24px;">
+                        <h3 style="font-size:1rem; color:#e2e8f0; margin-bottom:12px;">2. Deducción Aritmética Dinámica</h3>
+                        <p style="font-size:0.85rem; color:var(--muted); margin-bottom: 10px;">El algoritmo inyecta los costos ineludibles ($0.35 fijos de IBKR/Hapi) más una penalidad predictiva por Slippage del 0.001.</p>
+                        <div style="background:rgba(239,68,68,0.1); padding:10px; border-radius:8px; text-align:center;">
+                            <span style="display:block; font-size:0.75rem; color:#fca5a5;">Filtro de Costos Netos</span>
+                            <strong style="color:#f87171; font-size:1.1rem;">-$1.10 (Fee + Slippage)</strong>
+                        </div>
+                    </div>
+
+                    <div class="nn-arrow" style="align-self:center;">⟶</div>
+
+                    <!-- Caja 3 -->
+                    <div class="strat-card" style="flex:1; border-top: 3px solid #8b5cf6; padding: 24px;">
+                        <h3 style="font-size:1rem; color:#e2e8f0; margin-bottom:12px;">3. Ingestión en la Memoria IA</h3>
+                        <p style="font-size:0.85rem; color:var(--muted); margin-bottom: 10px;">El resultado final neto dicta qué aprende verdaderamente el `RandomForest` y la `Red Neuronal`.</p>
+                        <div style="background:rgba(139,92,246,0.1); padding:10px; border-radius:8px; text-align:center;">
+                            <span style="display:block; font-size:0.75rem; color:#c4b5fd;">Ganancia Neta Final (Net PnL)</span>
+                            <strong style="color:#ef4444; font-size:1.1rem;">$-0.60 ➔ LOSS (0)</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.03); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:30px;">
+                    <h4 style="font-size:0.95rem; margin-bottom:10px; color:#fcd34d;">💡 ¿Por qué esto es vital? (El Caso AAPL / Acciones Pesadas)</h4>
+                    <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">Antes de esta arquitectura, símbolos de baja volatilidad producían micro-movimientos constantes a favor del trade (ej. la acción subía $0.05 centavos). El motor lo reportaba como <em>Ganancia Positiva (Gross)</em> y la máquina lo asimilaba como un modelo "Ganador (1)". Al enviar este aprendizaje a producción en vivo, las comisiones se comían esa micro-ganancia resultando en pérdidas financieras reales severas. Ahora, la IA calcula la factura del broker <strong>antes</strong> de permitir que la memoria se actualice, blindándose estadísticamente contra la <em>falsa volatilidad</em>.</p>
+                </div>
             </div>
         </div>
     </section>
