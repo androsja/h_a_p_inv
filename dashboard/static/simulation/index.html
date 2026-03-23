@@ -2143,6 +2143,7 @@
                             <div class="card-title"
                                 style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
                                 <span>🧠 Monitor de Inteligencia y Rendimiento</span>
+                                <span id="sim-progress-mini" style="display:none;"></span>
                             </div>
                             <!-- Fecha y hora de simulación integrada en Monitor -->
                             <!-- ── Unified Intelligence Bar ── -->
@@ -3632,18 +3633,24 @@
                 const completedCount = combined.filter(d => !d.isActive).length;
                 const isFinished = completedCount >= totalTarget && totalTarget > 0;
                 
-                miniProg.style.display = 'inline-block';
-                miniProg.style.background = 'rgba(255, 255, 255, 0.05)';
-                miniProg.style.padding = '2px 8px';
-                miniProg.style.borderRadius = '4px';
-                miniProg.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-
                 if (isFinished) {
-                    miniProg.innerHTML = '';
+                    miniProg.style.display = 'inline-block';
+                    miniProg.style.background = 'rgba(255, 255, 255, 0.05)';
+                    miniProg.style.padding = '2px 8px';
+                    miniProg.style.borderRadius = '4px';
+                    miniProg.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+
+                    miniProg.innerHTML = `
+                        <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,255,163,0.1); padding:4px 12px; border-radius:20px; border:1px solid rgba(0,255,163,0.3); animation: pulse-green 2s infinite;">
+                            <span style="color:var(--green); font-weight:900; font-size:13px;">✓ SIMULACIÓN COMPLETADA</span>
+                            <span style="color:rgba(0,255,163,0.6); font-size:11px; font-weight:bold;">${completedCount}/${totalTarget}</span>
+                        </div>
+                    `;
                     
                     // El guardado ahora se maneja exclusivamente en el Backend (runner.py)
                     // para evitar duplicados al refrescar la página.
                 } else {
+                    miniProg.style.display = 'none';
                     window._simSavedToHistory = false; // Reset si se inicia una nueva simulación (ej. WIPE)
                     miniProg.innerHTML = '';
                 }
