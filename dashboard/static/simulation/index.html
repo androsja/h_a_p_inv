@@ -2146,34 +2146,6 @@
                                 <span id="sim-progress-mini" style="display:none;"></span>
                             </div>
                             <!-- Fecha y hora de simulación integrada en Monitor -->
-                            <!-- ── Unified Intelligence Bar ── -->
-                            <div style="
-                                background: linear-gradient(90deg, rgba(103,58,183,0.1) 0%, rgba(0,255,213,0.05) 100%);
-                                border: 1px solid rgba(0,255,213,0.15);
-                                border-radius: 12px;
-                                padding: 12px 20px;
-                                margin-bottom: 20px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: space-between;
-                                flex-wrap: wrap;
-                                gap: 15px;
-                            ">
-                                <!-- AI Status & Metrics -->
-                                <div style="display:flex; align-items:center; gap:15px;">
-                                    <span title="MLP Status" id="neural-mode-dot" style="width:10px; height:10px; border-radius:50%; background:#4caf50; box-shadow: 0 0 8px #4caf50;"></span>
-                                    <div style="display:flex; gap:20px;">
-                                        <div style="text-align:center;">
-                                            <div id="neural-samples" style="font-size:18px; font-weight:bold; color:#9c27b0; font-family:'JetBrains Mono',monospace;">─</div>
-                                            <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Samples</div>
-                                        </div>
-                                        <div style="text-align:center;">
-                                            <div id="neural-accuracy" style="font-size:18px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono',monospace;">─</div>
-                                            <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Precision</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <!-- ── NUEVO: Resumen de Rendimiento Global ── -->
                             <div id="global-performance-card" style="
@@ -2702,14 +2674,7 @@
                 const mode = d.mode || 'unavailable';
                 const el = (id) => document.getElementById(id);
                 
-                if (el('neural-mode-dot')) {
-                    el('neural-mode-dot').style.background = modeColors[mode] || '#888';
-                    el('neural-mode-dot').style.boxShadow = `0 0 8px ${modeColors[mode] || '#888'}`;
-                }
-                if (el('neural-samples')) el('neural-samples').textContent = d.total_samples ?? '─';
-                if (el('neural-accuracy')) {
-                    el('neural-accuracy').textContent = d.model_accuracy > 0 ? `${d.model_accuracy}%` : '─';
-                }
+
             } catch (e) {
                 console.warn("Error loading neural stats:", e);
             }
@@ -4038,22 +4003,6 @@
                 document.getElementById('global-ghosts-val').textContent = ghosts;
             }
 
-            // 🧠 Actualizar Estadísticas de IA en tiempo real (vía WebSocket)
-            if (state.model_accuracy !== undefined && state.model_accuracy !== null) {
-                const accEl = document.getElementById('neural-accuracy');
-                if (accEl) {
-                    if (state.model_accuracy > 0) {
-                        accEl.textContent = `${state.model_accuracy.toFixed(1)}%`;
-                    } else {
-                        // Si es exactamente 0, podría ser que aún está entrenando el bloque inicial
-                        accEl.textContent = 'En espera...';
-                    }
-                }
-            }
-            if (state.total_samples !== undefined && state.total_samples > 0) {
-                const sampEl = document.getElementById('neural-samples');
-                if (sampEl) sampEl.textContent = state.total_samples;
-            }
 
             // Countdown visibility 
             const cdContainer = document.getElementById('scan-countdown');
