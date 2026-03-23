@@ -333,12 +333,15 @@ class SimulationRunner:
             from datetime import datetime, timezone
             total_fees = round(getattr(stats, 'total_fees', 0.0), 4)
 
-            # Get IA accuracy if possible
+            # Get IA accuracy for the current symbol specifically
             accuracy_ia = 0.0
+            total_samples = 0
             try:
-                from shared.utils.neural_filter import get_neural_filter, _filter_registry
-                all_stats = [nf.get_stats() for nf in _filter_registry.values() if nf.get_stats().get('total_samples', 0) > 0]
-                accuracy_ia = sum(s.get('model_accuracy', 0.0) for s in all_stats) / len(all_stats) if all_stats else 0.0
+                from shared.utils.neural_filter import _filter_registry
+                if engine.symbol in _filter_registry:
+                    nft_stats = _filter_registry[engine.symbol].get_stats()
+                    accuracy_ia = nft_stats.get('model_accuracy', 0.0)
+                    total_samples = nft_stats.get('total_samples', 0)
             except: pass
             
             res_file = config.RESULTS_FILE
@@ -364,6 +367,7 @@ class SimulationRunner:
                 "losing_trades": trades_val - getattr(stats, 'winning_trades', 0),
                 "win_rate": round(winrate_val, 2),
                 "accuracy": accuracy_ia,
+                "total_samples": total_samples,
                 "pnl": round(pnl_val, 2),
                 "gross_pnl": round(pnl_val + total_fees, 2),
                 "total_fees": total_fees,
