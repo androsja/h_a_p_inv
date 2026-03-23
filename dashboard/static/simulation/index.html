@@ -1783,9 +1783,9 @@
                         <span style="margin-right: 5px;">⏳ Próximo:</span>
                         <span id="countdown-val" style="font-weight: bold;">60s</span>
                     </div>
-                    <div class="clock" id="sim-date" style="font-weight: bold; color: var(--accent2);">
-                        ----/--/--</div>
-                    <div class="clock" id="clock">00:00:00</div>
+                    <!-- sim-date y clock ocultos del header (se muestran en Monitor) -->
+                    <div class="clock" id="sim-date" style="display:none;">----/--/--</div>
+                    <div class="clock" id="clock" style="display:none;">00:00:00</div>
                 </div>
             </div>
         </header>
@@ -2151,7 +2151,25 @@
                                         style="width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 2s infinite; flex-shrink:0;"></span>
                                     <span id="results-mode-text">SIMULACIÓN (HISTÓRICO)</span>
                                     <span id="sim-progress-mini" style="margin-left:10px; color:var(--muted); font-weight:normal; font-size:10px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; display:none;"></span>
-                                </span>
+                                </div>
+                            <!-- Fecha y hora de simulación integrada en Monitor -->
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                gap: 12px;
+                                background: rgba(0,255,213,0.07);
+                                border: 1px solid rgba(0,255,213,0.18);
+                                border-radius: 10px;
+                                padding: 8px 18px;
+                                margin-bottom: 15px;
+                            ">
+                                <svg width="16" height="16" fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="flex-shrink:0;opacity:0.7;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <span style="font-size:13px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; font-weight:500;">Corriendo al</span>
+                                <span id="sim-date-monitor" style="font-size:22px; font-weight:700; color:var(--accent2); font-family:'JetBrains Mono',monospace; letter-spacing:1px;">----/--/--</span>
+                                <span style="color:rgba(255,255,255,0.2); font-size:18px;">|</span>
+                                <span id="sim-clock-monitor" style="font-size:22px; font-weight:700; color:var(--accent); font-family:'JetBrains Mono',monospace; letter-spacing:2px;">--:--:--</span>
                             </div>
                             <!-- ── Unified Intelligence Bar ── -->
                             <div style="
@@ -2328,9 +2346,11 @@
         // ═══════════════════════════════════════════════════════
         setInterval(() => {
             const clock = document.getElementById('clock');
-            if (clock) {
-                clock.textContent = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
-            }
+            const timeStr = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
+            if (clock) clock.textContent = timeStr;
+            // Espejo en Monitor section
+            const monClock = document.getElementById('sim-clock-monitor');
+            if (monClock) monClock.textContent = timeStr;
         }, 1000);
 
         // ═══════════════════════════════════════════════════════
@@ -3868,7 +3888,11 @@
             if (simDateDisplay && state.timestamp) {
                 try {
                     const d = new Date(state.timestamp);
-                    simDateDisplay.textContent = d.toISOString().split('T')[0];
+                    const dateStr = d.toISOString().split('T')[0];
+                    simDateDisplay.textContent = dateStr;
+                    // Espejo en Monitor section
+                    const monDate = document.getElementById('sim-date-monitor');
+                    if (monDate) monDate.textContent = dateStr;
                 } catch (e) { }
             }
 

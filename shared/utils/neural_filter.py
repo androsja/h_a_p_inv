@@ -204,38 +204,43 @@ class NeuralTradeFilter:
             self._y.append(1 if won else 0)
 
             n = len(self._y)
-            log.info(f"🧠 Red Neuronal — nuevo trade registrado ({'WIN' if won else 'LOSS'}). Total: {n} muestras.")
+            log.info(f"🧠 [{self._symbol}] trade registrado ({'WIN' if won else 'LOSS'}). Total: {n} muestras.")
 
-            if n >= MIN_SAMPLES:
-                # Evitar entrenar si no tenemos ambas clases (Wins y Losses)
-                if len(set(self._y)) < 2:
-                    log.info(f"🧠 MLP pospuesto: Aún no hay ambas clases (Wins/Losses) para entrenar ({n} muestras, todas clase {self._y[0]}).")
-                    self._save()
-                    return
+            # ── Entrenar solo cada 10 trades para no bloquear el loop principal ──
+            RETRAIN_EVERY_N = 10
+            if n < MIN_SAMPLES or (n % RETRAIN_EVERY_N != 0):
+                self._save()
+                return
 
-                # Re-entrenar con warm_start para aprendizaje incremental
-                try:
-                    X_arr = np.array(self._X)
-                    y_arr = np.array(self._y)
+            # Evitar entrenar si no tenemos ambas clases (Wins y Losses)
+            if len(set(self._y)) < 2:
+                log.info(f"🧠 [{self._symbol}] MLP pospuesto: solo una clase ({n} muestras).")
+                self._save()
+                return
 
-                    if self._model is None:
-                        self._model = MLPClassifier(
-                            hidden_layer_sizes=(32, 16, 8),
-                            activation="relu",
-                            solver="adam",
-                            max_iter=500,
-                            warm_start=True,
-                            random_state=42,
-                            alpha=0.01,   # L2 regularización — evita sobreajuste
-                        )
+            # Re-entrenar con warm_start para aprendizaje incremental
+            try:
+                X_arr = np.array(self._X)
+                y_arr = np.array(self._y)
 
-                    self._model.fit(X_arr, y_arr)
-                    acc = self._model.score(X_arr, y_arr)
-                    from shared.utils.logger import log_training
-                    log_training("NeuralFilter_MLP", n, float(acc), extra=f"last_won={won}")
-                    log.info(f"🧠 MLP re-entrenado. Accuracy en train: {acc:.0%} ({n} muestras)")
-                except Exception as e:
-                    log.warning(f"Error entrenando MLP: {e}")
+                if self._model is None:
+                    self._model = MLPClassifier(
+                        hidden_layer_sizes=(32, 16, 8),
+                        activation="relu",
+                        solver="adam",
+                        max_iter=200,      # Reducido de 500 — suficiente para updates incrementales
+                        warm_start=True,
+                        random_state=42,
+                        alpha=0.01,
+                    )
+
+                self._model.fit(X_arr, y_arr)
+                acc = self._model.score(X_arr, y_arr)
+                from shared.utils.logger import log_training
+                log_training("NeuralFilter_MLP", n, float(acc), extra=f"last_won={won}")
+                log.info(f"🧠 [{self._symbol}] MLP re-entrenado. Accuracy: {acc:.0%} ({n} muestras, cada {RETRAIN_EVERY_N} trades)")
+            except Exception as e:
+                log.warning(f"Error entrenando MLP [{self._symbol}]: {e}")
 
             self._save()
 
