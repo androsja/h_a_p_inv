@@ -3668,6 +3668,8 @@
 
             tbody.innerHTML = '';
             
+            let totalWins = 0;
+            let totalLosses = 0;
             let totalGross = 0;
             let totalFees = 0;
             let totalSlip = 0;
@@ -3682,6 +3684,9 @@
                 const slip = row.slippage_est || 0;
                 const netPnl = grossPnl - fees - slip;
                 
+                if (grossPnl >= 0) totalWins += grossPnl;
+                else totalLosses += grossPnl;
+
                 totalGross += grossPnl;
                 totalFees += fees;
                 totalSlip += slip;
@@ -3763,13 +3768,14 @@
             tbody.appendChild(cashoutRow);
             
             // Actualizar tarjetas de resumen superior (opcional pero recomendado)
-            updateSummaryCards(totalGross, totalFees, totalSlip, totalNet, netToBank, finalProfit);
+            updateSummaryCards(totalWins, totalLosses, totalFees, totalSlip, totalNet, netToBank, finalProfit);
         }
 
-        function updateSummaryCards(totalGross, totalFees, totalSlip, totalNet, netToBank, finalProfit) {
+        function updateSummaryCards(totalWins, totalLosses, totalFees, totalSlip, totalNet, netToBank, finalProfit) {
             const ids = {
-                'summary-gross-wins': totalGross, // Simplificado, idealmente separar wins/losses
-                'summary-total-fees': totalFees,
+                'summary-gross-wins': totalWins,
+                'summary-gross-losses': totalLosses,
+                'summary-total-fees': -Math.abs(totalFees), // Always negative in display
                 'summary-net-pnl': totalNet,
                 'summary-final-balance': (window.INITIAL_CAPITAL || 10000) + totalNet,
                 'summary-real-profit': finalProfit
@@ -3777,8 +3783,12 @@
             for (const [id, val] of Object.entries(ids)) {
                 const el = document.getElementById(id);
                 if (el) {
-                    if (id === 'summary-final-balance') el.textContent = `$${val.toFixed(2)}`;
-                    else {
+                    if (id === 'summary-final-balance') {
+                        el.textContent = `$${val.toFixed(2)}`;
+                    } else if (id === 'summary-total-fees' || id === 'summary-gross-losses') {
+                        el.textContent = `-$${Math.abs(val).toFixed(2)}`;
+                        el.style.color = id === 'summary-total-fees' ? '#ff9800' : 'var(--red)';
+                    } else {
                         el.textContent = `${val >= 0 ? '+' : ''}$${val.toFixed(2)}`;
                         el.style.color = val >= 0 ? 'var(--green)' : 'var(--red)';
                     }
