@@ -2160,7 +2160,7 @@
                                 gap: 15px;
                             ">
                                 <!-- AI Status & Metrics -->
-                                <div style="display:flex; align-items:center; gap:15px; border-right: 1px solid rgba(255,255,255,0.1); padding-right:15px;">
+                                <div style="display:flex; align-items:center; gap:15px;">
                                     <span title="MLP Status" id="neural-mode-dot" style="width:10px; height:10px; border-radius:50%; background:#4caf50; box-shadow: 0 0 8px #4caf50;"></span>
                                     <div style="display:flex; gap:20px;">
                                         <div style="text-align:center;">
@@ -2172,20 +2172,6 @@
                                             <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Precision</div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- AI Advisor -->
-                                <div style="flex:1; display:flex; align-items:center; gap:12px; min-width:200px;">
-                                    <span style="font-size: 1.4em;">🤖</span>
-                                    <div id="ai-detailed-rec" style="font-size: 11px; color: #eee; font-style: italic;">
-                                        Sincronizando asesoría en tiempo real...
-                                    </div>
-                                </div>
-
-                                <!-- Risk Control -->
-                                <div style="text-align: right; padding-left:15px; border-left: 1px solid rgba(255,255,255,0.1);">
-                                    <div style="font-size: 9px; color: var(--muted); text-transform: uppercase;">Risk Level</div>
-                                    <div id="ai-detailed-size" style="font-size: 14px; font-weight: bold; color: var(--accent2);">100% Normal</div>
                                 </div>
                             </div>
 
@@ -4278,24 +4264,7 @@
                 else if (aiRec.includes("ALTO") || aiRec.includes("PELIGRO")) hdrAiRec.style.color = "var(--red)";
             }
 
-            // Detailed IA card (Intelligence Bar)
-            if (document.getElementById('ai-detailed-rec')) {
-                const adviceText = aiProb > 70 ?
-                    `<span style="color:var(--green)">COMPRA RECOMENDADA:</span> Confianza alta en la tendencia actual.` :
-                    `<span style="color:var(--yellow)">ESPERA ACTIVA:</span> Mercado indeciso. Se recomienda cautela.`;
 
-                document.getElementById('ai-detailed-rec').innerHTML = `
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span>Sugerencia: <b>${aiRec.toLowerCase()}</b> (${aiProb.toFixed(0)}%)</span>
-                        <span style="font-size:10px; opacity:0.7; padding-left:10px; border-left:1px solid rgba(255,255,255,0.1);">${adviceText}</span>
-                    </div>
-                `;
-            }
-            if (document.getElementById('ai-detailed-size')) {
-                const sizeMult = aiProb > 85 ? 150 : aiProb > 70 ? 120 : aiProb > 45 ? 100 : aiProb > 30 ? 70 : 50;
-                document.getElementById('ai-detailed-size').textContent = `${sizeMult}% (${sizeMult > 100 ? 'Aumentado' : sizeMult < 100 ? 'Reducido' : 'Normal'})`;
-                document.getElementById('ai-detailed-size').style.color = sizeMult > 100 ? "var(--green)" : sizeMult < 100 ? "var(--red)" : "var(--accent2)";
-            }
 
             // Render sentiment from state
             if (typeof renderSentimentFromState === 'function') {
