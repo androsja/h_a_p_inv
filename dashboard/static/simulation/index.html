@@ -2141,8 +2141,8 @@
                     <div class="card">
                         <div style="flex-shrink: 0;">
                             <div class="card-title"
-                                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                                <span>🧠 Bitácora General (Pipeline para Machine Learning)</span>
+                                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                                <span>🧠 Monitor de Inteligencia y Rendimiento</span>
                                 <span id="results-live-badge" style="
                                     font-size:11px; color:#4caf50; font-weight:bold;
                                     display:flex; align-items:center; gap:5px; white-space:nowrap;
@@ -2153,73 +2153,46 @@
                                     <span id="sim-progress-mini" style="margin-left:10px; color:var(--muted); font-weight:normal; font-size:10px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; display:none;"></span>
                                 </span>
                             </div>
-                            <div style="font-size:12px; color:var(--muted); margin-bottom: 15px;">
-                                Esta bitácora registra las sesiones simuladas de cada activo por separado.
-                                Este será el dataset utilizado a futuro para entrenar modelos de Inteligencia Artificial
-                                que
-                                optimicen los parámetros de entrada y mejoren las estrategias de predicción.
-                            </div>
-                            <div id="ml-progress-container">
-                                <div id="neural-stats-card" style="
-                                    background: linear-gradient(135deg, rgba(103,58,183,0.15), rgba(25,118,210,0.10));
-                                    border: 1px solid rgba(103,58,183,0.35);
-                                    border-radius: 10px;
-                                    padding: 14px 20px;
-                                    margin-bottom: 14px;
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 20px;
-                                    flex-wrap: wrap;
-                                ">
-                                    <span style="font-size:1.5em;">&#129504;</span>
-                                    <div style="flex:1;">
-                                        <div style="font-weight:bold; font-size:13px; color:var(--accent);">Red Neuronal
-                                            Adaptativa (MLP)</div>
-                                        <div style="font-size:12px; color:var(--muted); margin-top:2px;"
-                                            id="neural-mode-label">Cargando...</div>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:22px; font-weight:bold; color:#9c27b0;"
-                                            id="neural-samples">─</div>
-                                        <div style="font-size:10px; color:var(--muted);">TRADES APRENDIDOS</div>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:22px; font-weight:bold; color:#03a9f4;"
-                                            id="neural-accuracy">─</div>
-                                        <div style="font-size:10px; color:var(--muted);">ACCURACY TRAIN</div>
-                                    </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:22px; font-weight:bold;" id="neural-winrate"
-                                            style="color:#4caf50;">─</div>
-                                        <div style="font-size:10px; color:var(--muted);">WIN RATE HIST.</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- ── IA Advisor Mini Detail ── -->
-                            <div id="ai-advisor-detail-card" style="
-                                background: rgba(0, 255, 213, 0.03);
-                                border: 1px dashed rgba(0, 255, 213, 0.2);
-                                border-radius: 10px;
-                                padding: 15px 20px;
-                                margin-bottom: 15px;
+                            <!-- ── Unified Intelligence Bar ── -->
+                            <div style="
+                                background: linear-gradient(90deg, rgba(103,58,183,0.1) 0%, rgba(0,255,213,0.05) 100%);
+                                border: 1px solid rgba(0,255,213,0.15);
+                                border-radius: 12px;
+                                padding: 12px 20px;
+                                margin-bottom: 20px;
                                 display: flex;
                                 align-items: center;
-                                gap: 20px;
+                                justify-content: space-between;
+                                flex-wrap: wrap;
+                                gap: 15px;
                             ">
-                                <span style="font-size: 1.5em;">🤖</span>
-                                <div style="flex: 1;">
-                                    <div style="font-weight: bold; font-size: 13px; color: var(--accent);">Asesoría en
-                                        Tiempo Real</div>
-                                    <div id="ai-detailed-rec" style="font-size: 11px; color: #eee; margin-top: 2px;">
-                                        Analizando condiciones actuales del mercado...</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="font-size: 10px; color: var(--muted); text-transform: uppercase;">Ajuste
-                                        de Riesgo</div>
-                                    <div id="ai-detailed-size"
-                                        style="font-size: 16px; font-weight: bold; color: var(--accent2);">100% (Normal)
+                                <!-- AI Status & Metrics -->
+                                <div style="display:flex; align-items:center; gap:15px; border-right: 1px solid rgba(255,255,255,0.1); padding-right:15px;">
+                                    <span title="MLP Status" id="neural-mode-dot" style="width:10px; height:10px; border-radius:50%; background:#4caf50; box-shadow: 0 0 8px #4caf50;"></span>
+                                    <div style="display:flex; gap:20px;">
+                                        <div style="text-align:center;">
+                                            <div id="neural-samples" style="font-size:18px; font-weight:bold; color:#9c27b0; font-family:'JetBrains Mono',monospace;">─</div>
+                                            <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Samples</div>
+                                        </div>
+                                        <div style="text-align:center;">
+                                            <div id="neural-accuracy" style="font-size:18px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono',monospace;">─</div>
+                                            <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Precision</div>
+                                        </div>
                                     </div>
+                                </div>
+
+                                <!-- AI Advisor -->
+                                <div style="flex:1; display:flex; align-items:center; gap:12px; min-width:200px;">
+                                    <span style="font-size: 1.4em;">🤖</span>
+                                    <div id="ai-detailed-rec" style="font-size: 11px; color: #eee; font-style: italic;">
+                                        Sincronizando asesoría en tiempo real...
+                                    </div>
+                                </div>
+
+                                <!-- Risk Control -->
+                                <div style="text-align: right; padding-left:15px; border-left: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="font-size: 9px; color: var(--muted); text-transform: uppercase;">Risk Level</div>
+                                    <div id="ai-detailed-size" style="font-size: 14px; font-weight: bold; color: var(--accent2);">100% Normal</div>
                                 </div>
                             </div>
 
@@ -2363,18 +2336,18 @@
         // ═══════════════════════════════════════════════════════
         // SISTEMA DE PESTAÑAS
         // ═══════════════════════════════════════════════════════
-        const TAB_IDS = ['candles', 'pnl', 'indicators', 'trades', 'results', 'log'];
+        const TAB_IDS = ['indicators', 'trades', 'results', 'log'];
 
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
                 // Ocultar todo
                 TAB_IDS.forEach(id => {
-                    document.getElementById(`tab-${id}`).classList.remove('visible');
-                    document.getElementById(`tbtn-${id}`).classList.remove('active');
+                    document.getElementById(`tab-${id}`)?.classList.remove('visible');
+                    document.getElementById(`tbtn-${id}`)?.classList.remove('active');
                 });
                 // Mostrar el seleccionado
-                document.getElementById(`tab-${tab}`).classList.add('visible');
+                document.getElementById(`tab-${tab}`)?.classList.add('visible');
                 btn.classList.add('active');
 
                 // Redimensionar charts si aplica (con retraso para Reflow de DOM)
@@ -2736,25 +2709,20 @@
             try {
                 const res = await fetch('/api/neural_stats');
                 const d = await res.json();
-                const modeColors = { 'MLP': '#03a9f4', 'cold-start': '#ff9800', 'unavailable': '#888' };
-                const modeIcons = { 'MLP': '🟢 MLP Activo', 'cold-start': '🟡 Cold-Start (heurístico)', 'unavailable': '⚠️ No disponible' };
+                const modeColors = { 'MLP': '#4caf50', 'cold-start': '#ff9800', 'unavailable': '#888' };
                 const mode = d.mode || 'unavailable';
                 const el = (id) => document.getElementById(id);
-                if (el('neural-mode-label')) el('neural-mode-label').textContent = modeIcons[mode] || mode;
+                
+                if (el('neural-mode-dot')) {
+                    el('neural-mode-dot').style.background = modeColors[mode] || '#888';
+                    el('neural-mode-dot').style.boxShadow = `0 0 8px ${modeColors[mode] || '#888'}`;
+                }
                 if (el('neural-samples')) el('neural-samples').textContent = d.total_samples ?? '─';
                 if (el('neural-accuracy')) {
                     el('neural-accuracy').textContent = d.model_accuracy > 0 ? `${d.model_accuracy}%` : '─';
                 }
-                if (el('neural-winrate')) {
-                    el('neural-winrate').textContent = d.win_rate_hist > 0 ? `${d.win_rate_hist}%` : '─';
-                    el('neural-winrate').style.color = (d.win_rate_hist >= 50) ? '#4caf50' : '#f44336';
-                }
-                if (el('neural-stats-card')) {
-                    el('neural-stats-card').style.borderColor = modeColors[mode] + '55';
-                }
             } catch (e) {
-                const el = document.getElementById('neural-mode-label');
-                if (el) el.textContent = '⚠️ Sin conexión al servidor';
+                console.warn("Error loading neural stats:", e);
             }
         }
         // ── Auto-refresh: corre loadResults cada 8s solo si el tab está visible ──
@@ -4294,17 +4262,16 @@
                 else if (aiRec.includes("ALTO") || aiRec.includes("PELIGRO")) hdrAiRec.style.color = "var(--red)";
             }
 
-            // Detailed IA card
+            // Detailed IA card (Intelligence Bar)
             if (document.getElementById('ai-detailed-rec')) {
-                const sizeMult = aiProb > 85 ? 150 : aiProb > 70 ? 120 : aiProb > 45 ? 100 : aiProb > 30 ? 70 : 50;
                 const adviceText = aiProb > 70 ?
-                    `<b style="color:var(--green)">ZONA DE COMPRA:</b> La IA tiene alta confianza. Si el precio toca el suelo verde en el gráfico, es una señal fuerte.` :
-                    `<b style="color:var(--yellow)">ESPERA ACTIVA:</b> El mercado está indeciso. La IA recomienda cautela hasta que la probabilidad suba del 60%.`;
+                    `<span style="color:var(--green)">COMPRA RECOMENDADA:</span> Confianza alta en la tendencia actual.` :
+                    `<span style="color:var(--yellow)">ESPERA ACTIVA:</span> Mercado indeciso. Se recomienda cautela.`;
 
                 document.getElementById('ai-detailed-rec').innerHTML = `
-                    <div style="display:flex; flex-direction:column; gap:5px;">
-                        <div>La IA sugiere una <b>${aiRec.toLowerCase()}</b> (${aiProb.toFixed(1)}% confianza).</div>
-                        <div style="font-size:10px; opacity:0.8; background:rgba(255,255,255,0.05); padding:5px; border-radius:4px;">${adviceText}</div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span>Sugerencia: <b>${aiRec.toLowerCase()}</b> (${aiProb.toFixed(0)}%)</span>
+                        <span style="font-size:10px; opacity:0.7; padding-left:10px; border-left:1px solid rgba(255,255,255,0.1);">${adviceText}</span>
                     </div>
                 `;
             }
@@ -4904,7 +4871,7 @@
                             </div>
                             <div class="hist-subtitle">Registro de todas las simulaciones completadas. El Accuracy y los Trades aprendidos muestran el progreso de tu IA.</div>
                         </div>
-                        <button onclick="document.getElementById('sim-history-modal').classList.remove('open')"
+                        <button onclick="document.getElementById('sim-history-modal')?.classList.remove('open')"
                             style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:4px;">&times;</button>
                     </div>
                     <div id="sim-history-table-container">

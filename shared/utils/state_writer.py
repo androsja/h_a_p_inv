@@ -220,7 +220,10 @@ def update_state(
     total_samples: int | None = None,
     **kwargs
 ) -> None:
-    global _symbol_states, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _global_model_accuracy, _global_total_samples, _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
+    global _symbol_states, _trades
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts
+    global _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
+    global _global_model_accuracy, _global_total_samples
     
     # Actualizar acumulados globales solo si se proporcionan
     if total_sim_trades is not None: _global_sim_trades = total_sim_trades
@@ -237,14 +240,14 @@ def update_state(
 
     # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
     # Estos valores son los que el Dashboard muestra en la franja superior
-    ts_trades  = _global_sim_trades + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_wins    = _global_sim_wins   + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_pnl     = round(_global_sim_pnl    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
-    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_trades  = globals()['_global_sim_trades'] + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_wins    = globals()['_global_sim_wins']   + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_pnl     = round(globals()['_global_sim_pnl']    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_ghosts  = globals()['_global_sim_ghosts'] + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
+    ts_fees    = round(globals()['_global_sim_fees']   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_slippage= round(globals()['_global_sim_slippage'] + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_profit = round(globals()['_global_sim_gross_profit'] + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_loss   = round(globals()['_global_sim_gross_loss']   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
 
     # Añadir los datos del símbolo actual (que aún no está en _symbol_states con sus valores nuevos)
     ts_trades += total_trades

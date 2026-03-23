@@ -21,7 +21,7 @@
         },
         {
             "symbol": "ABBV",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ABNB",
@@ -33,7 +33,7 @@
         },
         {
             "symbol": "ADBE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ADI",
@@ -57,7 +57,7 @@
         },
         {
             "symbol": "AMGN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMT",
