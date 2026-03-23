@@ -3606,7 +3606,7 @@
                             total_trades: v.total_trades || 0,
                             win_rate: v.win_rate || 0,
                             last_price: v.last_price || v.bid || v.ask || 0,
-                            last_order_date: v.last_order_date || 'En curso...',
+                            last_order_date: v.timestamp || v.last_order_date || 'Calculando...',
                             drawdown: v.max_drawdown || 0,
                             regime: v.regime || 'NEUTRAL'
                         });
