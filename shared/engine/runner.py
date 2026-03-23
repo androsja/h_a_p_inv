@@ -178,15 +178,15 @@ class SimulationRunner:
 
     def _sync_ia_status(self, cmds):
         frozen = cmds.get("strategy_frozen", False)
-        # Sincronizar NeuralFilter y MLPredictor
+        # Sincronizar NeuralFilter — aplicar freeze/unfreeze a todos los modelos registrados
         try:
-            nf = get_neural_filter()
-            if frozen and not nf.is_frozen: nf.freeze()
-            elif not frozen and nf.is_frozen: nf.unfreeze()
+            from shared.utils.neural_filter import _filter_registry
+            for nf in list(_filter_registry.values()):
+                if frozen and not nf.is_frozen: nf.freeze()
+                elif not frozen and nf.is_frozen: nf.unfreeze()
         except: pass
 
         if cmds.get("reload_models"):
-            # Lógica de recarga...
             cmds["reload_models"] = False
             with open(config.COMMAND_FILE, "w") as f: json.dump(cmds, f)
 
@@ -234,8 +234,10 @@ class SimulationRunner:
     def _save_full_run_to_history(self):
         """Persiste el resumen de la simulación actual en sim_history.json para Analytics."""
         try:
-            from shared.utils.neural_filter import get_neural_filter
-            accuracy = get_neural_filter().get_stats().get('model_accuracy', 0.0)
+            from shared.utils.neural_filter import get_neural_filter, _filter_registry
+            # Reportar accuracy promedio de todos los modelos por símbolo activos
+            all_stats = [nf.get_stats() for nf in _filter_registry.values() if nf.get_stats().get('total_samples', 0) > 0]
+            accuracy = sum(s.get('model_accuracy', 0.0) for s in all_stats) / len(all_stats) if all_stats else 0.0
             
             # Leer resultados detallados (símbolo por símbolo) del backtest actual
             detailed_results = []
@@ -334,8 +336,9 @@ class SimulationRunner:
             # Get IA accuracy if possible
             accuracy_ia = 0.0
             try:
-                from shared.utils.neural_filter import get_neural_filter
-                accuracy_ia = get_neural_filter().get_stats().get('model_accuracy', 0.0)
+                from shared.utils.neural_filter import get_neural_filter, _filter_registry
+                all_stats = [nf.get_stats() for nf in _filter_registry.values() if nf.get_stats().get('total_samples', 0) > 0]
+                accuracy_ia = sum(s.get('model_accuracy', 0.0) for s in all_stats) / len(all_stats) if all_stats else 0.0
             except: pass
             
             res_file = config.RESULTS_FILE

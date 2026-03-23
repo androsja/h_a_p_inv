@@ -197,7 +197,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         # Neural Filter
         try:
             from shared.utils.neural_filter import get_neural_filter
-            nf = get_neural_filter()
+            nf = get_neural_filter(symbol)
             nf_features = nf.build_features(
                 symbol=symbol,
                 hour_of_day=ml_features.get('hour_of_day', 10.0),

@@ -30,7 +30,7 @@ from shared import config
 log = logging.getLogger(__name__)
 
 # ── Constantes ────────────────────────────────────────────────────────────────
-MODEL_PATH          = config.DATA_DIR / "neural_model.joblib"
+MODEL_DIR           = config.DATA_DIR / "neural_models"  # Un archivo por símbolo
 CONFIDENCE_THRESHOLD = config.CONFIDENCE_THRESHOLD 
 MIN_SAMPLES         = config.COLD_START_MIN_SAMPLES
 
@@ -44,6 +44,12 @@ REGIME_ENCODING = {
     "CHAOS":      5,
 }
 
+def _model_path_for(symbol: str) -> Path:
+    """Devuelve el path del modelo para un símbolo específico."""
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    safe = symbol.upper().replace("/", "_").replace("-", "_")
+    return MODEL_DIR / f"neural_{safe}.joblib"
+
 
 # ── Clase Principal ───────────────────────────────────────────────────────────
 class NeuralTradeFilter:
@@ -56,7 +62,8 @@ class NeuralTradeFilter:
          adx, has_pattern, is_adx_rising]
     """
 
-    def __init__(self):
+    def __init__(self, symbol: str = "GLOBAL"):
+        self._symbol = symbol.upper()
         self._model = None
         self._X: list[list[float]] = []
         self._y: list[int]  = []   # 1 = trade ganador, 0 = perdedor
@@ -67,39 +74,38 @@ class NeuralTradeFilter:
     # ── Persistencia ─────────────────────────────────────────────────────────
 
     def _load(self):
+        path = _model_path_for(self._symbol)
         try:
-            if MODEL_PATH.exists():
-                bundle = joblib.load(MODEL_PATH)
+            if path.exists():
+                bundle = joblib.load(path)
                 self._model = bundle.get("model")
                 self._X     = bundle.get("X", [])
                 self._y     = bundle.get("y", [])
                 
-                # Validación de arquitectura (si cambiamos el número de features, reseteamos)
+                # Validación de arquitectura
                 if self._X:
                     n_features = len(self._X[0])
                     if n_features != 13:
-                        log.warning(f"⚠️ Arquitectura de features cambió de {n_features} a 13. Reseteando modelo completamente para coherencia.")
+                        log.warning(f"⚠️ [{self._symbol}] Arquitectura cambió ({n_features}→13). Reseteando.")
                         self._model = None
                         self._X = []
                         self._y = []
 
                 log.info(
-                    f"🧠 Red Neuronal cargada — {len(self._y)} trades en memoria, "
-                    f"modelo={'activo' if self._model else 'cold-start'}"
+                    f"🧠 [{self._symbol}] Modelo cargado — {len(self._y)} trades, "
+                    f"estado={'activo' if self._model else 'cold-start'}"
                 )
         except Exception as e:
-            log.warning(f"No se pudo cargar el modelo neural: {e}")
+            log.warning(f"No se pudo cargar modelo [{self._symbol}]: {e}")
 
     def _save(self):
-        # ❄️ Si el modelo está congelado, NO sobreescribir el archivo en disco
         if self._frozen:
-            log.debug("🧊 [NeuralFilter] Modelo congelado — guardado omitido.")
+            log.debug(f"🧊 [{self._symbol}] Modelo congelado — guardado omitido.")
             return
         try:
-            MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump({"model": self._model, "X": self._X, "y": self._y}, MODEL_PATH)
+            joblib.dump({"model": self._model, "X": self._X, "y": self._y}, _model_path_for(self._symbol))
         except Exception as e:
-            log.warning(f"No se pudo guardar el modelo neural: {e}")
+            log.warning(f"No se pudo guardar modelo [{self._symbol}]: {e}")
 
     # ── Control de Congelación ───────────────────────────────────────────────
 
@@ -317,51 +323,58 @@ class NeuralTradeFilter:
 
 
     def reset(self) -> None:
-        """🧨 Borra TODO en memoria y en disco. La IA vuelve a cold-start."""
+        """🧨 Borra TODO en memoria y en disco para este símbolo."""
         with self._lock:
             self._model  = None
             self._X      = []
             self._y      = []
             self._frozen = False
-            # Borrar archivo en disco también
             try:
-                if MODEL_PATH.exists():
-                    MODEL_PATH.unlink()
+                p = _model_path_for(self._symbol)
+                if p.exists():
+                    p.unlink()
             except Exception as e:
-                log.warning(f"No se pudo borrar neural_model.joblib: {e}")
-            log.info("🧨 [NeuralFilter] RESET TOTAL — modelo y datos borrados de memoria y disco.")
+                log.warning(f"No se pudo borrar modelo [{self._symbol}]: {e}")
+            log.info(f"🧨 [{self._symbol}] RESET — modelo borrado de memoria y disco.")
 
 
-# ── Singleton global ──────────────────────────────────────────────────────────
-_filter_instance: NeuralTradeFilter | None = None
+# ── Registry por símbolo (reemplaza el singleton global) ─────────────────────
+_filter_registry: dict[str, NeuralTradeFilter] = {}
 _filter_lock = threading.Lock()
 
 
-def get_neural_filter() -> NeuralTradeFilter:
-    """Devuelve la instancia singleton del filtro neural."""
-    global _filter_instance
-    if _filter_instance is None:
+def get_neural_filter(symbol: str = "GLOBAL") -> NeuralTradeFilter:
+    """Devuelve (o crea) la instancia del filtro neural para el símbolo dado.
+    
+    Cada símbolo tiene su propio modelo aislado para evitar interferencia
+    entre activos con comportamientos de mercado distintos.
+    """
+    key = symbol.upper()
+    if key not in _filter_registry:
         with _filter_lock:
-            if _filter_instance is None:
-                _filter_instance = NeuralTradeFilter()
-    return _filter_instance
+            if key not in _filter_registry:
+                _filter_registry[key] = NeuralTradeFilter(symbol=key)
+    return _filter_registry[key]
 
 
-def reset_neural_filter() -> None:
-    """🧨 Resetea el singleton en memoria y borra el archivo en disco.
-    Llamar cuando el usuario hace WIPE TOTAL desde el dashboard."""
-    global _filter_instance
+def reset_neural_filter(symbol: str | None = None) -> None:
+    """🧨 Resetea el modelo de un símbolo específico o de TODOS si symbol=None."""
+    global _filter_registry
     with _filter_lock:
-        if _filter_instance is not None:
-            _filter_instance.reset()
-            _filter_instance = None   # Forzar re-instanciación limpia
-            log.info("🧨 [NeuralFilter] Singleton destruido — próxima llamada creará instancia limpia.")
+        if symbol:
+            key = symbol.upper()
+            if key in _filter_registry:
+                _filter_registry[key].reset()
+                del _filter_registry[key]
+                log.info(f"🧨 [NeuralFilter] Modelo de {key} reseteado.")
         else:
-            # Aun así, borrar el archivo por si existe
-            try:
-                if MODEL_PATH.exists():
-                    MODEL_PATH.unlink()
-            except Exception:
-                pass
-            log.info("🧨 [NeuralFilter] No había singleton activo — archivo borrado de disco.")
+            # WIPE TOTAL — borrar todos los modelos
+            for inst in _filter_registry.values():
+                inst.reset()
+            _filter_registry.clear()
+            # También borrar archivos viejos del formato anterior
+            old = config.DATA_DIR / "neural_model.joblib"
+            if old.exists():
+                old.unlink()
+            log.info("🧨 [NeuralFilter] RESET TOTAL — todos los modelos por símbolo borrados.")
 

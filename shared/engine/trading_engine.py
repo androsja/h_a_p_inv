@@ -114,7 +114,7 @@ class TradingEngine:
                 self._record_blocks(signal)
 
                 from shared.utils.neural_filter import get_neural_filter
-                nf = get_neural_filter()
+                nf = get_neural_filter(self.symbol)
 
                 # 4. Gestión de Posición
                 if self.position:
@@ -373,7 +373,7 @@ class TradingEngine:
         
         try:
             from shared.utils.neural_filter import get_neural_filter
-            nf = get_neural_filter()
+            nf = get_neural_filter(self.symbol)
             ml_f = position_to_train.ml_features
             f_vec = nf.build_features(
                 symbol=self.symbol,
