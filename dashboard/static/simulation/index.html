@@ -2616,12 +2616,12 @@
             "><span>${icon}</span> ${text}</span>`;
         }
 
-        function renderBlockingSummary(summary, mlCount, symbol = '─') {
-            if ((!summary || Object.keys(summary).length === 0) && !mlCount) return '<span style="color:var(--muted)">Sin filtros</span>';
-            const count = (summary ? Object.keys(summary).length : 0) + (mlCount > 0 ? 1 : 0);
+        function renderBlockingSummary(summary, mlCount, ghostCount, symbol = '─') {
+            if ((!summary || Object.keys(summary).length === 0) && !mlCount && !ghostCount) return '<span style="color:var(--muted)">Sin filtros</span>';
+            const count = (summary ? Object.keys(summary).length : 0) + (mlCount > 0 ? 1 : 0) + (ghostCount > 0 ? 1 : 0);
 
             // Unicode-aware base64 encoding
-            const jsonStr = JSON.stringify({ s: summary, m: mlCount, sym: symbol });
+            const jsonStr = JSON.stringify({ s: summary, m: mlCount, g: ghostCount, sym: symbol });
             const dataStr = btoa(unescape(encodeURIComponent(jsonStr)));
 
             return `
@@ -2639,7 +2639,7 @@
             try {
                 // Unicode-aware base64 decoding
                 const jsonStr = decodeURIComponent(escape(atob(encoded)));
-                const { s, m, sym } = JSON.parse(jsonStr);
+                const { s, m, g, sym } = JSON.parse(jsonStr);
 
                 const modalBody = document.getElementById('conf-modal-body');
                 const modalTitle = document.querySelector('.conf-modal-title');
@@ -2655,8 +2655,13 @@
                     }
                 }
                 if (m) {
-                    html += `<div class="confirm-item block" style="font-size:11px; padding:6px; background:rgba(191,149,255,0.1); border:1px solid rgba(191,149,255,0.2); border-radius:4px; color:#bb86fc;">
+                    html += `<div class="confirm-item block" style="font-size:11px; padding:6px; background:rgba(191,149,255,0.1); border:1px solid rgba(191,149,255,0.2); border-radius:4px; color:#bb86fc; margin-bottom:4px;">
                                 🧠 <b>Machine Learning</b>: bloqueó la operación ${m} veces tras análisis
+                             </div>`;
+                }
+                if (g) {
+                    html += `<div class="confirm-item block" style="font-size:11px; padding:6px; background:rgba(255,152,0,0.1); border:1px solid rgba(255,152,0,0.2); border-radius:4px; color:#ff9800;">
+                                👻 <b>Ghost Trades (Risk Manager)</b>: evitó ${g} operaciones de alto riesgo
                              </div>`;
                 }
 
@@ -3721,7 +3726,7 @@
                     <td style="padding:10px;">${parseFloat(row.drawdown || 0).toFixed(2)}%</td>
                     <td style="padding:10px;">
                         <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
-                            ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.symbol)}
+                            ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.total_ghosts, row.symbol)}
                         </div>
                     </td>
                     <td style="padding:10px; text-align:left;">
