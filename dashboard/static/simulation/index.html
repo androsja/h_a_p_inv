@@ -2153,24 +2153,6 @@
                                     <span id="sim-progress-mini" style="margin-left:10px; color:var(--muted); font-weight:normal; font-size:10px; border-left:1px solid rgba(255,255,255,0.1); padding-left:10px; display:none;"></span>
                                 </div>
                             <!-- Fecha y hora de simulación integrada en Monitor -->
-                            <div style="
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                background: rgba(0,255,213,0.07);
-                                border: 1px solid rgba(0,255,213,0.18);
-                                border-radius: 10px;
-                                padding: 8px 18px;
-                                margin-bottom: 15px;
-                            ">
-                                <svg width="16" height="16" fill="none" stroke="var(--accent)" viewBox="0 0 24 24" style="flex-shrink:0;opacity:0.7;">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <span style="font-size:13px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase; font-weight:500;">Corriendo al</span>
-                                <span id="sim-date-monitor" style="font-size:22px; font-weight:700; color:var(--accent2); font-family:'JetBrains Mono',monospace; letter-spacing:1px;">----/--/--</span>
-                                <span style="color:rgba(255,255,255,0.2); font-size:18px;">|</span>
-                                <span id="sim-clock-monitor" style="font-size:22px; font-weight:700; color:var(--accent); font-family:'JetBrains Mono',monospace; letter-spacing:2px;">--:--:--</span>
-                            </div>
                             <!-- ── Unified Intelligence Bar ── -->
                             <div style="
                                 background: linear-gradient(90deg, rgba(103,58,183,0.1) 0%, rgba(0,255,213,0.05) 100%);
@@ -2272,6 +2254,7 @@
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted);">
                                         <th style="padding:10px;">Símbolo</th>
+                                        <th style="padding:10px;">📅 Momento</th>
                                         <th style="padding:10px;">⏱️ Duración</th>
                                         <th style="padding:10px;">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
@@ -3728,6 +3711,9 @@
                     <td style="padding:10px; font-weight:bold; display:flex; align-items:center; gap:8px;">
                         ${row.isActive ? '<span style="color:var(--accent); font-size:10px; animation:pulse-text 1.5s infinite;">🔄</span> ' : ''}${row.symbol}
                         <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer;">📅</button>
+                    </td>
+                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight: 500;">
+                        ${row.last_order_date ? row.last_order_date.replace('T', ' ').substring(0, 19) : (row.sim_end || '-------')}
                     </td>
                     <td style="padding:10px; color:var(--muted); font-size:11px;">${durStr}</td>
                     <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
