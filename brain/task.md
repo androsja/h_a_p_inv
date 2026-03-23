@@ -1,0 +1,31 @@
+# Task: Investigate "Filtros Activos" showing "Sin filtros"
+
+- [x] Search for "Filtros Activos" or related keys in the codebase <!-- id: 0 -->
+- [x] Analyze the logic that populates active filters in the state <!-- id: 1 -->
+- [x] Implement a fix to correctly show active filters <!-- id: 3 -->
+- [x] Verify the fix (filtering out loading bars and instant restart) <!-- id: 4 -->
+- [x] Implement "Sugerencia Live" column to replace "Tipo de Mercado" <!-- id: 5 -->
+- [x] Corrección de "Feature Drift" en `NeuralFilter` (EMA spread) <!-- id: 6 -->
+- [x] Optimización de Carga de Datos en Simulación
+    - [x] Implementar memoria `localStorage` en el calendario del Dashboard
+    - [x] Hacer dinámico el período de descarga (evitar siempre descargar 180 días)
+    - [x] Asegurar buffer de 5-10 días para "warmup" de indicadores (EMA 200)
+    - [x] Mejorar lógica de validación de caché para rangos de fechas
+- [x] Debugging ML Training Pipeline
+    - [x] Fix `state_writer.py` to prevent global stat resets (None defaults)
+    - [x] Update `trading_engine.py` to report dynamic `NeuralFilter` stats
+    - [x] Remove explicit zero-resets in `runner.py`
+    - [x] Fix `/api/neural_stats` in `assets_router.py` to use `state_sim.json`
+    - [x] Resolve `ReferenceError` and `TypeError` in `index.html` (JS Stability)
+    - [x] Verify `ml_features` preservation in ghost trades
+- [x] Documentación y Cierre
+    - [x] Corregir ruteo de /algorithm en `server.py` (apuntar a `algoritmo.html`)
+    - [x] Agregar Bitácora de Pruebas Científicas a la documentación
+    - [x] Validar visualmente en navegador la corrección de las métricas ML (3,900+ muestras)
+- [x] Fix Ghost Trade ML poisoning (use Net PnL instead of Gross PnL for learning) <!-- id: 7 -->
+- [x] Implement Net PnL calculation in `trading_engine.py` <!-- id: 8 -->
+- [x] **Fix Wipe Errors and Connection Stability** <!-- id: 9 -->
+    - [x] Add missing `HAPI_API_KEY` to `shared/config.py` (prevent engine crash)
+    - [x] Refactor `wipe_total` in `bank_router.py` for robustness and request body parsing
+    - [x] Fix JavaScript `ReferenceError`s in `simulation/index.html` (TDZ issues)
+    - [x] Verify full wipe cycle via browser subagent and manual curl
