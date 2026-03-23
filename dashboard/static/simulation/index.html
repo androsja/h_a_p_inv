@@ -2272,7 +2272,7 @@
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted);">
                                         <th style="padding:10px;">Símbolo</th>
-                                        <th style="padding:10px;">Última Orden</th>
+                                        <th style="padding:10px;">⏱️ Duración</th>
                                         <th style="padding:10px;">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
                                         <th style="padding:10px;">Trades</th>
@@ -3726,7 +3726,7 @@
                         ${row.isActive ? '<span style="color:var(--accent); font-size:10px; animation:pulse-text 1.5s infinite;">🔄</span> ' : ''}${row.symbol}
                         <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer;">📅</button>
                     </td>
-                    <td style="padding:10px; color:var(--muted); font-size:11px;">${row.last_order_date}</td>
+                    <td style="padding:10px; color:var(--muted); font-size:11px;">${parseFloat(row.sim_duration || 0).toFixed(1)}s</td>
                     <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
                     <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
                     <td style="padding:10px;">${row.total_trades}</td>
