@@ -5433,6 +5433,23 @@
                 }
             }
 
+            // Calcular progreso a la maestría
+            let nextStep = "";
+            let step1 = samples >= 20 ? "#00ffd5" : "#30363d";
+            let step2 = (samples >= 20 && maturity.id !== 'learning') ? "#bb86fc" : "#30363d";
+            let step3 = (maturity.id === 'ready' || maturity.id === 'master') ? "#00ffd5" : "#30363d";
+            let step4 = (maturity.id === 'master') ? "#00ffff" : "#30363d";
+
+            if (samples < 20) {
+                nextStep = `Necesitas ${20 - samples} muestras más para salir de Cold-Start.`;
+            } else if (maturity.id === 'optimizing') {
+                nextStep = "Mejora la Precisión (>70%) y el PnL para estar Listo Live.";
+            } else if (maturity.id === 'ready') {
+                nextStep = `Te faltan ${100 - samples} muestras para el nivel MAESTRO.`;
+            } else {
+                nextStep = "¡Nivel máximo alcanzado! Sigue monitoreando el mercado.";
+            }
+
             const overlay = document.createElement('div');
             overlay.id = 'ai-verdict-overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:flex;justify-content:center;align-items:center;';
@@ -5456,18 +5473,34 @@
                             <span style="color:#8b949e; font-size:13px;">💰 PnL Neto</span>
                             <span style="color:${netPnl >= 0 ? '#00ffd5' : '#ff4f4f'}; font-weight:700;">$${netPnl.toFixed(2)}</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between;">
-                            <span style="color:#8b949e; font-size:13px;">📈 Win Rate</span>
-                            <span style="color:white; font-weight:700;">${winRate.toFixed(1)}%</span>
-                        </div>
                     </div>
 
-                    <div style="font-size:14px; color:#c9d1d9; line-height:1.6; margin-bottom:30px; font-style:italic;">
-                        "${explanation}"
+                    <div style="background:rgba(187,134,252,0.05); border:1px solid rgba(187,134,252,0.1); border-radius:16px; padding:15px; margin-bottom:20px; text-align:left;">
+                         <div style="font-size:10px; color:#bb86fc; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-weight:700;">Camino a la Maestría 🎓</div>
+                         <div style="display:flex; justify-content:space-between; position:relative; margin-bottom:8px; padding:0 5px;">
+                            <div style="position:absolute; top:11px; left:15px; right:15px; height:2px; background:#30363d; z-index:1;"></div>
+                            <div style="z-index:2; width:22px; height:22px; border-radius:50%; background:${step1}; display:flex; align-items:center; justify-content:center; font-size:10px; border:3px solid #0d1117;">🐣</div>
+                            <div style="z-index:2; width:22px; height:22px; border-radius:50%; background:${step2}; display:flex; align-items:center; justify-content:center; font-size:10px; border:3px solid #0d1117;">📈</div>
+                            <div style="z-index:2; width:22px; height:22px; border-radius:50%; background:${step3}; display:flex; align-items:center; justify-content:center; font-size:10px; border:3px solid #0d1117;">✅</div>
+                            <div style="z-index:2; width:22px; height:22px; border-radius:50%; background:${step4}; display:flex; align-items:center; justify-content:center; font-size:10px; border:3px solid #0d1117;">🔱</div>
+                         </div>
+                         <div style="display:flex; justify-content:space-between; font-size:8px; color:#8b949e; font-weight:600; text-transform:uppercase;">
+                            <span>Inicio</span>
+                            <span>Optimizar</span>
+                            <span>Listo Live</span>
+                            <span>Maestro</span>
+                         </div>
+                         <div style="margin-top:12px; font-size:11px; color:#e6edf3; font-weight:500;">
+                            🎯 <span style="color:#00ffd5;">Objetivo:</span> ${nextStep}
+                         </div>
                     </div>
 
-                    <button onclick="document.getElementById('ai-verdict-overlay').remove()" style="width:100%; background:linear-gradient(135deg,#30363d,#21262d); border:1px solid #444; color:white; padding:12px; border-radius:12px; font-weight:700; cursor:pointer; transition:0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                        Entendido
+                    <div style="font-size:13px; color:#8b949e; line-height:1.5; margin-bottom:25px;">
+                        ${explanation}
+                    </div>
+
+                    <button onclick="document.getElementById('ai-verdict-overlay').remove()" style="width:100%; background:linear-gradient(135deg,#30363d,#21262d); border:1px solid #444; color:white; padding:12px; border-radius:12px; font-weight:700; cursor:pointer;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        Cerrar Detalles
                     </button>
                 </div>
             `;
