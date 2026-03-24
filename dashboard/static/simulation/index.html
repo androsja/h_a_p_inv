@@ -1972,10 +1972,23 @@
                     <div class="conf-modal-overlay" id="conf-modal-overlay">
                         <div class="conf-modal">
                             <div class="conf-modal-header">
-                                <h3 class="conf-modal-title">🔍 Detalle de Confluencias</h3>
+                                <h3 class="conf-modal-title" id="conf-modal-title">🔍 Detalle de Confluencias</h3>
                                 <button class="conf-modal-close" onclick="closeConfModal()">×</button>
                             </div>
                             <div class="conf-modal-body" id="conf-modal-body" style="padding: 20px; color: white;">
+                                <!-- Se llena dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NUEVO: Modal de Filtros Bloqueantes Detallados (Independiente para evitar conflictos) -->
+                    <div class="conf-modal-overlay" id="blocking-modal-overlay">
+                        <div class="conf-modal">
+                            <div class="conf-modal-header">
+                                <h3 class="conf-modal-title" id="blocking-modal-title">🛡️ Filtros Activos</h3>
+                                <button class="conf-modal-close" onclick="closeBlockingModal()">×</button>
+                            </div>
+                            <div class="conf-modal-body" id="blocking-modal-body" style="padding: 20px; color: white;">
                                 <!-- Se llena dinámicamente -->
                             </div>
                         </div>
@@ -2601,8 +2614,8 @@
                 const jsonStr = decodeURIComponent(escape(atob(encoded)));
                 const { s, m, g, sym } = JSON.parse(jsonStr);
 
-                const modalBody = document.getElementById('conf-modal-body');
-                const modalTitle = document.querySelector('.conf-modal-title');
+                const modalBody = document.getElementById('blocking-modal-body');
+                const modalTitle = document.getElementById('blocking-modal-title');
 
                 if (modalTitle) modalTitle.textContent = `🛡️ Filtros Activos: ${sym}`;
 
@@ -2629,9 +2642,13 @@
                     modalBody.innerHTML = html || '<div class="muted">Sin detalles disponibles</div>';
                 }
 
-                const overlay = document.getElementById('conf-modal-overlay');
+                const overlay = document.getElementById('blocking-modal-overlay');
                 if (overlay) overlay.style.display = 'flex';
             } catch (e) { console.error("Error showing blocking details", e); }
+        }
+
+        function closeBlockingModal() {
+            document.getElementById('blocking-modal-overlay').style.display = 'none';
         }
 
         async function fetchConfig() {
@@ -4432,8 +4449,19 @@
                         showToast(data.message || 'Reinicio solicitado');
                         overlay.remove();
                         window._completionToastShown = false;
-                        window._simHistorySaved = false; // Reset so next sim saves again
+                        window._simHistorySaved = false;
+                        window._simSavedToHistory = false;
                         document.getElementById('completion-toast')?.remove();
+
+                        // ── Limpiar tabla y estado en memoria inmediatamente ──
+                        window._lastFullState = null;
+                        window._historicalSessions = [];
+                        lastTradeCount = 0;
+                        pnlHistory = [];
+                        const tbody = document.getElementById('results-table-body');
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="padding:30px; text-align:center; color:var(--muted); font-style:italic;">⏳ Reiniciando simulación...</td></tr>';
+                        const miniProg = document.getElementById('sim-progress-mini');
+                        if (miniProg) { miniProg.style.display = 'none'; miniProg.innerHTML = ''; }
                     });
             };
         }
