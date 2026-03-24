@@ -2579,30 +2579,30 @@
             let text = 'ANALIZANDO';
             let icon = '⏳';
             let bg = 'rgba(128,128,128,0.10)';
-            let hint = `Muestras: ${samples} | Precisión: ${accuracy.toFixed(1)}% | PnL: $${netPnl.toFixed(2)}`;
+            let hint = `VEDICTO: ${text}\n───────────────\n🧠 IA: ${samples} muestras (${accuracy.toFixed(1)}% precisión)\n💰 PnL: $${netPnl.toFixed(2)} NETO\n📈 WinRate: ${winRate.toFixed(1)}%`;
 
             // Fase 1: Filtro por Madurez (La IA tiene la última palabra)
             if (maturity.id === 'learning') {
                 text = 'RE-SIMULAR'; icon = '🐣';
-                hint += ' (Datos insuficientes para validar en real)';
+                hint += '\n\n⚠️ INSUFICIENTE: La IA necesita más muestras para ser confiable.';
             } else if (maturity.id === 'optimizing') {
                 text = 'VOLÁTIL'; icon = '⚠️'; color = '#ff9800'; bg = 'rgba(255,152,0,0.1)';
-                hint += ' (Patrones detectados pero inestables)';
+                hint += '\n\n⚠️ INESTABLE: Patrones detectados pero el rendimiento no es sólido.';
             } else if (maturity.id === 'ready' || maturity.id === 'master') {
                 // Fase 2: Rendimiento (Si la IA está lista, miramos los números)
                 if (netPnl > 0 && winRate >= 60 && trades >= 3 && dd < 3) {
                     color = '#00ffd5'; text = 'RECOMENDADO'; icon = '🚀'; bg = 'rgba(0,255,213,0.1)';
                     if (maturity.id === 'master') { text = '💎 ELITE'; icon = '🔱'; color = '#00ffff'; }
-                    hint += ' (Modelo maduro y rentable)';
+                    hint += '\n\n✅ EXCELENTE: Modelo maduro con métricas de bajo riesgo.';
                 } else if (netPnl > 0 && winRate >= 45 && trades >= 2) {
                     color = '#00c781'; text = 'VIABLE'; icon = '✅'; bg = 'rgba(0,199,129,0.1)';
-                    hint += ' (Apto para Paper/Live con precaución)';
+                    hint += '\n\n✅ APTO: Puede usarse en Paper/Live con gestión de riesgo.';
                 } else if (netPnl > 0) {
                     color = '#ff9800'; text = 'LIMITADO'; icon = '⚠️'; bg = 'rgba(255,152,0,0.1)';
-                    hint += ' (Rentable pero con métricas de riesgo altas)';
+                    hint += '\n\n⚠️ RIESGOSO: Rentable pero con drawdown o winrate bajo.';
                 } else {
                     color = '#ff4f4f'; text = 'EVITAR'; icon = '❌'; bg = 'rgba(255,79,79,0.1)';
-                    hint += ' (Pérdidas detectadas en simulación)';
+                    hint += '\n\n❌ NO APTO: Las pérdidas superan la recomendación actual.';
                 }
             }
 
@@ -2611,7 +2611,7 @@
                 background:${bg}; color:${color};
                 border:1px solid ${color}55; font-size:10px; font-weight:800;
                 white-space:nowrap; letter-spacing:0.5px; text-transform:uppercase;
-                cursor: help;
+                cursor: pointer;
             "><span>${icon}</span> ${text}</span>`;
         }
 
