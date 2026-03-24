@@ -263,12 +263,25 @@
         <div class="dashboard-grid">
             <!-- Gráfico de Evolución General -->
             <div class="card col-8">
-                <h2><i>📊</i> Curva de Selectividad (Trades vs Aprendizaje)</h2>
-                <div class="chart-container">
-                    <canvas id="evolutionChart"></canvas>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin-bottom: 0;"><i>📈</i> Evolución del Bot</h2>
+                    <select id="symbolFilter" onchange="renderCharts(this.value)" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 5px 15px; border-radius: 8px; font-family: inherit; font-size: 0.85rem; cursor: pointer;">
+                        <option value="all">Vista Global (Promedio)</option>
+                    </select>
                 </div>
-                <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-dim)">
-                    Muestra cómo el volumen de trades cambia conforme la IA acumula experiencia. Una línea descendente suele indicar mayor selectividad y menor riesgo.
+                
+                <h3 style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 10px; font-weight: 400;">Rendimiento Comercial (PnL & Trades)</h3>
+                <div class="chart-container" style="height: 200px; margin-bottom: 30px;">
+                    <canvas id="pnlChart"></canvas>
+                </div>
+
+                <h3 style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 10px; font-weight: 400;">Eficiencia de IA (Fantasmas/Selectividad)</h3>
+                <div class="chart-container" style="height: 200px;">
+                    <canvas id="selectivityChart"></canvas>
+                </div>
+
+                <p style="margin-top: 20px; font-size: 0.85rem; color: var(--text-dim); line-height: 1.5;">
+                    Separamos el <b>Rendimiento</b> de la <b>Selectividad</b> para que puedas ver el aprendizaje de la IA sin que las escalas se mezclen.
                 </p>
             </div>
 
@@ -294,6 +307,12 @@
                 <p style="font-size: 0.85rem; line-height: 1.6; color: var(--text-dim)">
                     Los <b>Ghost Trades</b> son operaciones que la IA bloqueó pero monitoreó en secreto para validar su conocimiento.
                 </p>
+
+                <h2 style="margin-top: 30px;"><i>🏆</i> Ranking de Activos</h2>
+                <div id="assetRanking" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <!-- Se llena vía JS -->
+                </div>
+            </div>
             </div>
 
             <!-- Historial de Simulaciones -->
@@ -327,7 +346,8 @@
 
     <script>
         let historyData = [];
-        let mainChart = null;
+        let pnlChartInst = null;
+        let selectivityChartInst = null;
 
         async function loadHistory() {
             try {
@@ -342,7 +362,7 @@
 
                 renderStats();
                 renderHistoryList();
-                renderEvolutionChart();
+                renderCharts(); // Carga inicial
             } catch (e) {
                 console.error("Error loading history:", e);
             }
@@ -429,19 +449,42 @@
             const avg = historyData.reduce((acc, s) => acc + s.symbols_count, 0) / historyData.length;
             document.getElementById('avgTrades').textContent = avg.toFixed(1);
             
-            // Sumar ghosts de los registros
+            // Sumar ghosts de los registros y Ranking
             let ghosts = 0;
+            const rankingMap = {};
+
             historyData.forEach(s => {
-                // Priorizar el campo directo total_ghosts, sino sumar de detallados
                 if (s.total_ghosts !== undefined) {
                     ghosts += s.total_ghosts;
-                } else if (s.detailed_results) {
+                }
+                if (s.detailed_results) {
                     s.detailed_results.forEach(r => {
-                        ghosts += (r.total_ghosts || 0);
+                        if (s.total_ghosts === undefined) ghosts += (r.total_ghosts || 0);
+                        
+                        // Agregar al ranking (usamos el PnL de la simulación más reciente para el símbolo)
+                        // O mejor: El PnL acumulado si queremos ver ganadores históricos. Por ahora PnL de la última sim.
+                        if (!rankingMap[r.symbol]) rankingMap[r.symbol] = 0;
+                        rankingMap[r.symbol] += (r.pnl || 0);
                     });
                 }
             });
             document.getElementById('totalGhosts').textContent = ghosts;
+
+            // Renderizar Ranking
+            const rankingDiv = document.getElementById('assetRanking');
+            const sortedRanking = Object.entries(rankingMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            rankingDiv.innerHTML = sortedRanking.map(([sym, pnl], i) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05)">
+                    <div style="display: flex; align-items: center; gap: 10px">
+                        <span style="font-weight: 800; color: var(--text-dim); font-size: 0.8rem">#${i+1}</span>
+                        <span style="font-weight: 800; color: var(--primary)">${sym}</span>
+                    </div>
+                    <span style="font-weight: 800; color: ${pnl >= 0 ? '#00ff88' : '#ff3366'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span>
+                </div>
+            `).join('') || '<div style="color:var(--text-dim); font-size:0.8rem">Sin datos de ranking</div>';
         }
 
         function renderHistoryList() {
@@ -453,10 +496,23 @@
                 item.className = 'history-item';
                 if (idx === 0) item.classList.add('active');
                 
-                const date = new Date(sim.timestamp).toLocaleString();
+                const date = new Date(sim.timestamp).toLocaleDateString();
+                const finishTime = new Date(sim.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const startTime = sim.start_real_time ? new Date(sim.start_real_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '─';
+                
+                // Backfill sim_days if missing but dates are present
+                let simDays = sim.sim_days;
+                if (!simDays && sim.sim_start && sim.sim_end && sim.sim_start !== '─') {
+                    try {
+                        const d1 = new Date(sim.sim_start.split(' ')[0]);
+                        const d2 = new Date(sim.sim_end.split(' ')[0]);
+                        simDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+                    } catch(e) {}
+                }
+
                 item.innerHTML = `
                     <div class="history-item-header">
-                        <span class="history-date">${date}</span>
+                        <span class="history-date">${date} <small style="color:var(--text-dim); margin-left:5px;">${startTime} → ${finishTime}</small></span>
                         <span class="history-stats">#${historyData.length - idx}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-end">
@@ -464,7 +520,9 @@
                             <div style="font-size: 1.1rem; font-weight: 800; color: ${sim.pnl >= 0 ? '#00ff88' : '#ff3366'}">
                                 ${sim.pnl >= 0 ? '+' : ''}${sim.pnl.toFixed(2)} USD
                             </div>
-                            <div style="font-size: 0.7rem; color: var(--text-dim)">${sim.symbols_count} Símbolos | ${sim.trades_learned} Trades</div>
+                            <div style="font-size: 0.7rem; color: var(--text-dim)">
+                                ${sim.symbols_count} Símbolos | ${sim.trades_learned} Trades | ${simDays || '─'} días mkt
+                            </div>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center">
                             <div class="ghost-badge">👻 ${sim.total_ghosts || 0}</div>
@@ -481,13 +539,38 @@
             });
 
             if (historyData.length > 0) showDetail(historyData[0]);
+
+            // Poblar Filtro de Símbolos
+            const filter = document.getElementById('symbolFilter');
+            const symbols = new Set();
+            historyData.forEach(s => {
+                if (s.detailed_results) s.detailed_results.forEach(r => symbols.add(r.symbol));
+            });
+            
+            const currentVal = filter.value;
+            filter.innerHTML = '<option value="all">Vista Global (Promedio)</option>';
+            Array.from(symbols).sort().forEach(s => {
+                filter.innerHTML += `<option value="${s}" ${currentVal === s ? 'selected' : ''}>Individual: ${s}</option>`;
+            });
         }
 
         function showDetail(sim) {
             const title = document.getElementById('detailTitle');
             const content = document.getElementById('detailContent');
             const date = new Date(sim.timestamp).toLocaleString();
-            title.innerHTML = `<i>🔍</i> Simulación: ${date}`;
+            const period = (sim.sim_start && sim.sim_end && sim.sim_start !== '─') ? `[ ${sim.sim_start} → ${sim.sim_end} ]` : 'Periodo histórico';
+            
+            // Re-calculate simDays for detail view if missing
+            let simDays = sim.sim_days;
+            if (!simDays && sim.sim_start && sim.sim_end && sim.sim_start !== '─') {
+                try {
+                    const d1 = new Date(sim.sim_start.split(' ')[0]);
+                    const d2 = new Date(sim.sim_end.split(' ')[0]);
+                    simDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+                } catch(e) {}
+            }
+
+            title.innerHTML = `<i>🔍</i> Simulación: ${date} <span style="font-size: 0.8rem; margin-left:12px; color: var(--secondary); font-weight:400;">${period} (${simDays || '?'} días)</span>`;
 
             if (!sim.detailed_results || sim.detailed_results.length === 0) {
                 content.innerHTML = '<div class="empty-state">No hay datos detallados para esta simulación antigua. Los nuevos resultados sí incluirán auditoría por símbolo.</div>';
@@ -530,22 +613,47 @@
             content.innerHTML = html;
         }
 
-        function renderEvolutionChart() {
-            const ctx = document.getElementById('evolutionChart').getContext('2d');
+        function renderCharts(selectedSymbol = 'all') {
             const sortedData = [...historyData].reverse();
-            
             const labels = sortedData.map((_, i) => `Sim ${i+1}`);
-            const tradeCounts = sortedData.map(s => s.trades_learned);
-            const pnlValues = sortedData.map(s => s.pnl);
-            const ghostCounts = sortedData.map(s => s.total_ghosts || 0);
+            
+            let tradeCounts, pnlValues, ghostCounts;
 
-            if (mainChart) mainChart.destroy();
+            if (selectedSymbol === 'all') {
+                tradeCounts = sortedData.map(s => s.trades_learned);
+                pnlValues = sortedData.map(s => s.pnl);
+                ghostCounts = sortedData.map(s => s.total_ghosts || 0);
+            } else {
+                tradeCounts = sortedData.map(s => {
+                    const r = (s.detailed_results || []).find(dr => dr.symbol === selectedSymbol);
+                    return r ? r.total_trades : 0;
+                });
+                pnlValues = sortedData.map(s => {
+                    const r = (s.detailed_results || []).find(dr => dr.symbol === selectedSymbol);
+                    return r ? r.pnl : 0;
+                });
+                ghostCounts = sortedData.map(s => {
+                    const r = (s.detailed_results || []).find(dr => dr.symbol === selectedSymbol);
+                    return r ? (r.total_ghosts || 0) : 0;
+                });
+            }
 
-            mainChart = new Chart(ctx, {
+            // 1. Gráfico de Rendimiento (PnL & Trades)
+            const ctxPnL = document.getElementById('pnlChart').getContext('2d');
+            if (pnlChartInst) pnlChartInst.destroy();
+            pnlChartInst = new Chart(ctxPnL, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
+                        {
+                            label: 'PnL (USD)',
+                            data: pnlValues,
+                            borderColor: '#7000ff',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
                         {
                             label: 'Trades Realizados',
                             data: tradeCounts,
@@ -553,23 +661,7 @@
                             backgroundColor: 'rgba(0, 242, 255, 0.1)',
                             fill: true,
                             tension: 0.4,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'PnL (USD)',
-                            data: pnlValues,
-                            borderColor: '#7000ff',
-                            borderDash: [5, 5],
-                            tension: 0.4,
                             yAxisID: 'y1'
-                        },
-                        {
-                            label: 'Fantasmas (Selectividad)',
-                            data: ghostCounts,
-                            borderColor: '#ffeb3b',
-                            backgroundColor: 'rgba(255, 235, 59, 0.05)',
-                            tension: 0.4,
-                            yAxisID: 'y'
                         }
                     ]
                 },
@@ -577,28 +669,50 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#aaa' }
+                        y: { 
+                            type: 'linear', 
+                            display: true, 
+                            position: 'left', 
+                            title: { display: true, text: 'Dólares (PnL)', color: '#7000ff' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }, 
+                            ticks: { color: '#7000ff' } 
                         },
-                        y1: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            grid: { drawOnChartArea: false },
-                            ticks: { color: '#aaa' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#aaa' }
+                        y1: { 
+                            type: 'linear', 
+                            display: true, 
+                            position: 'right', 
+                            title: { display: true, text: 'Total Trades', color: '#00f2ff' },
+                            grid: { drawOnChartArea: false }, 
+                            ticks: { color: '#00f2ff' } 
                         }
                     },
-                    plugins: {
-                        legend: { labels: { color: '#fff', font: { family: 'Outfit' } } }
-                    }
+                    plugins: { legend: { labels: { color: '#fff', font: { family: 'Outfit' } } } }
+                }
+            });
+
+            // 2. Gráfico de Selectividad (Ghosts)
+            const ctxSelectivity = document.getElementById('selectivityChart').getContext('2d');
+            if (selectivityChartInst) selectivityChartInst.destroy();
+            selectivityChartInst = new Chart(ctxSelectivity, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Fantasmas (IA Bloqueó)',
+                        data: ghostCounts,
+                        borderColor: '#ffeb3b',
+                        backgroundColor: 'rgba(255, 235, 59, 0.05)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { type: 'linear', display: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#ffeb3b' } }
+                    },
+                    plugins: { legend: { labels: { color: '#fff', font: { family: 'Outfit' } } } }
                 }
             });
         }
