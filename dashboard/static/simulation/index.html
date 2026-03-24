@@ -5436,18 +5436,26 @@
             // Calcular progreso a la maestría
             let nextStep = "";
             let step1 = samples >= 20 ? "#00ffd5" : "#30363d";
-            let step2 = (samples >= 20 && maturity.id !== 'learning') ? "#bb86fc" : "#30363d";
+            let step2 = (samples >= 20 && (accuracy >= 70 && netPnl > 0)) ? "#bb86fc" : "#30363d";
             let step3 = (maturity.id === 'ready' || maturity.id === 'master') ? "#00ffd5" : "#30363d";
             let step4 = (maturity.id === 'master') ? "#00ffff" : "#30363d";
 
             if (samples < 20) {
-                nextStep = `Necesitas ${20 - samples} muestras más para salir de Cold-Start.`;
+                nextStep = `Necesitas ${20 - samples} muestras más para salir de Inicio.`;
             } else if (maturity.id === 'optimizing') {
-                nextStep = "Mejora la Precisión (>70%) y el PnL para estar Listo Live.";
+                if (netPnl <= 0) nextStep = "El PnL debe ser positivo para ser Viable.";
+                else if (accuracy < 70) nextStep = `Mejora la precisión al 70% (actual: ${accuracy.toFixed(1)}%).`;
+                else nextStep = "Datos insuficientes para validar estabilidad.";
             } else if (maturity.id === 'ready') {
-                nextStep = `Te faltan ${100 - samples} muestras para el nivel MAESTRO.`;
+                if (samples < 100) {
+                    nextStep = `Te faltan ${100 - samples} muestras para el nivel MAESTRO.`;
+                } else if (accuracy < 80) {
+                    nextStep = `Mejora la precisión al 80% para ser MAESTRO (actual: ${accuracy.toFixed(1)}%).`;
+                } else {
+                    nextStep = "Ajustando parámetros para consolidar Maestría.";
+                }
             } else {
-                nextStep = "¡Nivel máximo alcanzado! Sigue monitoreando el mercado.";
+                nextStep = "¡Nivel MAESTRO alcanzado! IA de alta fidelidad.";
             }
 
             const overlay = document.createElement('div');
@@ -5455,7 +5463,7 @@
             overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:flex;justify-content:center;align-items:center;';
             
             overlay.innerHTML = `
-                <div style="background:#0d1117; border:1px solid #30363d; border-radius:24px; width:90%; max-width:400px; padding:30px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center;">
+                <div style="background:#0d1117; border:1px solid #30363d; border-radius:24px; width:90%; max-width:410px; padding:30px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center;">
                     <div style="font-size:50px; margin-bottom:15px;">${icon}</div>
                     <div style="font-size:12px; color:#8b949e; text-transform:uppercase; letter-spacing:2px; margin-bottom:5px;">Veredicto Final IA</div>
                     <div style="font-size:28px; font-weight:900; color:${color}; margin-bottom:20px; letter-spacing:-0.5px;">${verdict}</div>
@@ -5487,7 +5495,7 @@
                          <div style="display:flex; justify-content:space-between; font-size:8px; color:#8b949e; font-weight:600; text-transform:uppercase;">
                             <span>Inicio</span>
                             <span>Optimizar</span>
-                            <span>Listo Live</span>
+                            <span>Viable / Rec</span>
                             <span>Maestro</span>
                          </div>
                          <div style="margin-top:12px; font-size:11px; color:#e6edf3; font-weight:500;">
