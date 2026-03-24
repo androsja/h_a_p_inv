@@ -2606,7 +2606,9 @@
                 }
             }
 
-            return `<span title="${hint}" style="
+            return `<span title="${hint}" 
+                onclick="openAIVerdictDetails('${encodeURIComponent(JSON.stringify(row))}')"
+                style="
                 display:inline-block; padding:4px 10px; border-radius:20px;
                 background:${bg}; color:${color};
                 border:1px solid ${color}55; font-size:10px; font-weight:800;
@@ -5397,6 +5399,78 @@
                     </div>
                 </div>
             </div>`;
+
+            document.body.appendChild(overlay);
+            overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+        }
+
+        async function openAIVerdictDetails(rowJson) {
+            const row = JSON.parse(decodeURIComponent(rowJson));
+            const samples = row.total_samples || 0;
+            const accuracy = row.accuracy || row.model_accuracy || 0;
+            const netPnl = (row.gross_pnl || 0) - (row.total_fees || 0) - (row.slippage_est || 0);
+            const winRate = parseFloat(row.win_rate || 0);
+            
+            // Re-calcular veredicto para el modal
+            const maturity = getAIMaturity(samples, accuracy, netPnl);
+            let verdict = 'ANALIZANDO';
+            let color = '#888';
+            let icon = '⏳';
+            let explanation = 'La IA está procesando los datos.';
+
+            if (maturity.id === 'learning') {
+                verdict = 'RE-SIMULAR'; icon = '🐣'; explanation = 'La IA aún no tiene suficientes datos (mínimo 20 muestras) para validar su comportamiento en este activo. Sigue entrenando para mayor seguridad.';
+            } else if (maturity.id === 'optimizing') {
+                verdict = 'VOLÁTIL'; icon = '⚠️'; color = '#ff9800'; explanation = 'Se han detectado patrones, pero el rendimiento no es constante o el PnL es negativo. La IA sugiere optimizar los parámetros.';
+            } else if (maturity.id === 'ready' || maturity.id === 'master') {
+                if (netPnl > 0 && winRate >= 60 && (row.total_trades || 0) >= 3 && parseFloat(row.drawdown || 0) < 3) {
+                    verdict = 'RECOMENDADO'; icon = '🚀'; color = '#00ffd5'; explanation = '¡Excelente! La IA es madura y los resultados financieros son sólidos con bajo riesgo. Apto para Live Paper.';
+                    if (maturity.id === 'master') { verdict = 'ELITE 💎'; icon = '🔱'; color = '#00ffff'; explanation = 'Modelo Maestro. La IA ha visto más de 100 muestras y mantiene una precisión excepcional. Máxima confianza.'; }
+                } else if (netPnl > 0 && winRate >= 45) {
+                    verdict = 'VIABLE'; icon = '✅'; color = '#00c781'; explanation = 'El modelo es apto para operar, aunque las métricas de rentabilidad son moderadas. Se recomienda precaución.';
+                } else {
+                    verdict = 'EVITAR'; icon = '❌'; color = '#ff4f4f'; explanation = 'A pesar de tener datos, los resultados financieros actuales no cumplen los requisitos de seguridad. No se recomienda operar.';
+                }
+            }
+
+            const overlay = document.createElement('div');
+            overlay.id = 'ai-verdict-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);display:flex;justify-content:center;align-items:center;';
+            
+            overlay.innerHTML = `
+                <div style="background:#0d1117; border:1px solid #30363d; border-radius:24px; width:90%; max-width:400px; padding:30px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center;">
+                    <div style="font-size:50px; margin-bottom:15px;">${icon}</div>
+                    <div style="font-size:12px; color:#8b949e; text-transform:uppercase; letter-spacing:2px; margin-bottom:5px;">Veredicto Final IA</div>
+                    <div style="font-size:28px; font-weight:900; color:${color}; margin-bottom:20px; letter-spacing:-0.5px;">${verdict}</div>
+                    
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:16px; padding:20px; margin-bottom:20px; text-align:left;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <span style="color:#8b949e; font-size:13px;">🧠 Muestras IA</span>
+                            <span style="color:white; font-weight:700;">${samples}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <span style="color:#8b949e; font-size:13px;">🎯 Precisión</span>
+                            <span style="color:#03a9f4; font-weight:700;">${accuracy.toFixed(1)}%</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                            <span style="color:#8b949e; font-size:13px;">💰 PnL Neto</span>
+                            <span style="color:${netPnl >= 0 ? '#00ffd5' : '#ff4f4f'}; font-weight:700;">$${netPnl.toFixed(2)}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#8b949e; font-size:13px;">📈 Win Rate</span>
+                            <span style="color:white; font-weight:700;">${winRate.toFixed(1)}%</span>
+                        </div>
+                    </div>
+
+                    <div style="font-size:14px; color:#c9d1d9; line-height:1.6; margin-bottom:30px; font-style:italic;">
+                        "${explanation}"
+                    </div>
+
+                    <button onclick="document.getElementById('ai-verdict-overlay').remove()" style="width:100%; background:linear-gradient(135deg,#30363d,#21262d); border:1px solid #444; color:white; padding:12px; border-radius:12px; font-weight:700; cursor:pointer; transition:0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        Entendido
+                    </button>
+                </div>
+            `;
 
             document.body.appendChild(overlay);
             overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
