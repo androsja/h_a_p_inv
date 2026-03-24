@@ -2557,10 +2557,10 @@
         };
 
         function getAIMaturity(samples, accuracy, netPnl) {
-            if (!samples || samples < 20) return { text: '🐣 APRENDIENDO', color: '#888', bg: 'rgba(128,128,128,0.1)' };
-            if (samples >= 100 && accuracy >= 80 && netPnl > 0) return { text: '🏆 MAESTRO', color: '#ffeb3b', bg: 'rgba(255,235,59,0.1)' };
-            if (samples >= 20 && accuracy >= 70 && netPnl > 0) return { text: '✅ LISTO LIVE', color: '#00ffd5', bg: 'rgba(0,255,213,0.1)' };
-            return { text: '📈 OPTIMIZANDO', color: '#bb86fc', bg: 'rgba(187,134,252,0.1)' };
+            if (!samples || samples < 20) return { id: 'learning', text: '🐣 APRENDIENDO', color: '#888', bg: 'rgba(128,128,128,0.1)' };
+            if (samples >= 100 && accuracy >= 80 && netPnl > 0) return { id: 'master', text: '🏆 MAESTRO', color: '#ffeb3b', bg: 'rgba(255,235,59,0.1)' };
+            if (samples >= 20 && accuracy >= 70 && netPnl > 0) return { id: 'ready', text: '✅ LISTO LIVE', color: '#00ffd5', bg: 'rgba(0,255,213,0.1)' };
+            return { id: 'optimizing', text: '📈 OPTIMIZANDO', color: '#bb86fc', bg: 'rgba(187,134,252,0.1)' };
         }
 
         function buildLiveRecommendation(row) {
@@ -2571,22 +2571,33 @@
             const winRate = parseFloat(row.win_rate || 0);
             const trades = row.total_trades || 0;
             const dd = parseFloat(row.drawdown || 0);
+            const samples = row.total_samples || 0;
+            const accuracy = row.accuracy || row.model_accuracy || 0;
+
+            const maturity = getAIMaturity(samples, accuracy, netPnl);
 
             let color = '#888';
-            let text = 'SIN DATOS';
-            let icon = '🔍';
+            let text = 'INMADURO';
+            let icon = '⏳';
             let bg = 'rgba(128,128,128,0.10)';
 
-            if (trades === 0) {
-                text = 'ESPERANDO'; icon = '⏳';
-            } else if (netPnl > 0 && winRate >= 60 && trades >= 3 && dd < 3) {
-                color = '#00ffd5'; text = 'RECOMENDADO'; icon = '🚀'; bg = 'rgba(0,255,213,0.1)';
-            } else if (netPnl > 0 && winRate >= 45 && trades >= 2) {
-                color = '#00c781'; text = 'VIABLE'; icon = '✅'; bg = 'rgba(0,199,129,0.1)';
-            } else if (netPnl > 0) {
-                color = '#ff9800'; text = 'VOLÁTIL'; icon = '⚠️'; bg = 'rgba(255,152,0,0.1)';
-            } else {
-                color = '#ff4f4f'; text = 'EVITAR'; icon = '❌'; bg = 'rgba(255,79,79,0.1)';
+            // Fase 1: Filtro por Madurez (La IA tiene la última palabra)
+            if (maturity.id === 'learning') {
+                text = 'RE-SIMULAR'; icon = '🐣';
+            } else if (maturity.id === 'optimizing') {
+                text = 'VOLÁTIL'; icon = '⚠️'; color = '#ff9800'; bg = 'rgba(255,152,0,0.1)';
+            } else if (maturity.id === 'ready' || maturity.id === 'master') {
+                // Fase 2: Rendimiento (Si la IA está lista, miramos los números)
+                if (netPnl > 0 && winRate >= 60 && trades >= 3 && dd < 3) {
+                    color = '#00ffd5'; text = 'RECOMENDADO'; icon = '🚀'; bg = 'rgba(0,255,213,0.1)';
+                    if (maturity.id === 'master') { text = '💎 ELITE'; icon = '🔱'; }
+                } else if (netPnl > 0 && winRate >= 45 && trades >= 2) {
+                    color = '#00c781'; text = 'VIABLE'; icon = '✅'; bg = 'rgba(0,199,129,0.1)';
+                } else if (netPnl > 0) {
+                    color = '#ff9800'; text = 'LIMITADO'; icon = '⚠️'; bg = 'rgba(255,152,0,0.1)';
+                } else {
+                    color = '#ff4f4f'; text = 'EVITAR'; icon = '❌'; bg = 'rgba(255,79,79,0.1)';
+                }
             }
 
             return `<span style="
