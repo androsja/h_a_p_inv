@@ -158,6 +158,19 @@ class TradingEngine:
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time())
                     )
 
+            # --- Forzar liquidación al terminar la simulación (End of Data) ---
+            if self.position and self.is_mock and 'quote' in locals() and quote:
+                log.info(f"▶ Forzando liquidación de posición abierta al final de la simulación en {self.symbol}.")
+                try:
+                    reason = "SIMULATION_END"
+                    plan = self.risk_mgr.calculate_sell_order(self.position, quote.bid)
+                    metadata = self._build_exit_metadata(reason)
+                    resp_status, fill_price = self._execute_sell(quote, plan, reason, metadata)
+                    if resp_status not in ("REJECTED",):
+                        self._process_closed_trade(fill_price, reason, quote.timestamp)
+                except Exception as e:
+                    log.warning(f"Error forzando venta al final de la simulación: {e}")
+
         except SessionInterrupted:
             raise
         except Exception:
@@ -348,7 +361,8 @@ class TradingEngine:
         log.info(f"🔴 SELL | {self.symbol} | PnL: ${pnl:+.2f} | Reason: {reason}")
         
         # ML feedback (Aprender del PnL Neto, no Bruto, para no engañar a la IA con micro-movimientos)
-        if hasattr(self.position, 'ml_features'):
+        # Ignorar "SIMULATION_END" para no ensuciar el entrenamiento de la IA con salidas no naturales
+        if hasattr(self.position, 'ml_features') and reason != "SIMULATION_END":
             net_pnl = self._get_net_pnl(pnl, self.position.qty, self.position.entry_price)
             ml_predictor.save_trade(self.symbol, self.position.ml_features, net_pnl)
             self._train_neural_filter(net_pnl)

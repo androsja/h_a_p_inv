@@ -33,6 +33,8 @@ _global_sim_gross_profit: float = 0.0
 _global_sim_gross_loss:   float = 0.0
 _global_model_accuracy: float = 0.0
 _global_total_samples:  int = 0
+# Per-symbol IA stats (accuracy and samples tracked independently per symbol)
+_symbol_model_stats: dict[str, dict] = {}  # {symbol: {"model_accuracy": float, "total_samples": int}}
 
 def load_global_stats_from_journal() -> None:
     """Carga los totales acumulados y los últimos trades desde el archivo CSV de la bitácora."""
@@ -91,9 +93,10 @@ load_global_stats_from_journal()
 
 def clear_state() -> None:
     """Borra todos los estados de símbolos y trades en memoria y en disco."""
-    global _symbol_states, _trades, _global_sim_trades, _global_sim_wins, _global_sim_pnl
+    global _symbol_states, _trades, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _symbol_model_stats
     with _state_lock:
         _symbol_states.clear()
+        _symbol_model_stats.clear()  # Limpiar métricas IA por símbolo
         _trades.clear()
         _global_sim_trades = 0
         _global_sim_wins = 0
@@ -113,9 +116,10 @@ def clear_state() -> None:
 
 def clear_symbol_states() -> None:
     """Borra solo los estados de los símbolos activos, manteniendo el historial de trades."""
-    global _symbol_states
+    global _symbol_states, _symbol_model_stats
     with _state_lock:
         _symbol_states.clear()
+        _symbol_model_stats.clear()  # Limpiar métricas IA por símbolo
 
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, 
                  timestamp: str | None = None, reason: str = "", metadata: dict = None) -> None:
@@ -223,7 +227,7 @@ def update_state(
     global _symbol_states, _trades
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts
     global _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
-    global _global_model_accuracy, _global_total_samples
+    global _global_model_accuracy, _global_total_samples, _symbol_model_stats
     
     # Actualizar acumulados globales solo si se proporcionan
     if total_sim_trades is not None: _global_sim_trades = total_sim_trades
@@ -235,8 +239,15 @@ def update_state(
     if total_sim_gross_profit is not None: _global_sim_gross_profit = total_sim_gross_profit
     if total_sim_gross_loss is not None: _global_sim_gross_loss = total_sim_gross_loss
 
-    if model_accuracy is not None: _global_model_accuracy = model_accuracy
-    if total_samples is not None: _global_total_samples = total_samples
+    # Guardar métricas IA por símbolo (no compartidas entre símbolos)
+    if symbol not in _symbol_model_stats:
+        _symbol_model_stats[symbol] = {"model_accuracy": 0.0, "total_samples": 0}
+    if model_accuracy is not None:
+        _global_model_accuracy = model_accuracy  # Mantener global para compatibilidad
+        _symbol_model_stats[symbol]["model_accuracy"] = model_accuracy
+    if total_samples is not None:
+        _global_total_samples = total_samples  # Mantener global para compatibilidad
+        _symbol_model_stats[symbol]["total_samples"] = total_samples
 
     # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
     # Estos valores son los que el Dashboard muestra en la franja superior
@@ -313,8 +324,8 @@ def update_state(
         ai_recommendation=ai_recommendation,
         ai_expected_up=ai_expected_up,
         ai_expected_down=ai_expected_down,
-        model_accuracy=_global_model_accuracy,
-        total_samples=_global_total_samples,
+        model_accuracy=_symbol_model_stats.get(symbol, {}).get("model_accuracy", 0.0),
+        total_samples=_symbol_model_stats.get(symbol, {}).get("total_samples", 0),
     )
     
     with _state_lock:
@@ -328,9 +339,10 @@ def _flush() -> None:
         output = {}
         for sym, st in _symbol_states.items():
             d = asdict(st)
-            # Inyectar métricas globales para que el dashboard siempre las vea
-            d["model_accuracy"] = _global_model_accuracy
-            d["total_samples"] = _global_total_samples
+            # Inyectar métricas IA POR SÍMBOLO (no la global compartida)
+            sym_stats = _symbol_model_stats.get(sym, {})
+            d["model_accuracy"] = sym_stats.get("model_accuracy", 0.0)
+            d["total_samples"] = sym_stats.get("total_samples", 0)
             output[sym] = d
         
         # Inyectar una vista "global" (el primer símbolo o una mezcla relevante)
@@ -342,8 +354,9 @@ def _flush() -> None:
                 last_sym = keys[-1]
                 st_main = _symbol_states[last_sym]
                 d_main = asdict(st_main)
-                d_main["model_accuracy"] = getattr(st_main, "model_accuracy", 0.0)
-                d_main["total_samples"] = getattr(st_main, "total_samples", 0)
+                main_stats = _symbol_model_stats.get(last_sym, {})
+                d_main["model_accuracy"] = main_stats.get("model_accuracy", getattr(st_main, "model_accuracy", 0.0))
+                d_main["total_samples"] = main_stats.get("total_samples", getattr(st_main, "total_samples", 0))
                 output["_main"] = d_main
         
         tmp = _state_path.with_suffix(".tmp")

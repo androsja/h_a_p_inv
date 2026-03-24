@@ -128,6 +128,16 @@ async def wipe_total(req: ResetRequest = None):
     except Exception as e:
         errors.append(f"snapshots_dir: {e}")
 
+    # Borrar modelos neuronales individuales por símbolo
+    try:
+        neural_models_dir = config.DATA_DIR / "neural_models"
+        if neural_models_dir.exists():
+            shutil.rmtree(neural_models_dir, ignore_errors=True)
+            neural_models_dir.mkdir(parents=True, exist_ok=True)
+            deleted.append("neural_models_dir")
+    except Exception as e:
+        errors.append(f"neural_models_dir: {e}")
+
     try:
         if LOG_FILE.exists():
             with open(LOG_FILE, "w") as f:

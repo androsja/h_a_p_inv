@@ -42,6 +42,7 @@ class SimulationRunner:
         self.total_sim_pnl = 0.0
         self.total_sim_ghosts = 0
         self.all_done = False  # 🏁 Bandera de finalización global
+        self.start_real_time = None # 🕒 Momento real en que inició la simulación global
         
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 SISTEMA INICIADO: Preparando motores de trading...")
@@ -55,6 +56,10 @@ class SimulationRunner:
                 # 1. Comandos Globales (Prioridad Máxima - Procesa reinicios)
                 if self._process_global_commands():
                     continue # Se reinició el estado, volver al inicio
+                
+                # Registrar inicio real si es el primer símbolo
+                if self.is_simulated and self.symbol_idx == 0 and not self.start_real_time:
+                    self.start_real_time = datetime.now()
                 
                 if self.all_done:
                     smart_sleep(3) # Idle mientras esperamos nuevos comandos (interrumpible)
@@ -171,6 +176,7 @@ class SimulationRunner:
                 self.total_sim_pnl = 0.0
                 self.total_sim_ghosts = 0
                 self.all_done = False # Reset bandera al reiniciar manualmente
+                self.start_real_time = None # Reset tiempo real
                 update_state("─", mode="SIMULATED", status="restarting", mock_time_930=_is_mock_time_active())
                 return True
         except: pass
@@ -267,8 +273,20 @@ class SimulationRunner:
                 "detailed_results": detailed_results,
                 "sim_start": detailed_results[0].get("sim_start", "─") if detailed_results else "─",
                 "sim_end": detailed_results[-1].get("sim_end", "─") if detailed_results else "─",
+                "start_real_time": self.start_real_time.isoformat() if self.start_real_time else None,
                 "investment_style": "Normal" # Opcional: detectar del engine
             }
+
+            # Calcular días simulados si tenemos fechas válidas
+            if entry["sim_start"] != "─" and entry["sim_end"] != "─":
+                try:
+                    d1 = datetime.strptime(entry["sim_start"][:10], "%Y-%m-%d")
+                    d2 = datetime.strptime(entry["sim_end"][:10], "%Y-%m-%d")
+                    entry["sim_days"] = (d2 - d1).days + 1
+                except:
+                    entry["sim_days"] = 0
+            else:
+                entry["sim_days"] = 0
 
             history.append(entry)
             history = history[-500:] # Mantener últimas 500
@@ -394,12 +412,16 @@ class SimulationRunner:
             self.total_sim_ghosts += int(session_result.get("total_ghosts", 0))
 
             # Update dashboard with global report
+            # Excluir 'accuracy' del kwargs (el parámetro correcto es model_accuracy)
+            excluded_keys = ["symbol", "status", "blocking_summary", "timestamp", "session_num", "accuracy", "total_samples"]
             update_state(
                 symbol=engine.symbol,
                 status="completed",
                 session=session_result.get("session_num", self.session_num),
                 blocking_summary=session_result.get("blocking_summary"),
-                **{k:v for k,v in session_result.items() if k not in ["symbol", "status", "blocking_summary", "timestamp", "session_num"]}
+                model_accuracy=accuracy_ia,   # ← parámetro correcto para state_writer
+                total_samples=total_samples,  # ← parámetro correcto para state_writer
+                **{k:v for k,v in session_result.items() if k not in excluded_keys}
             )
 
             update_state(

@@ -153,19 +153,38 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             val = int(config.DATA_INTERVAL.replace("m", ""))
             tf = TimeFrame(val, TimeFrameUnit.Minute)
             
-            request_params = StockBarsRequest(
-                symbol_or_symbols=symbol,
-                timeframe=tf,
-                start=start_time,
-                end=end_time,
-                feed="iex"
-            )
+            # FETCH POR CHUNKS DE 60 DÍAS PARA EVITAR LIMITES DE LA API DE ALPACA (10,000 ROWS MAX)
+            all_chunks = []
+            cur_start = start_time
+            chunk_days = 60
             
-            bars = client.get_stock_bars(request_params)
-            if bars.df.empty:
-                raise ValueError(f"No hay datos para {symbol} en Alpaca.")
-
-            raw_df = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
+            while cur_start < end_time:
+                cur_end = min(cur_start + timedelta(days=chunk_days), end_time)
+                request_params = StockBarsRequest(
+                    symbol_or_symbols=symbol,
+                    timeframe=tf,
+                    start=cur_start,
+                    end=cur_end,
+                    feed="iex"
+                )
+                
+                try:
+                    bars = client.get_stock_bars(request_params)
+                    if not bars.df.empty:
+                        raw_chunk = bars.df.xs(symbol) if symbol in bars.df.index.levels[0] else bars.df
+                        all_chunks.append(raw_chunk)
+                except Exception as e:
+                    log.warning(f"data | partial error for chunk {cur_start}: {e}")
+                
+                cur_start = cur_end
+                
+            if not all_chunks:
+                raise ValueError(f"No hay datos para {symbol} en Alpaca en este rango.")
+                
+            raw_df = pd.concat(all_chunks)
+            # Evitar superposiciones en caso de solapamiento de ventanas
+            raw_df = raw_df[~raw_df.index.duplicated(keep='first')]
+            
             raw_df = raw_df.rename(columns={
                 "open": "Open", "high": "High", "low": "Low",
                 "close": "Close", "volume": "Volume"
@@ -176,7 +195,7 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             
             df = _filter_trading_hours(raw_df)
             df.to_parquet(cache)
-            log.info(f"data | {symbol} | Caché actualizada ({len(df)} velas).")
+            log.info(f"data | {symbol} | Caché actualizada ({len(df)} velas de {days_to_fetch} días).")
             
         except Exception as exc:
             exc_msg = str(exc).replace("\n", " ").strip()[:120]
