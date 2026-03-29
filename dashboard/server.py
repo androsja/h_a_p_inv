@@ -143,12 +143,17 @@ def read_last_logs(n: int = 200) -> list[str]:
 
 # ─── Broadcaster en background ────────────────────────────────────────────────
 async def state_broadcaster():
-    """Lee periódicamente los state files y los empuja a los WebSocket clientes."""
-    last_sim_mtime = 0
-    last_live_mtime = 0
+    loop_count = 0
+    cached_logs = []
 
     while True:
         try:
+            loop_count += 1
+            # Actualizar logs solo cada ~2 segundos (4 loops de 0.5s) para ahorrar CPU/IO
+            if loop_count % 4 == 0 or not cached_logs:
+                cached_logs = read_last_logs()
+
+            # --- MODO SIM ---
             if config.STATE_FILE_SIM.exists():
                 mtime = config.STATE_FILE_SIM.stat().st_mtime
                 if mtime > last_sim_mtime:
@@ -156,15 +161,15 @@ async def state_broadcaster():
                     try:
                         content = config.STATE_FILE_SIM.read_text(encoding="utf-8")
                         data = json.loads(content)
-                        data["logs"] = read_last_logs()
+                        data["logs"] = cached_logs
                         await manager.broadcast(data, mode="sim")
                     except Exception as e_json:
                         print(f"Error parse sim state: {e_json}")
-                        await manager.broadcast(content, mode="sim")
             elif last_sim_mtime > 0:
                 last_sim_mtime = 0
-                await manager.broadcast(json.dumps({}), mode="sim")
+                await manager.broadcast({"status": "idle"}, mode="sim")
 
+            # --- MODO LIVE ---
             if config.STATE_FILE_LIVE.exists():
                 mtime = config.STATE_FILE_LIVE.stat().st_mtime
                 if mtime > last_live_mtime:
@@ -172,14 +177,13 @@ async def state_broadcaster():
                     try:
                         content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
                         data = json.loads(content)
-                        data["logs"] = read_last_logs()
+                        data["logs"] = cached_logs
                         await manager.broadcast(data, mode="live")
                     except Exception as e_json:
                         print(f"Error parse live state: {e_json}")
-                        await manager.broadcast(content, mode="live")
             elif last_live_mtime > 0:
                 last_live_mtime = 0
-                await manager.broadcast(json.dumps({}), mode="live")
+                await manager.broadcast({"status": "idle"}, mode="live")
 
         except Exception as e:
             print(f"Error en broadcaster: {e}")
