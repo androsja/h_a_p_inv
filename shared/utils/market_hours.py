@@ -160,14 +160,9 @@ def is_market_open() -> bool:
     No contempla festivos de EE.UU. (simplificación aceptable para un bot minorista).
     """
     if _is_mock_time_active():
-        # Confirmar que real time está cerrado para no solapar si lo dejan activado por error de día
-        real_nyc_now = datetime.now(TZ_NYC)
-        is_real_market_open = (
-            real_nyc_now.weekday() in MARKET_WEEKDAYS and 
-            MARKET_OPEN <= real_nyc_now.time().replace(second=0, microsecond=0) < MARKET_CLOSE
-        )
-        if not is_real_market_open:
-            return True
+        # En modo MOCK, dependemos exclusivamente de now_nyc() (el reloj simulado)
+        # y no necesitamos el bypass anterior que era propenso a errores.
+        pass
             
     nyc_now = now_nyc()
     if nyc_now.weekday() not in MARKET_WEEKDAYS:

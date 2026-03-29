@@ -121,6 +121,7 @@ class LivePaperReplay:
         self.df = self.full_df.copy()
         self.window = 220
         self._last_download_time = time.time()
+        self._warned_no_data = False
 
     def has_next(self) -> bool:
         return True  # Siempre hay una vela siguiente en modo vivo
@@ -162,6 +163,13 @@ class LivePaperReplay:
             self.df = self.full_df.copy()
         else:
             current_mock_time = now_nyc().astimezone(pytz.UTC)
+            
+            # Verificación de datos disponibles
+            if not self.full_df.empty and current_mock_time > self.full_df.index[-1]:
+                if not getattr(self, "_warned_no_data", False):
+                    log.warning(f"replay | {self.symbol} | El reloj simulado ({current_mock_time}) superó los datos disponibles.")
+                    self._warned_no_data = True
+            
             self.df = self.full_df[self.full_df.index <= current_mock_time].copy()
 
         return self.df.tail(window).copy()
