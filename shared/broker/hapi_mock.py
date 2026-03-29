@@ -182,6 +182,50 @@ class HapiMock(BrokerInterface):
             fill_price=None,
         )
 
+    def place_market_order(
+        self,
+        symbol: str,
+        side: str,
+        qty: float,
+        reason: str = "",
+        metadata: dict = None,
+    ) -> OrderResponse:
+        """
+        Ejecución inmediata a precio de mercado (usando la vela actual).
+        """
+        import uuid
+        from shared.broker.models import PendingOrder
+
+        if self._current_bar is None:
+            # Si se llama antes del primer get_quote, intentamos obtener uno
+            self.get_quote(symbol)
+
+        bar = self._current_bar
+        # Simular ejecución al precio close de la vela actual
+        fill_price = float(bar["Close"])
+        
+        order = PendingOrder(
+            order_id=str(uuid.uuid4())[:8],
+            symbol=symbol, side=side.upper(),
+            limit_price=fill_price, qty=qty,
+            reason=reason,
+            metadata=metadata or {},
+        )
+
+        if side.upper() == "BUY":
+            self._execute_buy(order, fill_price=fill_price)
+        else:
+            self._execute_sell(order, fill_price=fill_price)
+
+        return OrderResponse(
+            order_id=order.order_id,
+            symbol=symbol, side=side.upper(),
+            status="FILLED",
+            limit_price=0, qty=qty,
+            fill_price=fill_price,
+            message=reason
+        )
+
     def get_account_info(self) -> AccountInfo:
         last_p = float(self._current_bar['Close']) if self._current_bar is not None else 0.0
         return AccountInfo(
