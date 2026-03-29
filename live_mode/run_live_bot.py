@@ -23,7 +23,7 @@ from pathlib import Path
 
 from shared import config
 from shared.utils.logger import log
-from shared.utils.market_hours import is_market_open, market_status_str, next_open_str, TZ_NYC
+from shared.utils.market_hours import is_market_open, market_status_str, next_open_str, TZ_NYC, now_nyc
 from shared.strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
 from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
 from shared.strategy.ml_predictor import ml_predictor
@@ -55,6 +55,7 @@ def run_symbol_live(
     initial_cash: float = 10_000.0,
     stop_event: threading.Event = None,
     session_num: int = 1,
+    live_mode_type: str = "PAPER",
 ):
     """
     Bucle principal del bot en vivo para UN símbolo.
@@ -72,17 +73,17 @@ def run_symbol_live(
       9. Dormir 60s
     """
     from shared.broker.alpaca_paper import AlpacaPaperBroker
-    from shared.broker.virtual_live import VirtualLiveBroker
+    from shared.broker.hapi_mock import HapiMock
     from shared.utils.neural_filter import get_neural_filter
+    # from shared.utils.market_hours import now_nyc # Moved to top
 
-    log.info(f"[LIVE:{symbol}] 🚀 Hilo iniciado")
-
-    live_mode_type = _read_live_cmd("live_mode", "PAPER") # PAPER, DEMO, REAL
+    log.info(f"[LIVE:{symbol}] 🚀 Hilo iniciado con modo {live_mode_type}")
 
     if live_mode_type == "DEMO":
-        broker = VirtualLiveBroker(
+        broker = HapiMock(
             symbol=symbol,
             initial_cash=initial_cash,
+            live_paper=True
         )
     else:
         broker = AlpacaPaperBroker(
@@ -106,7 +107,7 @@ def run_symbol_live(
     risk_mgr = RiskManager(account)
     position: OpenPosition | None = None
     shadow_positions: list[OpenPosition] = []
-    nf = get_neural_filter()
+    nf = get_neural_filter(symbol)
 
     blocking_history = collections.Counter()
     iteration = 0
@@ -118,30 +119,52 @@ def run_symbol_live(
         while not (stop_event and stop_event.is_set()):
             iteration += 1
 
-            # ── 1. Verificar horario de mercado ───────────────────────────────
+            # ── 1. Verificar horario de mercado y comandos de parada ──────────
+            if _read_live_cmd("live_stop", False):
+                log.info(f"[LIVE:{symbol}] 🛑 PARADA SOLICITADA desde el Dashboard. Finalizando hilo.")
+                break
+
             if not is_market_open():
-                log.debug(f"[LIVE:{symbol}] 🔴 Mercado cerrado. {next_open_str()}")
-                # Escribir estado de espera
+                log.info(f"[LIVE:{symbol}] 🔴 Fuera de horario. Próxima apertura: {next_open_str()}")
+                last_action = f"MARKET_CLOSED: {next_open_str()}"
                 _write_live_state(symbol, session_num, iteration, account,
-                                  broker, position, None, "MARKET_CLOSED")
-                _smart_sleep(60, stop_event)
+                                  broker, position, None, "MARKET_CLOSED", nf.get_stats(),
+                                  last_action=last_action)
+                _smart_sleep(120, stop_event) # Aumentado a 120s fuera de horario para reducir I/O
                 continue
+
+            log.info(f"[LIVE:{symbol}] 🔍 Iteración #{iteration} | Escaneando mercado...")
+            if iteration % 10 == 0:
+                log.info(f"💓 HEARTBEAT | [LIVE:{symbol}] | Bot activo y escaneando indicadores...")
 
             # ── 2. Obtener barras reales desde Alpaca ────────────────────────
             try:
                 df = broker.get_bars_df(symbol, limit=220)
             except Exception as e:
                 log.warning(f"[LIVE:{symbol}] ⚠️ Error obteniendo barras: {e}. Reintentando en 30s.")
+                # Escribir estado incluso en error para actualizar el reloj mock en el dashboard
+                _write_live_state(symbol, session_num, iteration, account,
+                                  broker, position, None, f"ERROR_DATA:{str(e)[:20]}", nf.get_stats())
                 _smart_sleep(30, stop_event)
                 continue
 
             # ── 3. Analizar señal técnica (módulo shared compartido) ──────────
+            last_action = "Escaneando indicadores..."
             asset_type = "inverted" if symbol in ["SQQQ", "SOXS", "SARK"] else "normal"
             signal = analyze(df, symbol=symbol, asset_type=asset_type)
+            
+            # LOG DETALLADO DE CADA SCAN
+            log.info(f"[LIVE:{symbol}] 📊 RSI: {signal.rsi_value:.1f} | Régimen: {signal.regime} | Precio: ${signal.close:.2f}")
 
             if signal.signal == SIGNAL_HOLD and signal.blocks:
                 for b in signal.blocks:
                     blocking_history[b.split(":")[0].strip()] += 1
+                block_str = ", ".join(signal.blocks)
+                last_action = f"Esperando señal. Bloqueos: {block_str}"
+                log.info(f"[LIVE:{symbol}] 🕒 Sin señal clara: {block_str}")
+            elif signal.signal == SIGNAL_BUY:
+                last_action = "¡MOMENTO DE COMPRA! Validando filtros..."
+                log.info(f"[LIVE:{symbol}] 🎯 SEÑAL DE COMPRA detectada. Validando filtros IA/Riesgo...")
 
             # ── 4. Obtener cotización actual (REAL TIME) ──────────────────────
             try:
@@ -273,7 +296,7 @@ def run_symbol_live(
                     signal.blocks = [msg]
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
-                    continue
+                    # Eliminado 'continue' para proteger el pipeline de sleep/estado
                 
                 # REGLA 2: Liquidez / SLIPPAGE PREVENTIVO
                 spread = quote.ask - quote.bid
@@ -284,15 +307,21 @@ def run_symbol_live(
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
                     log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
-                    continue
+                    # Eliminado 'continue' para proteger el pipeline de sleep/estado
 
                 # 🧠 CONSULTAR AL MODELO DE AI
                 is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
                 
+                log.info(f"[LIVE:{symbol}] 🧠 IA PREDICTION | Probabilidad: {prob_win:.1%} (Score: {prob_win:.2f})")
+                
                 conf_mult = 1.0
                 if is_win:
-                    if prob_win > 0.85: conf_mult *= 1.5 
-                    elif prob_win > 0.70: conf_mult *= 1.2
+                    if prob_win > 0.85: 
+                        conf_mult *= 1.5 
+                        log.info(f"[LIVE:{symbol}] 🚀 IA BOOST | Confianza ALTA (x1.5)")
+                    elif prob_win > 0.70: 
+                        conf_mult *= 1.2
+                        log.info(f"[LIVE:{symbol}] 📈 IA BOOST | Confianza media (x1.2)")
                 
                 if len(signal.confirmations) >= 4:
                     conf_mult *= 1.2 
@@ -435,9 +464,15 @@ def run_symbol_live(
                         )
 
             # ── 7. Escribir estado para el dashboard /live ────────────────────
+            if signal.signal == SIGNAL_BUY:
+                if signal.is_ml_blocked: last_action = "Bloqueado por IA (RF/Neural)"
+                elif signal.is_quality_blocked: last_action = "Filtro de Calidad"
+                else: last_action = "EJECUTANDO ÓRDEN"
+
             _write_live_state(
                 symbol, session_num, iteration, account,
-                broker, position, signal, "running",
+                broker, position, signal, "running", nf.get_stats(),
+                last_action=last_action
             )
 
             # ── 8. Dormir 60s entre scans (mercado real) ──────────────────────
@@ -496,10 +531,20 @@ def run_symbol_live(
 
 
 def _smart_sleep(seconds: int, stop_event: threading.Event = None):
-    """Sleep interrumpible: sale si stop_event es seteado."""
-    for _ in range(seconds):
+    """Sleep interrumpible: sale si stop_event es seteado o si se recibe live_stop."""
+    from shared.utils.market_hours import _is_mock_time_active
+    
+    # ACELERACIÓN MOCK: Si es un Replay/Test Nocturno (1s real = 1m clock), dormimos solo 1s
+    if _is_mock_time_active() and seconds > 1:
+        seconds = 1
+        
+    for i in range(seconds):
         if stop_event and stop_event.is_set():
             return
+        # Verificar comandos cada 5 segundos para no saturar I/O
+        if i % 5 == 0:
+            if _read_live_cmd("live_stop", False):
+                return
         time.sleep(1)
 
 
@@ -512,8 +557,11 @@ def _write_live_state(
     position,
     signal,
     status: str = "running",
+    nf_stats: dict | None = None,
+    last_action: str = ""
 ):
     """Escribe en state_live.json sin tocar state_sim.json."""
+    from shared.utils.market_hours import now_nyc
     try:
         pos_dict = None
         if position:
@@ -526,7 +574,6 @@ def _write_live_state(
             }
 
         stats = broker.stats
-
         state_writer.update_state(
             mode="LIVE_PAPER",
             symbol=symbol,
@@ -555,8 +602,16 @@ def _write_live_state(
             total_slippage=getattr(stats, 'total_slippage', 0.0),
             position=pos_dict,
             status=status,
+            model_accuracy=nf_stats.get("model_accuracy") if nf_stats else None,
+            total_samples=nf_stats.get("total_samples") if nf_stats else None,
             regime=getattr(signal, "regime", "NEUTRAL") if signal else "NEUTRAL",
             blocks=signal.blocks if signal else [],
+            is_ml_blocked=getattr(signal, "is_ml_blocked", False) if signal else False,
+            is_quality_blocked=getattr(signal, "is_quality_blocked", False) if signal else False,
+            last_action=last_action,
+            mock_time=now_nyc().strftime("%Y-%m-%d %H:%M:%S") if 'now_nyc' in locals() else "SCOPING_ERROR"
         )
     except Exception as e:
-        log.debug(f"[LIVE:{symbol}] _write_live_state error: {e}")
+        log.error(f"[LIVE:{symbol}] _write_live_state error: {e}")
+        import traceback
+        log.error(traceback.format_exc())

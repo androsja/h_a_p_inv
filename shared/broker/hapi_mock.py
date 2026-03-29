@@ -223,6 +223,20 @@ class HapiMock(BrokerInterface):
         )
         return fill_price
 
+    def get_bars_df(self, symbol: str, limit: int = 220) -> pd.DataFrame:
+        """
+        Retorna las últimas `limit` velas desde el replay.
+        Mismo comportamiento que AlpacaPaperBroker pero usando datos históricos.
+        """
+        return self._replay.current_slice(limit)
+
+    def get_bars_df(self, symbol: str, limit: int = 220) -> pd.DataFrame:
+        """
+        Retorna las últimas `limit` velas desde el replay.
+        Mismo comportamiento que AlpacaPaperBroker pero usando datos históricos.
+        """
+        return self._replay.current_slice(limit)
+
     def get_history_slice(self, window: int = 220) -> pd.DataFrame:
         """Retorna las últimas `window` velas para el cálculo de indicadores.
         220 = EMA 200 + 20 de margen para estabilizar los cálculos."""

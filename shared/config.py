@@ -66,8 +66,8 @@ DATA_PERIOD    = "180d" # 180 días de historial (6 meses) para entrenar a la IA
 # Hiper-Agresivo V3: Expandimos la ventana de 2 a 4 horas.
 TRADING_OPEN_HOUR   = 9    # Hora de apertura (NY)
 TRADING_OPEN_MIN    = 30
-TRADING_CLOSE_HOUR  = 13   # Hora de cierre de ventana
-TRADING_CLOSE_MIN   = 30
+TRADING_CLOSE_HOUR  = 16   # Hora de cierre de ventana (4:00 PM ET)
+TRADING_CLOSE_MIN   = 0
 
 # ─── Archivos de datos ──────────────────────────────────────────────────────
 ASSETS_FILE      = BASE_DIR / "assets.json"

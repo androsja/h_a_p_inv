@@ -171,7 +171,7 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
 
 def update_state(
     symbol: str,
-    mode: str = "SIMULATED",
+    mode: str | None = None,
     session: int = 0,
     iteration: int = 0,
     bid: float = 0.0,
@@ -222,6 +222,10 @@ def update_state(
     ai_expected_down: float = 0.0,
     model_accuracy: float | None = None,
     total_samples: int | None = None,
+    is_ml_blocked: bool = False,
+    is_quality_blocked: bool = False,
+    last_action: str = "",
+    mock_time: str = "",  # Reloj simulado para modo Replay
     **kwargs
 ) -> None:
     global _symbol_states, _trades
@@ -248,6 +252,15 @@ def update_state(
     if total_samples is not None:
         _global_total_samples = total_samples  # Mantener global para compatibilidad
         _symbol_model_stats[symbol]["total_samples"] = total_samples
+    # Determinar el modo: Preservar el existente si el nuevo es None
+    # Si es la primera vez que vemos el símbolo y estamos en live, default a LIVE_PAPER
+    current_mode = "SIMULATED"
+    if symbol in _symbol_states:
+        current_mode = _symbol_states[symbol].mode
+    elif _state_path and "state_live.json" in str(_state_path):
+        current_mode = "LIVE_PAPER"
+    
+    final_mode = mode if mode is not None else current_mode
 
     # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
     # Estos valores son los que el Dashboard muestra en la franja superior
@@ -271,7 +284,7 @@ def update_state(
     ts_gross_loss += gross_loss
 
     new_s = BotState(
-        mode=mode,
+        mode=final_mode,
         symbol=symbol,
         session=session,
         iteration=iteration,
@@ -320,12 +333,16 @@ def update_state(
         sim_start=sim_start,
         sim_end=sim_end,
         sim_duration=sim_duration,
+        mock_time=mock_time,
         ai_win_prob=ai_win_prob,
         ai_recommendation=ai_recommendation,
         ai_expected_up=ai_expected_up,
         ai_expected_down=ai_expected_down,
         model_accuracy=_symbol_model_stats.get(symbol, {}).get("model_accuracy", 0.0),
         total_samples=_symbol_model_stats.get(symbol, {}).get("total_samples", 0),
+        is_ml_blocked=is_ml_blocked,
+        is_quality_blocked=is_quality_blocked,
+        last_action=last_action
     )
     
     with _state_lock:
@@ -362,5 +379,6 @@ def _flush() -> None:
         tmp = _state_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(output, indent=2, default=str))
         tmp.replace(_state_path)
-    except Exception:
-        pass
+    except Exception as e:
+        from shared.utils.logger import log
+        log.error(f"Error flushing state: {e}")

@@ -300,22 +300,26 @@ class SimulationRunner:
 
     def _check_live_paper(self, args):
         is_lp = False
-        force_symbols = []
         try:
             if config.COMMAND_FILE.exists():
                 with open(config.COMMAND_FILE) as f:
                     c = json.load(f)
                     is_lp = c.get("force_paper_trading", False)
-                    force_symbols = c.get("force_symbols", [])
         except: pass
         
-        if is_lp and force_symbols:
-            log.info(f"🚀 Modo Live Paper detectado ({len(force_symbols)} símbolos).")
-            try:
-                launch_parallel_bots(args, force_symbols, self.session_num, self.run_bot_logic, self.init_broker, save_simulation_checkpoint)
-            except SessionInterrupted:
-                log.info("📢 Live Paper interrumpido por comando global.")
-            return True
+        if is_lp:
+            # SINCRO: En lugar de usar force_symbols de command.json (fuente secundaria),
+            # usamos get_symbols() que lee assets.json (fuente única de verdad del Gestor).
+            from shared.data.market_data import get_symbols
+            active_symbols = get_symbols()
+            
+            if active_symbols:
+                log.info(f"🚀 Modo Live Paper detectado ({len(active_symbols)} símbolos desde Gestor).")
+                try:
+                    launch_parallel_bots(args, active_symbols, self.session_num, self.run_bot_logic, self.init_broker, save_simulation_checkpoint)
+                except SessionInterrupted:
+                    log.info("📢 Live Paper interrumpido por comando global.")
+                return True
         return False
 
     def _run_single_session(self, args):

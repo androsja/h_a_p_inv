@@ -131,55 +131,67 @@ async def toggle_symbol(req: ToggleRequest):
 
 
 @router.get("/neural_stats")
-async def get_neural_stats():
-    """Estadísticas de la Red Neuronal MLP adaptativa."""
+async def get_neural_stats(symbol: str = None, mode: str = "sim"):
+    """
+    Estadísticas de la Red Neuronal MLP adaptativa.
+    Soporta 'symbol' para métricas específicas y 'mode' (sim/live).
+    """
     try:
-        from shared.config import STATE_FILE_SIM
+        from shared.config import STATE_FILE_SIM, STATE_FILE_LIVE
         import json
 
+        target_file = STATE_FILE_SIM if mode == "sim" else STATE_FILE_LIVE
+        
         n, wins, losses = 0, 0, 0
         acc = 0.0
-        mode = "cold-start"
+        mode_str = "cold-start"
 
-        if STATE_FILE_SIM.exists():
+        if target_file.exists():
             try:
-                with open(STATE_FILE_SIM, "r", encoding="utf-8") as f:
+                with open(target_file, "r", encoding="utf-8") as f:
                     state_data = json.load(f)
-                    # El BotState ahora inyecta estas métricas globales en cada símbolo
-                    # Intentamos leer de '_main' o de '─' o del primer símbolo disponible
-                    global_state = state_data.get("_main") or state_data.get("─") or next(iter(state_data.values()), {})
                     
-                    n = global_state.get("total_samples", 0)
-                    acc = global_state.get("model_accuracy", 0.0) / 100.0 # Convertir de % a decimal si es necesario
-                    # Pero el backend ya lo guarda redondado en %. Vamos a verificar.
-                    # En state_writer puse: d["model_accuracy"] = _global_model_accuracy
-                    # Y _global_model_accuracy viene de nf.get_stats()["model_accuracy"]
-                    # Y NeuralFilter.get_stats() hace: round(acc * 100, 1)
-                    # Así que 'acc' en el JSON ya es un porcentaje (ej: 68.7).
-                    
-                    # Re-leemos para estar seguros de la escala
-                    if acc > 1.0: 
-                        # Ya es porcentaje
-                        pass
+                    # Intentamos buscar el estado del símbolo específico, o _main como fallback
+                    symbol_state = {}
+                    if symbol and symbol in state_data:
+                        symbol_state = state_data[symbol]
                     else:
-                        # Convertir a porcentaje para el dashboard
+                        # Buscamos _main, ─ o el primer símbolo disponible con datos
+                        symbol_state = state_data.get("_main") or state_data.get("─")
+                        if not symbol_state:
+                            # Evitar StopIteration si dict está vacío
+                            for k, v in state_data.items():
+                                if isinstance(v, dict) and "symbol" in v:
+                                    symbol_state = v
+                                    break
+                        if not symbol_state:
+                            symbol_state = {}
+                    
+                    n = symbol_state.get("total_samples", 0)
+                    acc = symbol_state.get("model_accuracy", 0.0)
+                    
+                    # Normalizar escala de accuracy (esperamos %)
+                    if 0 < acc <= 1.0:
                         acc = acc * 100.0
 
-                    wins = global_state.get("winning_trades", 0) # Esto es del símbolo, no necesariamente global de IA
-                    # Para simplificar, si n > 0 y acc > 0, asumimos MLP
-                    if n >= 50: # Mínimo de muestras
-                        mode = "MLP"
+                    # trades ganadores/perdedores aproximados basados en accuracy del modelo
+                    wins = int(n * (acc / 100.0)) if n > 0 else 0
+                    losses = n - wins
+                    
+                    if n >= 50:
+                        mode_str = "MLP"
             except Exception:
                 pass
 
         return {
             "status": "ok",
+            "symbol": symbol,
             "total_samples": n,
-            "wins": int(n * (acc / 100.0)) if n > 0 else 0,
-            "losses": int(n * (1.0 - acc / 100.0)) if n > 0 else 0,
+            "wins": wins,
+            "losses": losses,
             "win_rate_hist": round(acc, 1),
             "model_accuracy": round(acc, 1),
-            "mode": mode,
+            "mode": mode_str,
             "threshold": 0.55,
         }
     except Exception as e:
@@ -279,6 +291,13 @@ async def live_alpaca_start(req: LiveAlpacaStartRequest):
                 data_cmd = json.load(f)
         data_cmd["live_start"] = True
         data_cmd["live_stop"] = False
+        
+        # Resetear ancla de tiempo y estado previo
+        try:
+            config.MOCK_ANCHOR_FILE.unlink(missing_ok=True)
+            config.STATE_FILE_LIVE.unlink(missing_ok=True)
+        except Exception: pass
+
         with open(COMMAND_FILE, "w") as f:
             json.dump(data_cmd, f)
 
@@ -296,6 +315,13 @@ async def live_alpaca_stop():
                 data = json.load(f)
         data["live_stop"] = True
         data["live_start"] = False
+        
+        # Cleanup inmediato para la UI y reset de reloj
+        try:
+            config.MOCK_ANCHOR_FILE.unlink(missing_ok=True)
+            config.STATE_FILE_LIVE.unlink(missing_ok=True)
+        except Exception: pass
+
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         return {"status": "success", "message": "Alpaca Paper detenido."}

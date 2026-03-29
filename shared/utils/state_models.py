@@ -91,6 +91,10 @@ class BotState:
     sim_start: str = ""
     sim_end:   str = ""
     sim_duration: float = 0.0
+    mock_time: str = ""  # Reloj simulado para modo Replay
+
+    mock_time: str = ""  # Reloj simulado para modo Replay
+
 
     # 🧠 Información de la IA Asesora
     ai_win_prob: float = 0.0
@@ -99,4 +103,7 @@ class BotState:
     ai_expected_down: float = 0.0
     model_accuracy: float = 0.0
     total_samples:  int = 0
+    is_ml_blocked: bool = False
+    is_quality_blocked: bool = False
+    last_action: str = ""
 

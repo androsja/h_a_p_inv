@@ -149,4 +149,19 @@ class LivePaperReplay:
 
     def current_slice(self, window: int = 50) -> pd.DataFrame:
         """Devuelve las últimas `window` velas."""
+        from shared.utils.market_hours import _is_mock_time_active, now_nyc
+        import pytz
+
+        is_mock = _is_mock_time_active()
+
+        if not is_mock:
+            now = time.time()
+            if (now - self._last_download_time) > 30:
+                self.full_df = download_bars(self.symbol, force_refresh=True)
+                self._last_download_time = now
+            self.df = self.full_df.copy()
+        else:
+            current_mock_time = now_nyc().astimezone(pytz.UTC)
+            self.df = self.full_df[self.full_df.index <= current_mock_time].copy()
+
         return self.df.tail(window).copy()

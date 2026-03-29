@@ -41,6 +41,7 @@ class FreezeRequest(BaseModel):
 class PaperTradeRequest(BaseModel):
     symbols: str  # Comma separated: "TSLA,AAPL,NVDA"
     mockTime: bool = False
+    sim_start_date: str | None = None
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -85,8 +86,6 @@ async def reset_all(req: ResetRequest = None):
 
         data["reset_all"] = True
         data["force_paper_trading"] = False
-        data["force_symbols"] = []
-        data["force_symbol"] = "AUTO"
 
         if req and req.sim_start_date:
             data["sim_start_date"] = req.sim_start_date
@@ -284,9 +283,17 @@ async def paper_trade_start(req: PaperTradeRequest):
             return {"status": "error", "message": "No se proporcionaron símbolos válidos."}
         
         data["force_paper_trading"] = True
-        data["force_symbols"] = symbol_list
         data["mock_time_930"] = req.mockTime
+        data["sim_start_date"] = req.sim_start_date
+        # Router Dinámico: Si hay fecha histórica, instanciar offline HapiMock. Si no, API AlpacaPaperBroker.
+        data["live_mode"] = "DEMO" if req.mockTime else "PAPER"
+        data["live_start"] = True
+        data["live_stop"] = False
         
+        try:
+            config.MOCK_ANCHOR_FILE.unlink(missing_ok=True)
+        except Exception: pass
+
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
         return {"status": "success", "message": f"Iniciando Live Paper con: {', '.join(symbol_list)}."}
@@ -302,11 +309,25 @@ async def paper_trade_stop():
             with open(COMMAND_FILE) as f:
                 data = json.load(f)
         data["force_paper_trading"] = False
-        data["force_symbols"] = []
-        data["force_symbol"] = "AUTO"
+        data["live_stop"] = True
         data["reset_all"] = True
+        
+        # Eliminar el ancla antigua de tiempo para Forzar el reloj a iniciar desde cero
+        if config.MOCK_ANCHOR_FILE.exists():
+            try:
+                config.MOCK_ANCHOR_FILE.unlink()
+            except Exception: pass
+
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
+            
+        # Elimina el archivo de estado de inmediato. 
+        # Esto hace que el endpoint /api/live_alpaca_status devuelva is_running=False instantáneamente,
+        # evitando que la interfaz espere inútilmente hasta 10 segundos recargando.
+        if config.STATE_FILE_LIVE.exists():
+            try:
+                config.STATE_FILE_LIVE.unlink()
+            except Exception: pass
         return {"status": "success", "message": "Live Paper Trading detenido. Volviendo a la Simulación Global."}
     except Exception as e:
         return {"status": "error", "message": str(e)}

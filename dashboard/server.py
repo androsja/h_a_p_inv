@@ -107,38 +107,39 @@ def read_state(mode: str = "sim") -> dict:
     return state
 
 
-def read_last_logs(n: int = 1000) -> list[str]:
-    """Lee las últimas n líneas del log principal. Filtra líneas HTML de error."""
-    HTML_NOISE = ("<html>", "<head>", "<body>", "</html>", "</head>", "</body>",
-                  "<center>", "</center>", "<hr>", "<h1>", "nginx", "<!DOCTYPE")
+def read_last_logs(n: int = 200) -> list[str]:
+    """Lee las últimas n líneas de los logs de forma eficiente."""
+    import os
+    
+    def tail(filename, n):
+        """Lee las últimas n líneas sin cargar todo el archivo."""
+        try:
+            size = os.path.getsize(filename)
+            if size == 0: return []
+            with open(filename, "rb") as f:
+                if size > 1024 * 100: # Si es > 100KB, saltamos al final
+                    f.seek(-1024 * 100, os.SEEK_END)
+                lines = f.read().decode("utf-8", errors="replace").splitlines()
+                return lines[-n:]
+        except Exception:
+            return []
 
-    def _is_valid_log_line(line: str) -> bool:
-        s = line.strip()
-        if not s: return False
-        sl = s.lower()
-        return not any(token.lower() in sl for token in HTML_NOISE)
+    # Solo leer el log principal y, si acaso, el del símbolo más reciente
+    # Para evitar lentitud, NO iteramos por los 200 archivos historial_*.log
+    all_lines = tail(str(LOG_FILE), n)
+    
+    if not all_lines:
+        return ["(Esperando logs del bot...)"]
 
-    all_lines = []
-    try:
-        if LOG_FILE.exists():
-            with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
-                all_lines.extend(f.readlines())
-
-        log_dir = LOG_FILE.parent
-        for symbol_log in log_dir.glob("historial_*.log"):
-            try:
-                with open(symbol_log, "r", encoding="utf-8", errors="replace") as f:
-                    all_lines.extend(f.readlines())
-            except: pass
-
-        if not all_lines:
-            return ["(Esperando logs del bot...)"]
-
-        all_lines.sort()
-        return [l.strip() for l in all_lines[-n * 3:] if _is_valid_log_line(l)][-n:]
-
-    except Exception as e:
-        return [f"Error leyendo logs: {str(e)}"]
+    # Filtrar ruido HTML si lo hay
+    HTML_NOISE = ("<html>", "<head>", "<body>", "nginx", "<!DOCTYPE")
+    filtered = []
+    for l in all_lines:
+        sl = l.lower()
+        if not any(token in sl for token in HTML_NOISE):
+            filtered.append(l.strip())
+            
+    return filtered[-n:]
 
 # ─── Broadcaster en background ────────────────────────────────────────────────
 async def state_broadcaster():

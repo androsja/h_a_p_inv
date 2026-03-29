@@ -18,8 +18,8 @@ TZ_NYC      = pytz.timezone("America/New_York")
 TZ_COLOMBIA = pytz.timezone("America/Bogota")
 
 # ─── Horario NYSE ────────────────────────────────────────────────────────────
-MARKET_OPEN  = time(9, 30)    # 9:30 AM ET
-MARKET_CLOSE = time(16, 0)    # 4:00 PM ET
+MARKET_OPEN  = time(config.TRADING_OPEN_HOUR, config.TRADING_OPEN_MIN)
+MARKET_CLOSE = time(config.TRADING_CLOSE_HOUR, config.TRADING_CLOSE_MIN)
 
 # Días de la semana que opera NYSE (0=Lunes … 4=Viernes)
 MARKET_WEEKDAYS = set(range(5))
@@ -43,6 +43,18 @@ def now_nyc() -> datetime:
     """Devuelve la hora actual en Nueva York. Si el Mock Time está activado y el mercado cerrado, simula las 9:30 AM."""
     real_nyc_now = datetime.now(TZ_NYC)
     
+    # 0. Leer configuración de comandos
+    cmd_config = {}
+    try:
+        import json
+        cmd_file = config.COMMAND_FILE
+        if cmd_file.exists():
+            with open(cmd_file, "r") as f:
+                cmd_config = json.load(f)
+    except: pass
+    
+    is_mock_active = cmd_config.get("mock_time_930", False)
+    
     # 1. Determinar si el mercado MUNDIAL REAL está abierto en este momento
     is_real_market_open = (
         real_nyc_now.weekday() in MARKET_WEEKDAYS and 
@@ -50,35 +62,72 @@ def now_nyc() -> datetime:
     )
     
     # 2. Si NO está abierto pero el usuario activó Test Nocturno, engañamos al bot
-    if not is_real_market_open and _is_mock_time_active():
-        import time, json
-        from pathlib import Path
+    if not is_real_market_open and is_mock_active:
+        import time
+        from shared.utils.logger import log
         
-        # Encontrar el día laborable más cercano para el Mock
+        # ── CONFIGURACIÓN DE FECHA DE REPLAY ──
+        # Intentar leer fecha personalizada desde command.json
         spoof_day = real_nyc_now
-        if spoof_day.weekday() not in MARKET_WEEKDAYS:
-            while spoof_day.weekday() not in MARKET_WEEKDAYS:
-                spoof_day -= timedelta(days=1)
+        replay_date_str = cmd_config.get("sim_start_date")
+        
+        use_custom_time = False
+        if replay_date_str:
+            try:
+                # Convertir "YYYY-MM-DD HH:MM" a datetime en NYC
+                import pandas as pd
+                spoof_day = pd.to_datetime(replay_date_str).tz_localize(TZ_NYC)
+                use_custom_time = True
+                # log.debug(f"MockTime | Usando fecha/hora personalizada: {replay_date_str}")
+            except Exception as e:
+                log.warning(f"MockTime | Error parseando sim_start_date '{replay_date_str}': {e}. Usando fallback.")
+                replay_date_str = None
+        
+        if not replay_date_str:
+            # Fallback: Encontrar el día laborable más cercano para el Mock
+            if spoof_day.weekday() not in MARKET_WEEKDAYS:
+                while spoof_day.weekday() not in MARKET_WEEKDAYS:
+                    spoof_day -= timedelta(days=1)
                 
-        base_mock_time = spoof_day.replace(
-            hour=MARKET_OPEN.hour,
-            minute=MARKET_OPEN.minute,
-            second=1,
-            microsecond=0,
-        )
+        if use_custom_time:
+            # Si el usuario puso hora (ej 11:30), la usamos tal cual
+            base_mock_time = spoof_day
+        else:
+            # Fallback: Empezar a las 9:30:01
+            base_mock_time = spoof_day.replace(
+                hour=MARKET_OPEN.hour,
+                minute=MARKET_OPEN.minute,
+                second=1,
+                microsecond=0,
+            )
         
         # ── ACELERACIÓN DE TIEMPO (1s real = 1m mock) ──
         anchor_file = config.MOCK_ANCHOR_FILE
         try:
             current_real_timestamp = time.time()
-            if not anchor_file.exists():
+            
+            # Si el archivo existe, verificamos si es para la MISMA fecha de replay
+            should_reset = not anchor_file.exists()
+            anchor_data = {}
+            if anchor_file.exists():
+                try:
+                    with open(anchor_file, "r") as f:
+                        anchor_data = json.load(f)
+                    if anchor_data.get("replay_date") != replay_date_str:
+                        log.info(f"MockTime | Detectado cambio de fecha ({anchor_data.get('replay_date')} -> {replay_date_str}). Reiniciando ancla.")
+                        should_reset = True
+                except:
+                    should_reset = True
+
+            if should_reset:
                 with open(anchor_file, "w") as f:
-                    json.dump({"start_time": current_real_timestamp}, f)
+                    json.dump({
+                        "start_time": current_real_timestamp,
+                        "replay_date": replay_date_str
+                    }, f)
                 elapsed_seconds = 0
             else:
-                with open(anchor_file, "r") as f:
-                    data = json.load(f)
-                elapsed_seconds = max(0, current_real_timestamp - data.get("start_time", current_real_timestamp))
+                elapsed_seconds = max(0.0, float(current_real_timestamp - anchor_data.get("start_time", current_real_timestamp)))
                 
             # Por cada 1 segundo real que pasa, sumamos 60 segundos (1 minuto) al reloj Mock
             simulated_offset_seconds = elapsed_seconds * 60
@@ -90,7 +139,8 @@ def now_nyc() -> datetime:
                 return close_mock_time
                 
             return advanced_mock_time
-        except Exception:
+        except Exception as e:
+            log.error(f"MockTime | Error en cálculo de tiempo acelerado: {e}")
             return base_mock_time
         
     return real_nyc_now

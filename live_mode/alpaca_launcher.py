@@ -39,7 +39,7 @@ def get_active_symbols() -> list[str]:
 
 from shared import config
 
-def launch(api_key: str, secret_key: str, initial_cash: float = config.INITIAL_CASH_LIVE):
+def launch(api_key: str, secret_key: str, initial_cash: float = config.INITIAL_CASH_LIVE, live_mode_type: str = "PAPER"):
     """
     Lanza hilos de trading en vivo para todos los símbolos activos.
     Si ya hay hilos corriendo, los detiene primero.
@@ -78,6 +78,7 @@ def launch(api_key: str, secret_key: str, initial_cash: float = config.INITIAL_C
                 "initial_cash": initial_cash,
                 "stop_event":   stop_ev,
                 "session_num":  i + 1,
+                "live_mode_type": live_mode_type,
             },
             name=f"live_{symbol}",
             daemon=True,
@@ -131,7 +132,8 @@ def watch_commands():
 
                 if cmds.get("live_start"):
                     log.info("[AlpacaLauncher] 📥 Comando live_start recibido")
-                    launch(api_key, secret_key)
+                    mode = cmds.get("live_mode", "PAPER")
+                    launch(api_key, secret_key, live_mode_type=mode)
                     # Limpiar flag
                     cmds["live_start"] = False
                     with open(config.COMMAND_FILE, "w") as f:

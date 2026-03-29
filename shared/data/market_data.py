@@ -202,11 +202,7 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             log.error(f"data | {symbol} | Error Alpaca: {exc_msg}")
             raise
 
-    # 2. Recorte Dinámico (Modo Mock Time)
-    if _is_mock_time_active():
-        current_mock_time = now_nyc().astimezone(pytz.UTC)
-        df = df[df.index <= current_mock_time].copy()
-        
+    # 2. (El Recorte Dinámico fue eliminado. LivePaperReplay y MarketReplay ya manejan el flujo temporal independientemente).
     return df
 
 

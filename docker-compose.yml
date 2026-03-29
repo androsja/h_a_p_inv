@@ -140,6 +140,7 @@ services:
       - ./logs:/app/logs
       - ./shared:/app/shared
       - ./shared/assets_live.json:/app/assets_live.json
+      - ./assets.json:/app/assets.json
     deploy:
       resources:
         limits:

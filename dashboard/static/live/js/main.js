@@ -3,12 +3,9 @@
 // ═══════════════════════════════════════════════════════
 // RELOJ
 // ═══════════════════════════════════════════════════════
-setInterval(() => {
-    const clock = document.getElementById('clock');
-    if (clock) {
-        clock.textContent = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
-    }
-}, 1000);
+// ═══════════════════════════════════════════════════════
+// El reloj secundario (local) fue eliminado a petición del usuario.
+// ═══════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════
 // SISTEMA DE PESTAÑAS
@@ -42,6 +39,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 let selectedSymbols = [];
 let suggestedSymbols = [];
 let focusSymbol = null; // Símbolo que el usuario está viendo actualmente
+let currentSymbol = null; // Símbolo para estadísticas MLP
+let fullState = null;     // Guardar el último estado completo del bot
 let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
 function toggleSymbolModal() {
@@ -368,31 +367,7 @@ async function fetchConfig() {
 // Fetch config once on load
 fetchConfig();
 
-async function loadNeuralStats() {
-    try {
-        const res = await fetch('/api/neural_stats');
-        const d = await res.json();
-        const modeColors = { 'MLP': '#03a9f4', 'cold-start': '#ff9800', 'unavailable': '#888' };
-        const modeIcons = { 'MLP': '🟢 MLP Activo', 'cold-start': '🟡 Cold-Start (heurístico)', 'unavailable': '⚠️ No disponible' };
-        const mode = d.mode || 'unavailable';
-        const el = (id) => document.getElementById(id);
-        if (el('neural-mode-label')) el('neural-mode-label').textContent = modeIcons[mode] || mode;
-        if (el('neural-samples')) el('neural-samples').textContent = d.total_samples ?? '─';
-        if (el('neural-accuracy')) {
-            el('neural-accuracy').textContent = d.model_accuracy > 0 ? `${d.model_accuracy}%` : '─';
-        }
-        if (el('neural-winrate')) {
-            el('neural-winrate').textContent = d.win_rate_hist > 0 ? `${d.win_rate_hist}%` : '─';
-            el('neural-winrate').style.color = (d.win_rate_hist >= 50) ? '#4caf50' : '#f44336';
-        }
-        if (el('neural-stats-card')) {
-            el('neural-stats-card').style.borderColor = modeColors[mode] + '55';
-        }
-    } catch (e) {
-        const el = document.getElementById('neural-mode-label');
-        if (el) el.textContent = '⚠️ Sin conexión al servidor';
-    }
-}
+// Global AI stats function removed as it is now symbol-specific in the table
 // ── Auto-refresh: corre loadResults cada 8s solo si el tab está visible ──
 let _resultsRefreshInterval = null;
 function _startResultsAutoRefresh() {
@@ -415,8 +390,7 @@ function _startResultsAutoRefresh() {
 // Iniciar auto-refresh al cargar la página
 _startResultsAutoRefresh();
 
-loadNeuralStats();
-setInterval(loadNeuralStats, 15000);
+// Removed redundant global AI metrics refresh calls
 
 async function loadResults() {
     try {
@@ -581,16 +555,33 @@ async function startPaperTrade() {
 
     _showConfirmModal(
         "Iniciar Live con Alpaca Paper",
-        `Se lanzará un hilo independiente analizando datos de mercado en tiempo real para <strong>${activeAssets.length} empresas</strong>.<br><br><div style="display:flex; flex-wrap:wrap; justify-content:center; gap:5px; margin: 15px 0;">${formattedBadges}</div><br><span style="font-size:12px; opacity:0.7;">(La simulación general NO será afectada).</span>`,
+        `Se lanzará un hilo independiente analizando datos de mercado en tiempo real para <strong>${activeAssets.length} empresas</strong>.<br><br>
+         <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:5px; margin: 10px 0;">${formattedBadges}</div>
+         <div style="margin-top:15px; text-align:left; background:rgba(255,171,64,0.05); border:1px solid rgba(255,171,64,0.2); padding:12px; border-radius:8px;">
+            <label style="font-size:11px; color:#ffab40; font-weight:bold; display:block; margin-bottom:5px;">⏪ REPLAY HISTÓRICO (OPCIONAL)</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="replay-datetime-input" placeholder="Opcional: Seleccionar fecha y hora..." style="background:#111; border:1px solid #333; color:white; padding:8px; border-radius:4px; font-size:13px; width:100%;">
+            </div>
+            <div style="font-size:10px; color:var(--muted); margin-top:5px; line-height:1.3;">
+                Elige fecha y hora para correr en <b>tiempo simulado (acelerado)</b>. Si dejas la fecha vacía, operará en <b>tiempo real (Live)</b>.
+            </div>
+         </div>
+         <br><span style="font-size:11px; opacity:0.6;">(La simulación general NO será afectada).</span>`,
         "Iniciar Alpaca Paper",
         async () => {
+            const dtVal = document.getElementById('replay-datetime-input').value;
+            const fullStartStr = dtVal ? dtVal : null;
+            
             _showLoadingOverlay('INICIANDO ALPACA PAPER...');
             try {
-                // Notar que la UI usaba 'live_alpaca_start', deberíamos usar 'paper_trade_start' el cual ajustamos.
                 const res = await fetch('/api/paper_trade_start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbols: symbolsList })
+                    body: JSON.stringify({ 
+                        symbols: symbolsList,
+                        mockTime: !!dtVal,
+                        sim_start_date: fullStartStr
+                    })
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
@@ -605,6 +596,16 @@ async function startPaperTrade() {
             }
         }
     );
+
+    // Initialize Flatpickr for unified datetime selection
+    flatpickr("#replay-datetime-input", {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        time_24hr: true,
+        allowInput: true,
+        defaultHour: 9,
+        defaultMinute: 30
+    });
 }
 
 
@@ -830,6 +831,94 @@ async function renderTrades(trades) {
 }
 
 // ═══════════════════════════════════════════════════════
+// TRADES SUB-ROW (expandible bajo cada símbolo)
+// ═══════════════════════════════════════════════════════
+function toggleTradesSubRow(sym) {
+    let subRow = document.getElementById(`trades-subrow-${sym}`);
+    const mainRow = document.getElementById(`current-session-row-${sym}`);
+    if (!mainRow) return;
+
+    if (subRow) {
+        // Toggle visibilidad
+        const isVisible = subRow.style.display !== 'none';
+        subRow.style.display = isVisible ? 'none' : 'table-row';
+        // Actualizar icono en el símbolo
+        const arrow = mainRow.querySelector('td:first-child span');
+        if (arrow) arrow.textContent = isVisible ? '▶' : '▼';
+        if (!isVisible) _renderTradesSubRow(sym);
+        return;
+    }
+
+    // Crear sub-fila
+    subRow = document.createElement('tr');
+    subRow.id = `trades-subrow-${sym}`;
+    subRow.style.background = 'rgba(0,0,0,0.35)';
+    mainRow.insertAdjacentElement('afterend', subRow);
+    _renderTradesSubRow(sym);
+
+    // Actualizar icono
+    const arrow = mainRow.querySelector('td:first-child span');
+    if (arrow) arrow.textContent = '▼';
+}
+
+function _renderTradesSubRow(sym) {
+    const subRow = document.getElementById(`trades-subrow-${sym}`);
+    if (!subRow) return;
+
+    // Filtrar trades del día para este símbolo
+    const now = new Date();
+    const today = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+
+    const trades = sessionTrades
+        .filter(t => t.symbol === sym && t.date && t.date.startsWith(today))
+        .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+
+    if (trades.length === 0) {
+        subRow.innerHTML = `<td colspan="11" style="padding:10px 20px; font-size:11px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
+            📭 Sin trades hoy para <strong>${sym}</strong>
+        </td>`;
+        return;
+    }
+
+    const rows = trades.map(t => {
+        const isSell = t.side === 'SELL' || t.side === 'BUY/SELL';
+        const pnl = t.pnl || 0;
+        const pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        const sideColor = t.side === 'BUY' ? '#00e676' : '#ff3d5a';
+        const price = isSell
+            ? `<span style="font-size:10px; color:var(--muted); text-decoration:line-through;">$${(t.entry_price||0).toFixed(2)}</span> → $${(t.price||0).toFixed(2)}`
+            : `$${(t.price||0).toFixed(2)}`;
+        return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); font-size:11px;">
+            <td style="padding:6px 10px 6px 30px; color:var(--muted);">${t.time || '--:--'}</td>
+            <td><span style="background:${sideColor}22; color:${sideColor}; border:1px solid ${sideColor}55; padding:2px 7px; border-radius:4px; font-weight:bold; font-size:10px;">${t.side}</span></td>
+            <td style="padding:6px 8px;">${price}</td>
+            <td style="padding:6px 8px; color:var(--muted);">${(t.qty||0).toFixed(4)} acc.</td>
+            <td style="padding:6px 8px; color:${pnlColor}; font-weight:bold;">${isSell ? (pnl>=0?'+':'')+(pnl).toFixed(2) : '─'}</td>
+            <td colspan="6" style="padding:6px 8px; color:var(--muted); font-style:italic;">${esc(t.reason || '')}</td>
+        </tr>`;
+    }).join('');
+
+    subRow.innerHTML = `<td colspan="11" style="padding:0; border-bottom:2px solid rgba(0,212,170,0.2);">
+        <table style="width:100%; border-collapse:collapse; background:rgba(0,10,20,0.4);">
+            <thead>
+                <tr style="font-size:10px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.07);">
+                    <th style="padding:5px 10px 5px 30px; text-align:left; font-weight:500;">Hora</th>
+                    <th style="padding:5px 8px; text-align:left; font-weight:500;">Lado</th>
+                    <th style="padding:5px 8px; text-align:left; font-weight:500;">Precio</th>
+                    <th style="padding:5px 8px; text-align:left; font-weight:500;">Cantidad</th>
+                    <th style="padding:5px 8px; text-align:left; font-weight:500;">PnL Neto</th>
+                    <th style="padding:5px 8px; text-align:left; font-weight:500;">Motivo</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </td>`;
+}
+
+// ═══════════════════════════════════════════════════════
 // POSICIÓN ABIERTA
 // ═══════════════════════════════════════════════════════
 function renderPosition(state) {
@@ -935,12 +1024,12 @@ function updateSymbolTabs(forceSymbols = []) {
 // ACTUALIZACIÓN PRINCIPAL
 // ═══════════════════════════════════════════════════════
 let prevBid = 0;
-let currentSymbol = null;
 
 // Seleccionador manual de symbol eliminado: la estrategia corre en estricto modo secuencial.
 
-function updateUI(fullState) {
-    if (!fullState) return;
+function updateUI(data) {
+    if (!data) return;
+    fullState = data; // Guardar globalmente para otros módulos (como Stats)
 
     // Si hay símbolos forzados, actualizar pestañas
     if (fullState.force_symbols) {
@@ -978,16 +1067,37 @@ function updateUI(fullState) {
     const liveBadge = document.getElementById('results-live-badge');
     const modeText = document.getElementById('results-mode-text');
     if (liveBadge && modeText) {
-        liveBadge.style.color = '#ff9800'; // Naranja
-        liveBadge.querySelector('span').style.background = '#ff9800';
-        modeText.textContent = 'ALPACA PAPER TRADING';
+        if (state.mock_time) {
+            liveBadge.style.color = '#03a9f4'; // Azul (Simulación/Replay)
+            liveBadge.querySelector('span').style.background = '#03a9f4';
+            modeText.textContent = 'REPLAY HISTÓRICO AI';
+        } else {
+            liveBadge.style.color = '#ff9800'; // Naranja (Live Paper)
+            liveBadge.querySelector('span').style.background = '#ff9800';
+            modeText.textContent = 'ALPACA PAPER TRADING';
+        }
     }
 
-    if (simDateDisplay && state.timestamp) {
-        try {
-            const d = new Date(state.timestamp);
-            simDateDisplay.textContent = d.toISOString().split('T')[0];
-        } catch (e) { }
+    if (state.mock_time) {
+        const [datePart, timePart] = state.mock_time.split(' ');
+        const isDone = (timePart === '16:00:00');
+
+        if (simDateDisplay) {
+            simDateDisplay.textContent = state.mock_time + (isDone ? ' (FIN)' : '');
+            simDateDisplay.style.color = isDone ? '#ff3d5a' : '#ffab40';
+            simDateDisplay.style.fontSize = '24px';
+        }
+    } else {
+        if (simDateDisplay) {
+            if (state.timestamp) {
+                try {
+                    const d = new Date(state.timestamp);
+                    simDateDisplay.textContent = d.toISOString().replace('T', ' ').split('.')[0];
+                } catch (e) { }
+            }
+            simDateDisplay.style.fontSize = ''; // Reset size
+            simDateDisplay.style.color = '';
+        }
     }
 
     // Auto-actualizar ML Dataset si hay cambio de símbolo
@@ -1078,49 +1188,85 @@ function updateUI(fullState) {
                 const grossPnlColor = grossPnl >= 0 ? 'var(--green)' : 'var(--red)';
                 const grossPnlSign = grossPnl > 0 ? '+' : '';
                 
-                // Extraer el sentimiento de las variables globales que cargamos asíncronamente
-                let sentValue = 0.0;
-                let sentColor = 'var(--muted)';
-                let sentIcon = '⚪';
-                if (window._sentimentData && window._sentimentData[sSym]) {
-                    sentValue = parseFloat(window._sentimentData[sSym].score || 0);
-                    if (sentValue >= 0.3) {
-                        sentColor = 'var(--green)';
-                        sentIcon = '🟢';
-                    } else if (sentValue <= -0.3) {
-                        sentColor = 'var(--red)';
-                        sentIcon = '🔴';
-                    }
-                }
+                // Determinar el régimen de mercado para este símbolo
+                const regimeCode = sState.regime || liveRegimes[sSym] || 'NEUTRAL';
+                const regimeBadge = buildRegimeBadge(regimeCode);
+
+                // Número de trades del día para este símbolo (del cache sessionTrades)
+                const symTodayTrades = sessionTrades.filter(t => t.symbol === sSym);
+                const tradesCount = sState.total_trades || symTodayTrades.length || 0;
+                const tradesBadge = tradesCount > 0
+                    ? `<span onclick="event.stopPropagation(); toggleTradesSubRow('${sSym}')" style="cursor:pointer; background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.35); color:var(--accent); font-size:11px; padding:2px 7px; border-radius:10px; font-weight:bold;" title="Ver trades">${tradesCount} ▼</span>`
+                    : `<span style="color:var(--muted);">0</span>`;
+
+                // Capturar sSym en closure para el onclick de la fila
+                const _symForClick = sSym;
+                currentRow.style.cursor = 'pointer';
+                currentRow.onclick = () => toggleTradesSubRow(_symForClick);
+
+                const spread = Math.abs((sState.ask || 0) - (sState.bid || 0)).toFixed(3);
+                const iteration = sState.iteration || 0;
+                const rsi = (sState.rsi || 0).toFixed(1);
 
                 currentRow.innerHTML = `
-                <td style="padding:10px; font-weight:bold; color:var(--accent2);">${sSym} 🔄</td>
-                <td style="padding:10px; color:${sentColor}; font-weight:bold;">${sentIcon} ${sentValue > 0 ? '+' : ''}${sentValue.toFixed(2)}</td>
-                <td style="padding:10px; font-weight:bold; color:var(--green);">$${(sState.bid || 0).toFixed(2)}</td>
+                <td style="padding:10px; font-weight:bold; color:var(--accent2); white-space:nowrap;">
+                    <span style="font-size:10px; color:var(--muted); margin-right:4px;">▶</span>${sSym} 🔄
+                </td>
+                <td style="padding:10px; font-weight:bold; color:var(--green);">
+                    <div>$${(sState.bid || sState.last_price || 0).toFixed(2)}</div>
+                    <div style="font-size:9px; color:var(--muted); font-weight:normal; display:flex; flex-direction:column; gap:1px;">
+                        <span>Spread: ${spread}</span>
+                        <span>EMA20: <b style="color:var(--accent2);">${(sState.ema_fast || 0).toFixed(2)}</b></span>
+                        <span>EMA200: <b style="color:var(--yellow);">${(sState.ema_200 || 0).toFixed(2)}</b></span>
+                    </div>
+                </td>
+                <td style="padding:10px; text-align:center; font-family:'JetBrains Mono', monospace; font-size:11px;">
+                    <span style="color:var(--accent); font-weight:bold;">${iteration.toLocaleString()}</span>
+                </td>
                 <td style="padding:10px; color:var(--muted);">#${sState.session || 0}</td>
-                <td style="padding:10px;">${sState.total_trades || 0}</td>
+                <td style="padding:10px;">${tradesBadge}</td>
                 <td style="padding:10px;">${(sState.win_rate || 0).toFixed(1)}%</td>
                 <td style="padding:10px; color:${grossPnlColor}; font-weight:bold;">${grossPnlSign}$${grossPnl.toFixed(2)}</td>
                 <td style="padding:10px; color:var(--red);">-$${dynamicFees.toFixed(2)}</td>
                 <td style="padding:10px; color:var(--red);">-$${dynamicSlip.toFixed(2)}</td>
                 <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${pnlSign}$${pnl.toFixed(2)}</td>
-                <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
-                    ${(() => {
-                        const blockMsg = (sState.blocks && sState.blocks.length > 0) ? sState.blocks[0] : null;
-                        if (blockMsg) {
-                            return `<span style="color:var(--yellow);">${blockMsg}</span>` +
-                                (sState.is_waiting ? ` <span style="color:var(--muted); opacity:0.6;">(Escaneo en ${sState.next_scan_in}s)</span>` : '');
-                        }
-                        if (sState.is_waiting) return `⏳ Esperando próximo escaneo (${sState.next_scan_in}s)...`;
-
-                        const sig = (sState.signal || 'HOLD').toUpperCase();
-                        if (sig === 'HOLD') {
-                            return `<span style="opacity:0.6;">📉 ESPERANDO SEÑAL</span>`;
-                        }
-                        return `<span style="color:var(--green); font-weight:bold;">🚀 SEÑAL DE ${sig}</span>`;
-                    })()}
+                <td style="padding:10px; text-align:center; font-family:'JetBrains Mono', monospace;">
+                    <span style="color:#9c27b0; font-weight:bold;">${sState.total_samples || '─'}</span>
                 </td>
-                        `;
+                <td style="padding:10px; text-align:center; font-family:'JetBrains Mono', monospace;">
+                    <span style="color:#03a9f4; font-weight:bold;">${sState.model_accuracy > 0 ? sState.model_accuracy + '%' : '─'}</span>
+                </td>
+                <td style="padding:10px; font-size:11px; color:var(--accent); font-style:italic;">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <span>RSI: <b>${rsi}</b></span>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:2px;">
+                            ${sState.model_accuracy > 0 ? '<span style="background:rgba(156,39,176,0.15); color:#ba68c8; padding:1px 4px; border-radius:3px; font-size:9px; font-style:normal; font-weight:bold;">🧠 IA ACTIVE</span>' : ''}
+                            ${sState.total_sim_trades > 0 ? '<span style="background:rgba(3,169,244,0.15); color:#4fc3f7; padding:1px 4px; border-radius:3px; font-size:9px; font-style:normal; font-weight:bold;">👻 GHOSTS</span>' : ''}
+                        </div>
+                        ${(() => {
+                            if (sState.is_ml_blocked) return `<span style="color:var(--red); font-weight:bold; font-size:10px;">🔴 BLOQUEO IA</span>`;
+                            if (sState.is_quality_blocked) return `<span style="color:var(--orange); font-weight:bold; font-size:10px;">⚠️ FILTRO CALIDAD</span>`;
+                            const blockMsg = (sState.blocks && sState.blocks.length > 0) ? sState.blocks[0] : null;
+                            if (blockMsg) return `<span style="color:var(--yellow);">${blockMsg}</span>`;
+                            
+                            // Mostrar última acción (log) si existe
+                            if (sState.last_action) {
+                                return `<span style="color:#81c784; font-size:10px; opacity:0.9;">💬 ${sState.last_action}</span>`;
+                            }
+                            
+                            if (sState.is_waiting) return `<span style="color:var(--muted);">⏳ (${sState.next_scan_in}s)</span>`;
+                            return `<span style="opacity:0.6;">ESPERANDO SEÑAL</span>`;
+                        })()}
+                    </div>
+                </td>
+                <td style="padding:10px;">${regimeBadge}</td>
+                `;
+
+                // Actualizar sub-fila de trades si ya estaba abierta
+                const existingSubRow = document.getElementById(`trades-subrow-${sSym}`);
+                if (existingSubRow && existingSubRow.style.display !== 'none') {
+                    _renderTradesSubRow(sSym);
+                }
             }
         });
     }
@@ -1407,9 +1553,8 @@ function connectWS() {
     const ws = new WebSocket(`${proto}://${location.host}/ws/live`);
 
     ws.onopen = () => {
-        document.getElementById('status-dot').classList.remove('off');
-        document.getElementById('status-text').textContent = 'Bot activo';
-        document.getElementById('status-text').style.color = 'var(--green)';
+        // El estado real lo manejará updateBotStatus periódicamente
+        updateBotStatus(); 
         setInterval(() => { if (ws.readyState === 1) ws.send('ping'); }, 20000);
     };
 
@@ -1431,7 +1576,7 @@ function connectWS() {
 
     ws.onclose = () => {
         document.getElementById('status-dot').classList.add('off');
-        document.getElementById('status-text').textContent = 'Reconectando…';
+        document.getElementById('status-text').textContent = 'Websocket Desconectado';
         document.getElementById('status-text').style.color = 'var(--muted)';
         setTimeout(connectWS, 3000);
     };
@@ -1454,6 +1599,43 @@ async function _preloadConfigAssets() {
         console.error("Error cargando configuración de activos en background:", e);
     }
 }
+
+// ── Nueva función para sincronizar el estado real del bot ──
+async function updateBotStatus() {
+    try {
+        const res = await fetch('/api/live_alpaca_status?mode=live');
+        const data = await res.json();
+        console.log("Health Check API Response:", data);
+        
+        const dot = document.getElementById('status-dot');
+        const txt = document.getElementById('status-text');
+        const btnStop = document.getElementById('btn-stop-paper');
+        const btnStart = document.getElementById('btn-start-paper');
+
+        if (data && data.running) {
+            if (dot) dot.classList.remove('off');
+            if (txt) {
+                txt.textContent = 'Bot activo';
+                txt.style.color = 'var(--green)';
+            }
+            if (btnStop) btnStop.style.display = 'flex';
+            if (btnStart) btnStart.style.display = 'none';
+        } else {
+            if (dot) dot.classList.add('off');
+            if (txt) {
+                txt.textContent = 'Bot detenido';
+                txt.style.color = 'var(--muted)';
+            }
+            if (btnStop) btnStop.style.display = 'none';
+            if (btnStart) btnStart.style.display = 'flex';
+        }
+    } catch (e) {
+        console.warn("Error consultando estado del bot:", e);
+    }
+}
+
+// Iniciar chequeo periódico (cada 5 seg)
+setInterval(updateBotStatus, 5000);
 
 _preloadConfigAssets();
 connectWS();

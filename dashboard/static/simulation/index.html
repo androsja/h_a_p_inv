@@ -1760,7 +1760,7 @@
                         title="Reiniciar sesión sin borrar memoria (Keep ML)">
                         🔄 REINICIAR
                     </button>
-                    <button onclick="resetAllData()" class="hdr-btn btn-danger"
+                    <button onclick="if(confirm('¿ESTÁS SEGURO? Esto borrará TODO el aprendizaje de la IA y el historial de trades.')) resetAllData()" class="hdr-btn btn-danger"
                         title="Borrar TODOS los datos y memoria neuronal (Wipe)">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

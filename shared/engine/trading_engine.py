@@ -125,8 +125,13 @@ class TradingEngine:
                 # 4.1 Gestión de Posiciones Fantasma (Ghost Trades)
                 if self.ghost_positions:
                     n_ghosts = len(self.ghost_positions)
-                    log.info(f"👻 GHOST MONITOR: Monitoreando {n_ghosts} oportunidad{'es' if n_ghosts > 1 else ''} en segundo plano...")
+                    # Solo loguear si hay cambio o cada 10 iteraciones para no saturar
+                    if iteration % 10 == 0:
+                        log.info(f"👻 GHOST MONITOR: Analizando {n_ghosts} 'fantasmas' activos en {self.symbol}...")
                 
+                if iteration % 20 == 0 and not self.position and not self.ghost_positions:
+                    log.info(f"💓 HEARTBEAT | {self.symbol} | Bot activo y escaneando... | RSI={signal.rsi_value:.1f}")
+
                 self._handle_ghost_exits(quote, signal)
 
                 # 5. UI Update per iteration
@@ -237,7 +242,7 @@ class TradingEngine:
 
     def _handle_entry(self, quote, signal):
         if signal.signal == SIGNAL_BUY:
-            log.info(f"[{self.symbol}] 🎯 Señal de COMPRA detectada. Protecciones: ML={getattr(signal, 'is_ml_blocked', False)}, Quality={getattr(signal, 'is_quality_blocked', False)}")
+            log.info(f"[{self.symbol}] 🎯 SEÑAL TÉCNICA detectada | RSI: {signal.rsi_value:.1f} | Conf: {len(signal.confirmations)}")
         
         # Lógica de ML y Neural Filter integrada
         conf_mult = self._calculate_confidence(signal)
@@ -325,9 +330,17 @@ class TradingEngine:
         except: prob_win = 0.5
 
         mult = 1.0
-        if prob_win > 0.85: mult *= 1.5
-        elif prob_win > 0.70: mult *= 1.2
-        elif prob_win < 0.40: mult *= 0.7
+        log.info(f"🧠 IA PREDICTION | {self.symbol} | Probabilidad de éxito: {prob_win:.1%} (Score: {prob_win:.2f})")
+        
+        if prob_win > 0.85: 
+            mult *= 1.5
+            log.info(f"🚀 IA BOOST | {self.symbol} | Confianza ALTA detected (x1.5)")
+        elif prob_win > 0.70: 
+            mult *= 1.2
+            log.info(f"📈 IA BOOST | {self.symbol} | Confianza media detected (x1.2)")
+        elif prob_win < 0.40: 
+            mult *= 0.7
+            log.warning(f"⚠️ IA CAUTION | {self.symbol} | Probabilidad baja, reduciendo exposición (x0.7)")
         
         return mult
         
