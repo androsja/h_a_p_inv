@@ -11,6 +11,7 @@ La librería pytz maneja esto automáticamente.
 
 from datetime import datetime, time, timedelta
 import pytz
+from typing import Optional
 from shared import config
 
 # ─── Zonas horarias ─────────────────────────────────────────────────────────
@@ -123,22 +124,32 @@ def now_nyc() -> datetime:
                 with open(anchor_file, "w") as f:
                     json.dump({
                         "start_time": current_real_timestamp,
+                        "simulated_start_time": base_mock_time.isoformat(),
                         "replay_date": replay_date_str
                     }, f)
                 elapsed_seconds = 0
+                effective_base_time = base_mock_time
             else:
                 elapsed_seconds = max(0.0, float(current_real_timestamp - anchor_data.get("start_time", current_real_timestamp)))
+                if "simulated_start_time" in anchor_data:
+                    import pandas as pd
+                    effective_base_time = pd.to_datetime(anchor_data["simulated_start_time"])
+                else:
+                    effective_base_time = base_mock_time
                 
             # Por cada 1 segundo real que pasa, sumamos 60 segundos (1 minuto) al reloj Mock
             simulated_offset_seconds = elapsed_seconds * 60
-            advanced_mock_time = base_mock_time + timedelta(seconds=simulated_offset_seconds)
+            advanced_mock_time = effective_base_time + timedelta(seconds=simulated_offset_seconds)
             
-            # Si se pasa del cierre (16:00), lo capamos en el cierre para que el bot termine el día gracefully
-            close_mock_time = spoof_day.replace(hour=MARKET_CLOSE.hour, minute=MARKET_CLOSE.minute, second=0, microsecond=0)
+            # Si se pasa del cierre (16:00) del día simulado actual, lo capamos
+            close_mock_time = advanced_mock_time.replace(hour=MARKET_CLOSE.hour, minute=MARKET_CLOSE.minute, second=0, microsecond=0)
+            
+            final_time = advanced_mock_time
             if advanced_mock_time > close_mock_time:
-                return close_mock_time
+                final_time = close_mock_time
                 
-            return advanced_mock_time
+            # log.debug(f"MockTime | Final: {final_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            return final_time
         except Exception as e:
             log.error(f"MockTime | Error en cálculo de tiempo acelerado: {e}")
             return base_mock_time
@@ -171,7 +182,7 @@ def is_market_open() -> bool:
     return MARKET_OPEN <= current_time < MARKET_CLOSE
 
 
-def time_until_open() -> timedelta | None:
+def time_until_open() -> Optional[timedelta]:
     """
     Calcula cuánto tiempo falta para la próxima apertura del mercado.
     Retorna None si el mercado está abierto ahora mismo.
@@ -198,8 +209,8 @@ def time_until_open() -> timedelta | None:
     return candidate - nyc_now
 
 
-def next_open_str() -> str:
-    """Retorna un string legible con la fecha/hora de la próxima apertura (hora de NYC y Colombia)."""
+def get_next_market_open() -> datetime:
+    """Calcula el objeto datetime de la próxima apertura del mercado NYSE."""
     nyc_now = now_nyc()
     candidate = nyc_now.replace(
         hour=MARKET_OPEN.hour,
@@ -207,11 +218,17 @@ def next_open_str() -> str:
         second=0,
         microsecond=0,
     )
+    # Si ya pasó la apertura de hoy o no es día hábil, buscar el siguiente
     if nyc_now >= candidate or nyc_now.weekday() not in MARKET_WEEKDAYS:
         candidate += timedelta(days=1)
         while candidate.weekday() not in MARKET_WEEKDAYS:
             candidate += timedelta(days=1)
+    return candidate
 
+
+def next_open_str() -> str:
+    """Retorna un string legible con la fecha/hora de la próxima apertura (hora de NYC y Colombia)."""
+    candidate = get_next_market_open()
     col_time = candidate.astimezone(TZ_COLOMBIA)
     return (
         f"{candidate.strftime('%Y-%m-%d %H:%M')} ET  "

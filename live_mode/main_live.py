@@ -12,7 +12,7 @@ from shared.broker.interface import BrokerInterface
 from shared.broker.hapi_live import HapiLive
 from shared.broker.hapi_mock import HapiMock
 from shared.utils.market_hours import market_status_str
-from shared.engine.runner import SimulationRunner
+from live_mode.runner_live import LiveRunner
 from shared.engine.trading_engine import TradingEngine
 
 BANNER = """
@@ -86,7 +86,7 @@ def main():
     log.info(market_status_str())
 
     # El Runner orquestará la ejecución
-    runner = SimulationRunner(init_broker_callback, run_bot_compat)
+    runner = LiveRunner(init_broker_callback, run_bot_compat)
     
     try:
         runner.main_loop(args)

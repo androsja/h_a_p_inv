@@ -10,7 +10,7 @@ from shared import config
 from shared.utils.logger import log
 from shared.broker.interface import BrokerInterface
 from shared.broker.hapi_mock import HapiMock
-from shared.engine.runner import SimulationRunner
+from simulation_mode.runner_sim import SimulationRunner
 from shared.engine.trading_engine import TradingEngine
 from shared.engine.utils import SessionInterrupted
 
@@ -60,7 +60,7 @@ def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     return HapiMock(
         symbol=args.symbol, 
         initial_cash=args.cash, 
-        live_paper=is_live_paper, 
+        live_paper=False, 
         start_date=sim_start_date
     )
 
@@ -80,7 +80,7 @@ def main():
     set_assets_file(config.ASSETS_FILE_SIM)
     
     # El Runner se encarga de todo el ciclo de vida
-    runner = SimulationRunner(init_broker_callback, run_bot_compat)
+    runner = SimulationRunner(init_broker_callback)
     
     try:
         runner.main_loop(args)

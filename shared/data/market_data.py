@@ -148,7 +148,12 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
     if df is None or df.empty:
         log.info(f"data | {symbol} | Descargando desde Alpaca API...")
         try:
-            update_state(symbol=symbol, status="downloading")
+            # ── Calcular número total de chunks para la barra de progreso ──
+            chunk_days = 60
+            _total_chunks = max(1, int((days_to_fetch + chunk_days - 1) / chunk_days))
+            update_state(symbol=symbol, status="downloading",
+                         download_progress=0, download_symbol=symbol,
+                         download_total_chunks=_total_chunks, download_current_chunk=0)
             client = get_alpaca_client()
             val = int(config.DATA_INTERVAL.replace("m", ""))
             tf = TimeFrame(val, TimeFrameUnit.Minute)
@@ -156,10 +161,20 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
             # FETCH POR CHUNKS DE 60 DÍAS PARA EVITAR LIMITES DE LA API DE ALPACA (10,000 ROWS MAX)
             all_chunks = []
             cur_start = start_time
-            chunk_days = 60
+            _chunk_idx = 0
             
             while cur_start < end_time:
                 cur_end = min(cur_start + timedelta(days=chunk_days), end_time)
+                _chunk_idx += 1
+                _pct = min(99, int((_chunk_idx / _total_chunks) * 100))
+                chunk_label = cur_start.strftime("%Y-%m-%d")
+                update_state(symbol=symbol, status="downloading",
+                             download_progress=_pct, download_symbol=symbol,
+                             download_total_chunks=_total_chunks,
+                             download_current_chunk=_chunk_idx,
+                             download_chunk_date=chunk_label)
+                log.info(f"data | {symbol} | Chunk {_chunk_idx}/{_total_chunks} ({_pct}%) desde {chunk_label}")
+                
                 request_params = StockBarsRequest(
                     symbol_or_symbols=symbol,
                     timeframe=tf,

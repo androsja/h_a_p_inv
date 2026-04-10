@@ -1,23 +1,686 @@
 {
     "assets": [
-        { "symbol": "CVX", "enabled": true },
-        { "symbol": "CL", "enabled": true },
-        { "symbol": "C", "enabled": true },
-        { "symbol": "BTI", "enabled": true },
-        { "symbol": "BRK.B", "enabled": true },
-        { "symbol": "AXP", "enabled": true },
-        { "symbol": "AMT", "enabled": true },
-        { "symbol": "CRM", "enabled": true },
-        { "symbol": "AAPL", "enabled": true },
-        { "symbol": "MSFT", "enabled": true },
-        { "symbol": "NVDA", "enabled": true },
-        { "symbol": "PYPL", "enabled": true },
-        { "symbol": "JPM", "enabled": true },
-        { "symbol": "KO", "enabled": true },
-        { "symbol": "WMT", "enabled": true },
-        { "symbol": "NFLX", "enabled": true },
-        { "symbol": "GOOGL", "enabled": true },
-        { "symbol": "AMZN", "enabled": true },
-        { "symbol": "TSLA", "enabled": true }
+        {
+            "symbol": "SPY",
+            "enabled": false,
+            "type": "index"
+        },
+        {
+            "symbol": "QQQ",
+            "enabled": false,
+            "type": "index"
+        },
+        {
+            "symbol": "DIA",
+            "enabled": false,
+            "type": "index"
+        },
+        {
+            "symbol": "AAPL",
+            "enabled": false
+        },
+        {
+            "symbol": "ABBV",
+            "enabled": false
+        },
+        {
+            "symbol": "ABNB",
+            "enabled": false
+        },
+        {
+            "symbol": "ACN",
+            "enabled": false
+        },
+        {
+            "symbol": "ADBE",
+            "enabled": false
+        },
+        {
+            "symbol": "ADI",
+            "enabled": false
+        },
+        {
+            "symbol": "AFRM",
+            "enabled": false
+        },
+        {
+            "symbol": "AI",
+            "enabled": false
+        },
+        {
+            "symbol": "AMAT",
+            "enabled": false
+        },
+        {
+            "symbol": "AMD",
+            "enabled": true
+        },
+        {
+            "symbol": "AMGN",
+            "enabled": false
+        },
+        {
+            "symbol": "AMT",
+            "enabled": false
+        },
+        {
+            "symbol": "AMZN",
+            "enabled": false
+        },
+        {
+            "symbol": "ARM",
+            "enabled": false
+        },
+        {
+            "symbol": "ASML",
+            "enabled": false
+        },
+        {
+            "symbol": "AVGO",
+            "enabled": false
+        },
+        {
+            "symbol": "AXP",
+            "enabled": false
+        },
+        {
+            "symbol": "BA",
+            "enabled": false
+        },
+        {
+            "symbol": "BAC",
+            "enabled": false
+        },
+        {
+            "symbol": "BILL",
+            "enabled": false
+        },
+        {
+            "symbol": "BRK.B",
+            "enabled": false
+        },
+        {
+            "symbol": "BTI",
+            "enabled": false
+        },
+        {
+            "symbol": "C",
+            "enabled": false
+        },
+        {
+            "symbol": "CAT",
+            "enabled": false
+        },
+        {
+            "symbol": "CDNS",
+            "enabled": false
+        },
+        {
+            "symbol": "CELH",
+            "enabled": false
+        },
+        {
+            "symbol": "CL",
+            "enabled": false
+        },
+        {
+            "symbol": "COIN",
+            "enabled": false
+        },
+        {
+            "symbol": "COST",
+            "enabled": false
+        },
+        {
+            "symbol": "CRM",
+            "enabled": false
+        },
+        {
+            "symbol": "CRWD",
+            "enabled": false
+        },
+        {
+            "symbol": "CSCO",
+            "enabled": false
+        },
+        {
+            "symbol": "CVS",
+            "enabled": false
+        },
+        {
+            "symbol": "CVX",
+            "enabled": false
+        },
+        {
+            "symbol": "D",
+            "enabled": false
+        },
+        {
+            "symbol": "DASH",
+            "enabled": false
+        },
+        {
+            "symbol": "DDOG",
+            "enabled": false
+        },
+        {
+            "symbol": "DE",
+            "enabled": false
+        },
+        {
+            "symbol": "DHR",
+            "enabled": false
+        },
+        {
+            "symbol": "DIS",
+            "enabled": false
+        },
+        {
+            "symbol": "DOCU",
+            "enabled": false
+        },
+        {
+            "symbol": "DUK",
+            "enabled": false
+        },
+        {
+            "symbol": "FDX",
+            "enabled": false
+        },
+        {
+            "symbol": "FTNT",
+            "enabled": false
+        },
+        {
+            "symbol": "GD",
+            "enabled": false
+        },
+        {
+            "symbol": "GE",
+            "enabled": false
+        },
+        {
+            "symbol": "GIS",
+            "enabled": false
+        },
+        {
+            "symbol": "GOOGL",
+            "enabled": false
+        },
+        {
+            "symbol": "GS",
+            "enabled": false
+        },
+        {
+            "symbol": "GTLB",
+            "enabled": false
+        },
+        {
+            "symbol": "HCP",
+            "enabled": false
+        },
+        {
+            "symbol": "HD",
+            "enabled": false
+        },
+        {
+            "symbol": "HON",
+            "enabled": false
+        },
+        {
+            "symbol": "HOOD",
+            "enabled": false
+        },
+        {
+            "symbol": "HSY",
+            "enabled": false
+        },
+        {
+            "symbol": "IBM",
+            "enabled": false
+        },
+        {
+            "symbol": "INTC",
+            "enabled": false
+        },
+        {
+            "symbol": "IONQ",
+            "enabled": false
+        },
+        {
+            "symbol": "ISRG",
+            "enabled": false
+        },
+        {
+            "symbol": "JNJ",
+            "enabled": false
+        },
+        {
+            "symbol": "JPM",
+            "enabled": false
+        },
+        {
+            "symbol": "K",
+            "enabled": false
+        },
+        {
+            "symbol": "KLAC",
+            "enabled": false
+        },
+        {
+            "symbol": "KO",
+            "enabled": false
+        },
+        {
+            "symbol": "LLY",
+            "enabled": false
+        },
+        {
+            "symbol": "LMT",
+            "enabled": false
+        },
+        {
+            "symbol": "LOW",
+            "enabled": false
+        },
+        {
+            "symbol": "LRCX",
+            "enabled": false
+        },
+        {
+            "symbol": "LYFT",
+            "enabled": false
+        },
+        {
+            "symbol": "MA",
+            "enabled": false
+        },
+        {
+            "symbol": "MCD",
+            "enabled": false
+        },
+        {
+            "symbol": "MCHP",
+            "enabled": false
+        },
+        {
+            "symbol": "MDB",
+            "enabled": false
+        },
+        {
+            "symbol": "MDLZ",
+            "enabled": false
+        },
+        {
+            "symbol": "META",
+            "enabled": false
+        },
+        {
+            "symbol": "MMM",
+            "enabled": false
+        },
+        {
+            "symbol": "MNDY",
+            "enabled": false
+        },
+        {
+            "symbol": "MRK",
+            "enabled": false
+        },
+        {
+            "symbol": "MS",
+            "enabled": false
+        },
+        {
+            "symbol": "MSFT",
+            "enabled": false
+        },
+        {
+            "symbol": "MSTR",
+            "enabled": false
+        },
+        {
+            "symbol": "MU",
+            "enabled": false
+        },
+        {
+            "symbol": "NEE",
+            "enabled": false
+        },
+        {
+            "symbol": "NET",
+            "enabled": false
+        },
+        {
+            "symbol": "NFLX",
+            "enabled": false
+        },
+        {
+            "symbol": "NKE",
+            "enabled": false
+        },
+        {
+            "symbol": "NOC",
+            "enabled": false
+        },
+        {
+            "symbol": "NOW",
+            "enabled": false
+        },
+        {
+            "symbol": "NVDA",
+            "enabled": false
+        },
+        {
+            "symbol": "O",
+            "enabled": false
+        },
+        {
+            "symbol": "OPEN",
+            "enabled": false
+        },
+        {
+            "symbol": "ORCL",
+            "enabled": false
+        },
+        {
+            "symbol": "PANW",
+            "enabled": false
+        },
+        {
+            "symbol": "PEP",
+            "enabled": false
+        },
+        {
+            "symbol": "PFE",
+            "enabled": false
+        },
+        {
+            "symbol": "PG",
+            "enabled": false
+        },
+        {
+            "symbol": "PLTR",
+            "enabled": false
+        },
+        {
+            "symbol": "PM",
+            "enabled": false
+        },
+        {
+            "symbol": "PSQ",
+            "enabled": false,
+            "type": "inverted"
+        },
+        {
+            "symbol": "PYPL",
+            "enabled": false
+        },
+        {
+            "symbol": "QCOM",
+            "enabled": false
+        },
+        {
+            "symbol": "RBLX",
+            "enabled": false
+        },
+        {
+            "symbol": "ROKU",
+            "enabled": false
+        },
+        {
+            "symbol": "RTX",
+            "enabled": false
+        },
+        {
+            "symbol": "SAP",
+            "enabled": false
+        },
+        {
+            "symbol": "SBUX",
+            "enabled": false
+        },
+        {
+            "symbol": "SH",
+            "enabled": false,
+            "type": "inverted"
+        },
+        {
+            "symbol": "SHOP",
+            "enabled": false
+        },
+        {
+            "symbol": "SMCI",
+            "enabled": false
+        },
+        {
+            "symbol": "SNOW",
+            "enabled": false
+        },
+        {
+            "symbol": "SNPS",
+            "enabled": false
+        },
+        {
+            "symbol": "SO",
+            "enabled": false
+        },
+        {
+            "symbol": "SOFI",
+            "enabled": false
+        },
+        {
+            "symbol": "SPG",
+            "enabled": false
+        },
+        {
+            "symbol": "SQ",
+            "enabled": false
+        },
+        {
+            "symbol": "SQQQ",
+            "enabled": false,
+            "type": "inverted"
+        },
+        {
+            "symbol": "STZ",
+            "enabled": false
+        },
+        {
+            "symbol": "T",
+            "enabled": false
+        },
+        {
+            "symbol": "TAP",
+            "enabled": false
+        },
+        {
+            "symbol": "TGT",
+            "enabled": false
+        },
+        {
+            "symbol": "TMO",
+            "enabled": false
+        },
+        {
+            "symbol": "TSLA",
+            "enabled": false
+        },
+        {
+            "symbol": "TTD",
+            "enabled": false
+        },
+        {
+            "symbol": "TWLO",
+            "enabled": false
+        },
+        {
+            "symbol": "TXN",
+            "enabled": false
+        },
+        {
+            "symbol": "U",
+            "enabled": false
+        },
+        {
+            "symbol": "UBER",
+            "enabled": false
+        },
+        {
+            "symbol": "UNH",
+            "enabled": false
+        },
+        {
+            "symbol": "UPS",
+            "enabled": false
+        },
+        {
+            "symbol": "V",
+            "enabled": false
+        },
+        {
+            "symbol": "VZ",
+            "enabled": false
+        },
+        {
+            "symbol": "WFC",
+            "enabled": false
+        },
+        {
+            "symbol": "WMT",
+            "enabled": false
+        },
+        {
+            "symbol": "XOM",
+            "enabled": false
+        },
+        {
+            "symbol": "ZM",
+            "enabled": false
+        },
+        {
+            "symbol": "ZS",
+            "enabled": false
+        },
+        {
+            "symbol": "ADSK",
+            "enabled": false
+        },
+        {
+            "symbol": "AIG",
+            "enabled": false
+        },
+        {
+            "symbol": "ALL",
+            "enabled": false
+        },
+        {
+            "symbol": "APA",
+            "enabled": false
+        },
+        {
+            "symbol": "APO",
+            "enabled": false
+        },
+        {
+            "symbol": "BK",
+            "enabled": false
+        },
+        {
+            "symbol": "BLK",
+            "enabled": false
+        },
+        {
+            "symbol": "BMY",
+            "enabled": false
+        },
+        {
+            "symbol": "BSX",
+            "enabled": false
+        },
+        {
+            "symbol": "BX",
+            "enabled": false
+        },
+        {
+            "symbol": "CB",
+            "enabled": false
+        },
+        {
+            "symbol": "CI",
+            "enabled": false
+        },
+        {
+            "symbol": "COP",
+            "enabled": false
+        },
+        {
+            "symbol": "DAL",
+            "enabled": false
+        },
+        {
+            "symbol": "EL",
+            "enabled": false
+        },
+        {
+            "symbol": "EOG",
+            "enabled": false
+        },
+        {
+            "symbol": "EQIX",
+            "enabled": false
+        },
+        {
+            "symbol": "ETN",
+            "enabled": false
+        },
+        {
+            "symbol": "EW",
+            "enabled": false
+        },
+        {
+            "symbol": "FIS",
+            "enabled": false
+        },
+        {
+            "symbol": "FISV",
+            "enabled": false
+        },
+        {
+            "symbol": "GILD",
+            "enabled": false
+        },
+        {
+            "symbol": "HCA",
+            "enabled": false
+        },
+        {
+            "symbol": "HUM",
+            "enabled": false
+        },
+        {
+            "symbol": "IDXX",
+            "enabled": false
+        },
+        {
+            "symbol": "ILMN",
+            "enabled": false
+        },
+        {
+            "symbol": "ITW",
+            "enabled": false
+        },
+        {
+            "symbol": "KDP",
+            "enabled": false
+        },
+        {
+            "symbol": "KMB",
+            "enabled": false
+        },
+        {
+            "symbol": "KMI",
+            "enabled": false
+        }
     ]
 }

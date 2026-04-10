@@ -21,6 +21,7 @@ import logging
 import os
 import threading
 from pathlib import Path
+from typing import Optional, Union, Tuple, List, Dict
 
 import joblib
 import numpy as np
@@ -206,8 +207,9 @@ class NeuralTradeFilter:
             n = len(self._y)
             log.info(f"🧠 [{self._symbol}] trade registrado ({'WIN' if won else 'LOSS'}). Total: {n} muestras.")
 
-            # ── Entrenar solo cada 10 trades para no bloquear el loop principal ──
-            RETRAIN_EVERY_N = 10
+            # ── Entrenar periódicamente para no bloquear el loop principal ──
+            # Un modelo Global recolecta mucha más data. Entrenar cada 50 trades transversales en lugar de 10.
+            RETRAIN_EVERY_N = 50
             if n < MIN_SAMPLES or (n % RETRAIN_EVERY_N != 0):
                 self._save()
                 return
@@ -349,12 +351,13 @@ _filter_lock = threading.Lock()
 
 
 def get_neural_filter(symbol: str = "GLOBAL") -> NeuralTradeFilter:
-    """Devuelve (o crea) la instancia del filtro neural para el símbolo dado.
+    """Devuelve la instancia ÚNICA GLOBAL del filtro neural de toda la bolsa.
     
-    Cada símbolo tiene su propio modelo aislado para evitar interferencia
-    entre activos con comportamientos de mercado distintos.
+    Se ha sustituido la arquitectura de un modelo por empresa (Especialista) 
+    por un Cerebro Macro / Sectorial para abolir el Overfitting y habilitar 
+    Transferencia de Conocimiento Cruzado entre activos.
     """
-    key = symbol.upper()
+    key = "GLOBAL"  # 🧠 Enrutamiento forzoso: Toda empresa se congrega en la misma Mente
     if key not in _filter_registry:
         with _filter_lock:
             if key not in _filter_registry:
@@ -362,7 +365,7 @@ def get_neural_filter(symbol: str = "GLOBAL") -> NeuralTradeFilter:
     return _filter_registry[key]
 
 
-def reset_neural_filter(symbol: str | None = None) -> None:
+def reset_neural_filter(symbol: Optional[str] = None) -> None:
     """🧨 Resetea el modelo de un símbolo específico o de TODOS si symbol=None."""
     global _filter_registry
     with _filter_lock:

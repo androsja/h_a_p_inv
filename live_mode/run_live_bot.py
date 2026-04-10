@@ -20,10 +20,11 @@ import threading
 import collections
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional, Union, List, Dict
 
 from shared import config
 from shared.utils.logger import log
-from shared.utils.market_hours import is_market_open, market_status_str, next_open_str, TZ_NYC, now_nyc
+from shared.utils.market_hours import is_market_open, get_next_market_open, market_status_str, next_open_str, TZ_NYC, now_nyc
 from shared.strategy.indicators import analyze, SIGNAL_BUY, SIGNAL_SELL, SIGNAL_HOLD
 from shared.strategy.risk_manager import RiskManager, AccountState, OpenPosition
 from shared.strategy.ml_predictor import ml_predictor
@@ -105,7 +106,7 @@ def run_symbol_live(
 
     account  = AccountState(total_cash=initial_cash)
     risk_mgr = RiskManager(account)
-    position: OpenPosition | None = None
+    position: Optional[OpenPosition] = None
     shadow_positions: list[OpenPosition] = []
     nf = get_neural_filter(symbol)
 
@@ -125,11 +126,33 @@ def run_symbol_live(
                 break
 
             if not is_market_open():
-                log.info(f"[LIVE:{symbol}] 🔴 Fuera de horario. Próxima apertura: {next_open_str()}")
+                next_open = get_next_market_open()
+                log.info(f"[LIVE:{symbol}] 🔴 Fuera de horario (Simulado). Próxima apertura: {next_open.strftime('%Y-%m-%d %H:%M')} ET")
+                
+                # Si estamos en modo replay (mock anchor existe), saltamos al siguiente abierto
+                # para evitar quedarnos estancados en el loop de espera.
+                if config.MOCK_ANCHOR_FILE.exists():
+                    try:
+                        with open(config.MOCK_ANCHOR_FILE, "r") as f:
+                            anchor = json.load(f)
+                        
+                        # Adelantar el ancla al próximo abierto
+                        anchor["simulated_start_time"] = next_open.isoformat()
+                        # Resetear el tiempo real para que la aceleración cuente desde ahora
+                        anchor["start_time"] = time.time()
+                        
+                        with open(config.MOCK_ANCHOR_FILE, "w") as f:
+                            json.dump(anchor, f)
+                        
+                        log.info(f"[LIVE:{symbol}] ⚡ Fast-forward: Adelantando reloj a {next_open.strftime('%Y-%m-%d %H:%M')}")
+                        continue
+                    except Exception as e:
+                        log.error(f"Error en fast-forward: {e}")
+
                 last_action = f"MARKET_CLOSED: {next_open_str()}"
                 _write_live_state(symbol, session_num, iteration, account,
                                   broker, position, None, "MARKET_CLOSED", nf.get_stats(),
-                                  last_action=last_action)
+                                  last_action=last_action, df=None)
                 _smart_sleep(120, stop_event) # Aumentado a 120s fuera de horario para reducir I/O
                 continue
 
@@ -144,7 +167,7 @@ def run_symbol_live(
                 log.warning(f"[LIVE:{symbol}] ⚠️ Error obteniendo barras: {e}. Reintentando en 30s.")
                 # Escribir estado incluso en error para actualizar el reloj mock en el dashboard
                 _write_live_state(symbol, session_num, iteration, account,
-                                  broker, position, None, f"ERROR_DATA:{str(e)[:20]}", nf.get_stats())
+                                  broker, position, None, f"ERROR_DATA:{str(e)[:20]}", nf.get_stats(), df=None)
                 _smart_sleep(30, stop_event)
                 continue
 
@@ -296,7 +319,6 @@ def run_symbol_live(
                     signal.blocks = [msg]
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
-                    # Eliminado 'continue' para proteger el pipeline de sleep/estado
                 
                 # REGLA 2: Liquidez / SLIPPAGE PREVENTIVO
                 spread = quote.ask - quote.bid
@@ -307,7 +329,6 @@ def run_symbol_live(
                     signal.signal = SIGNAL_HOLD
                     blocking_history[msg.split("(")[0].strip()] += 1
                     log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
-                    # Eliminado 'continue' para proteger el pipeline de sleep/estado
 
                 # 🧠 CONSULTAR AL MODELO DE AI
                 is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
@@ -343,7 +364,7 @@ def run_symbol_live(
                     buy_plan.block_reason = msg
                     signal.signal = SIGNAL_HOLD
                     signal.blocks = [msg]
-                    log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
+                    log.warning(f"[LIVE:{symbol}] 🎯🛑 [TRADE_AVOIDED] Oportunidad descartada por IA: {msg}")
 
                 # ─ Consultar Neural Filter (solo predict) ─
                 nf_blocked = False
@@ -376,7 +397,7 @@ def run_symbol_live(
                             buy_plan.block_reason = msg
                             signal.signal = SIGNAL_HOLD
                             signal.blocks = [msg]
-                            log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
+                            log.warning(f"[LIVE:{symbol}] 🎯🛑 [TRADE_AVOIDED] Filtro de Calidad (Neural) bloqueó entrada: {msg}")
                     except Exception as nfe:
                         log.debug(f"[LIVE:{symbol}] NF error: {nfe}")
 
@@ -406,13 +427,13 @@ def run_symbol_live(
                             shadow_pos.stop_loss = buy_plan.stop_loss
                             shadow_pos.take_profit = buy_plan.take_profit
                             shadow_pos.initial_stop = buy_plan.stop_loss
-
+ 
                         shadow_positions.append(shadow_pos)
-                        log.info(f"[LIVE:{symbol}] 🕵️ Shadow Trade iniciado para aprender de esta omisión (SL=${shadow_pos.stop_loss:.2f} TP=${shadow_pos.take_profit:.2f})")
+                        log.info(f"[LIVE:{symbol}] 🕵️ [GHOST_OPEN] Iniciando trade virtual para aprender de esta omisión (SL=${shadow_pos.stop_loss:.2f} TP=${shadow_pos.take_profit:.2f})")
 
                 if buy_plan.is_viable:
                     if conf_mult > 1.0:
-                        log.info(f"[{symbol}] 🔥 COMPRA AGRESIVA: Aumentando tamaño x{conf_mult:.2f} por alta confianza (IA={prob_win*100:.0f}%, Confluencias={len(signal.confirmations)})")
+                        log.info(f"[{symbol}] 🔥 [ORDER_SENT] Compra acelerada x{conf_mult:.2f} por alta confianza (IA={prob_win*100:.0f}%, Confluencias={len(signal.confirmations)})")
                     
                     reason_str = f"BUY: {len(signal.confirmations)} confluencias"
                     if conf_mult > 1.0:
@@ -424,6 +445,7 @@ def run_symbol_live(
                         "conf_mult": conf_mult
                     }
 
+                    log.info(f"[LIVE:{symbol}] 🚀 [ORDER_SENT] Enviando orden de compra a Alpaca @ ${quote.ask:.2f} (qty={buy_plan.qty:.4f})")
                     resp = broker.place_limit_order(
                         symbol=symbol, side="BUY",
                         limit_price=buy_plan.limit_price,
@@ -472,7 +494,9 @@ def run_symbol_live(
             _write_live_state(
                 symbol, session_num, iteration, account,
                 broker, position, signal, "running", nf.get_stats(),
-                last_action=last_action
+                last_action=last_action,
+                quote=quote,
+                df=df
             )
 
             # ── 8. Dormir 60s entre scans (mercado real) ──────────────────────
@@ -487,8 +511,7 @@ def run_symbol_live(
                 if s_exit:
                     s_net_pnl = (quote.bid - sp.entry_price) * sp.qty
                     s_won = s_net_pnl > 0
-                    log.info(f"[LIVE:{symbol}] 🧠 Shadow Trade Cerrado: {s_reason} | PnL=${s_net_pnl:+.2f} | AI aprendiendo de esta omisión...")
-                    # Alimentar a la Red Neuronal
+                    log.info(f"[LIVE:{symbol}] 🧠 [GHOST_CLOSE] Trade virtual cerrado: {s_reason} | PnL=${s_net_pnl:+.2f} | AI aprendiendo de esta omisión...")
                     try:
                         # Extraer features originales
                         ml_f = sp.entry_metadata.get("ml_features", {})
@@ -557,8 +580,10 @@ def _write_live_state(
     position,
     signal,
     status: str = "running",
-    nf_stats: dict | None = None,
-    last_action: str = ""
+    nf_stats: Optional[dict] = None,
+    last_action: str = "",
+    quote = None,
+    df = None
 ):
     """Escribe en state_live.json sin tocar state_sim.json."""
     from shared.utils.market_hours import now_nyc
@@ -573,14 +598,27 @@ def _write_live_state(
                 "take_profit": position.take_profit,
             }
 
+        # Parse df to candles list
+        candles_list = []
+        if df is not None and not df.empty:
+            for idx, row in df.iterrows():
+                candles_list.append({
+                    "time": int(idx.timestamp()),
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": int(row.get("Volume", 0))
+                })
+
         stats = broker.stats
         state_writer.update_state(
             mode="LIVE_PAPER",
             symbol=symbol,
             session=session,
             iteration=iteration,
-            bid=signal.close if signal and hasattr(signal, "close") else 0,
-            ask=signal.close if signal and hasattr(signal, "close") else 0,
+            bid=quote.bid if quote else (signal.close - 0.005 if signal and hasattr(signal, "close") else 0),
+            ask=quote.ask if quote else (signal.close + 0.005 if signal and hasattr(signal, "close") else 0),
             signal=signal.signal if signal else "HOLD",
             rsi=signal.rsi_value if signal else 50,
             ema_fast=signal.ema_fast if signal else 0,
@@ -609,6 +647,7 @@ def _write_live_state(
             is_ml_blocked=getattr(signal, "is_ml_blocked", False) if signal else False,
             is_quality_blocked=getattr(signal, "is_quality_blocked", False) if signal else False,
             last_action=last_action,
+            candles=candles_list,
             mock_time=now_nyc().strftime("%Y-%m-%d %H:%M:%S") if 'now_nyc' in locals() else "SCOPING_ERROR"
         )
     except Exception as e:

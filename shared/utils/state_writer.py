@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
+from typing import Optional, Union, Dict, List
 
 from shared.utils.state_models import TradeRecord, BotState
 
@@ -36,9 +37,15 @@ _global_total_samples:  int = 0
 # Per-symbol IA stats (accuracy and samples tracked independently per symbol)
 _symbol_model_stats: dict[str, dict] = {}  # {symbol: {"model_accuracy": float, "total_samples": int}}
 
+# 🏆 Métricas de Maestría (Persistentes en sesión)
+_session_max_drawdown: float = 0.0
+_session_peak_pnl:     float = 0.0
+
 def load_global_stats_from_journal() -> None:
     """Carga los totales acumulados y los últimos trades desde el archivo CSV de la bitácora."""
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts, _trades
+    global _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
+    
     try:
         journal_path = config.TRADE_JOURNAL_FILE
         if not journal_path.exists():
@@ -48,6 +55,11 @@ def load_global_stats_from_journal() -> None:
         trades_count = 0
         wins_count = 0
         total_pnl = 0.0
+        total_fees = 0.0
+        total_slip = 0.0
+        total_gross_prof = 0.0
+        total_gross_loss = 0.0
+        
         loaded_trades = []
         
         with open(journal_path, "r", encoding="utf-8") as f:
@@ -55,8 +67,26 @@ def load_global_stats_from_journal() -> None:
             for row in reader:
                 try:
                     trades_count += 1
-                    pnl = float(row.get("gross_pnl", 0))
-                    total_pnl += pnl
+                    
+                    # Extraer pnl neto/bruto, fees, slippage de la fila
+                    gp = float(row.get("gross_pnl", 0))
+                    f_val = float(row.get("fees", 0))
+                    s_val = float(row.get("slippage", 0))
+                    
+                    total_fees += f_val
+                    total_slip += s_val
+                    
+                    if gp > 0:
+                        total_gross_prof += gp
+                    elif gp < 0:
+                        total_gross_loss += abs(gp)
+                        
+                    # El PnL neto real del CSV o aproximado
+                    npnl = gp + f_val + s_val # fees/slippage son negativos o los restamos si son positivos
+                    if "net_pnl" in row and row["net_pnl"]:
+                        npnl = float(row["net_pnl"])
+                    total_pnl += npnl
+                        
                     is_win = int(row.get("is_win", 0))
                     if is_win == 1:
                         wins_count += 1
@@ -66,25 +96,30 @@ def load_global_stats_from_journal() -> None:
                     t_str = ts.split('T')[1][:8] if 'T' in ts else ""
                     d_str = ts.split('T')[0] if 'T' in ts else ""
                     
-                    # Reconstruir TradeRecord (simplificado para UI)
                     loaded_trades.append(TradeRecord(
                         symbol=row.get("symbol", ""),
                         side="SELL",
                         price=float(row.get("exit_price", 0)),
                         qty=float(row.get("qty", 0)),
-                        pnl=pnl,
+                        pnl=npnl,
                         time=t_str,
                         date=d_str,
                         reason=row.get("exit_reason", ""),
                         entry_price=float(row.get("entry_price", 0))
                     ))
-                except: continue
+                except Exception as ex: 
+                    # Ignorar filas corruptas
+                    continue
         
         with _state_lock:
             _global_sim_trades = trades_count
             _global_sim_wins = wins_count
             _global_sim_pnl = total_pnl
-            _trades = loaded_trades[-100:] # Mantener últimos 100 para el dashboard
+            _global_sim_fees = total_fees
+            _global_sim_slippage = total_slip
+            _global_sim_gross_profit = total_gross_prof
+            _global_sim_gross_loss = total_gross_loss
+            # Se omite cargar loaded_trades a _trades para que el dashboard muestre una pizarra limpia en cada nueva sesión
     except Exception:
         pass
 
@@ -94,6 +129,8 @@ load_global_stats_from_journal()
 def clear_state() -> None:
     """Borra todos los estados de símbolos y trades en memoria y en disco."""
     global _symbol_states, _trades, _global_sim_trades, _global_sim_wins, _global_sim_pnl, _symbol_model_stats
+    global _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss, _global_sim_ghosts
+    global _session_max_drawdown, _session_peak_pnl  # ← FIX: declarar global para no crear var local
     with _state_lock:
         _symbol_states.clear()
         _symbol_model_stats.clear()  # Limpiar métricas IA por símbolo
@@ -101,6 +138,13 @@ def clear_state() -> None:
         _global_sim_trades = 0
         _global_sim_wins = 0
         _global_sim_pnl = 0.0
+        _global_sim_fees = 0.0
+        _global_sim_slippage = 0.0
+        _global_sim_gross_profit = 0.0
+        _global_sim_gross_loss = 0.0
+        _global_sim_ghosts = 0
+        _session_max_drawdown = 0.0
+        _session_peak_pnl = 0.0
         try:
             # Eliminar archivos físicos
             if _state_path and _state_path.exists():
@@ -122,7 +166,7 @@ def clear_symbol_states() -> None:
         _symbol_model_stats.clear()  # Limpiar métricas IA por símbolo
 
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, 
-                 timestamp: str | None = None, reason: str = "", metadata: dict = None) -> None:
+                 timestamp: Optional[str] = None, reason: str = "", metadata: Optional[dict] = None) -> None:
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl
     with _state_lock:
         # Usar timestamp proporcionado o el actual (formato HH:MM:SS para el historial rápido)
@@ -142,8 +186,10 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
             entry_reason = metadata.get("entry_reason", "")
             entry_price = metadata.get("entry_price", 0.0)
             fees = metadata.get("fees", 0.0)
+            xai_metrics = metadata.get("xai_metrics", {})
         else:
             fees = 0.0
+            xai_metrics = {}
 
         if side == "BUY" and not entry_reason:
             entry_reason = reason
@@ -158,7 +204,7 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
             symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, 
             time=t_str, date=d_str, reason=reason, confirmations=confirmations, 
             ml_prob=ml_prob, conf_mult=conf_mult, entry_reason=entry_reason,
-            entry_price=entry_price, fees=fees
+            entry_price=entry_price, fees=fees, xai_metrics=xai_metrics
         ))
         if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
@@ -168,10 +214,12 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
         if pnl > 0:
             _global_sim_wins += 1
         _global_sim_pnl += pnl
+        _global_sim_fees += fees
+        _global_sim_slippage += metadata.get("slippage", 0.0) if metadata else 0.0
 
 def update_state(
     symbol: str,
-    mode: str | None = None,
+    mode: Optional[str] = None,
     session: int = 0,
     iteration: int = 0,
     bid: float = 0.0,
@@ -195,23 +243,23 @@ def update_state(
     gross_loss: float = 0.0,
     total_fees: float = 0.0,
     total_slippage: float = 0.0,
-    total_sim_trades: int | None = None,
-    total_sim_wins: int | None = None,
-    total_sim_pnl: float | None = None,
-    total_sim_ghosts: int | None = None,
-    total_sim_fees: float | None = None,
-    total_sim_slippage: float | None = None,
-    total_sim_gross_profit: float | None = None,
-    total_sim_gross_loss: float | None = None,
+    total_sim_trades: Optional[int] = None,
+    total_sim_wins: Optional[int] = None,
+    total_sim_pnl: Optional[float] = None,
+    total_sim_ghosts: Optional[int] = None,
+    total_sim_fees: Optional[float] = None,
+    total_sim_slippage: Optional[float] = None,
+    total_sim_gross_profit: Optional[float] = None,
+    total_sim_gross_loss: Optional[float] = None,
     total_ghosts: int = 0,
     ghost_trades_count: int = 0,
-    position: dict | None = None,
-    candles: list | None = None,
-    timestamp: str | None = None,
+    position: Optional[dict] = None,
+    candles: Optional[list] = None,
+    timestamp: Optional[str] = None,
     regime: str = "NEUTRAL",
     mock_time_930: bool = False,
-    blocks: list[str] | None = None,
-    blocking_summary: dict | None = None,
+    blocks: Optional[List[str]] = None,
+    blocking_summary: Optional[dict] = None,
     sim_start: str = "",
     sim_end: str = "",
     sim_duration: float = 0.0,
@@ -220,8 +268,8 @@ def update_state(
     ai_recommendation: str = "",
     ai_expected_up: float = 0.0,
     ai_expected_down: float = 0.0,
-    model_accuracy: float | None = None,
-    total_samples: int | None = None,
+    model_accuracy: Optional[float] = None,
+    total_samples: Optional[int] = None,
     is_ml_blocked: bool = False,
     is_quality_blocked: bool = False,
     last_action: str = "",
@@ -276,12 +324,14 @@ def update_state(
     # Añadir los datos del símbolo actual (que aún no está en _symbol_states con sus valores nuevos)
     ts_trades += total_trades
     ts_wins += winning_trades
-    ts_pnl += round(gross_profit + gross_loss, 2)
-    ts_ghosts += total_ghosts
     ts_fees += total_fees
     ts_slippage += total_slippage
     ts_gross_profit += gross_profit
     ts_gross_loss += gross_loss
+    
+    # ─── CÁLCULO DE PNL NETO TOTAL ───
+    # ts_pnl = (Beneficio Bruto - Pérdida Bruta) - Fees - Slippage
+    ts_pnl = round(ts_gross_profit - abs(ts_gross_loss) - ts_fees - ts_slippage, 2)
 
     new_s = BotState(
         mode=final_mode,
@@ -340,9 +390,9 @@ def update_state(
         ai_expected_down=ai_expected_down,
         model_accuracy=_symbol_model_stats.get(symbol, {}).get("model_accuracy", 0.0),
         total_samples=_symbol_model_stats.get(symbol, {}).get("total_samples", 0),
-        is_ml_blocked=is_ml_blocked,
         is_quality_blocked=is_quality_blocked,
-        last_action=last_action
+        last_action=last_action,
+        **(_calculate_mastery_cert(symbol, ts_trades, ts_gross_profit, ts_gross_loss, ts_pnl))
     )
     
     with _state_lock:
@@ -382,3 +432,68 @@ def _flush() -> None:
     except Exception as e:
         from shared.utils.logger import log
         log.error(f"Error flushing state: {e}")
+
+def _calculate_mastery_cert(symbol: str, n_trades: int, gp: float, gl: float, pnl: float) -> dict:
+    """Calcula métricas de maestría para decidir si el usuario puede ir en vivo."""
+    global _session_max_drawdown, _session_peak_pnl
+    
+    # 1. Drawdown dinámico
+    if pnl > _session_peak_pnl:
+        _session_peak_pnl = pnl
+    current_dd = _session_peak_pnl - pnl
+    if current_dd > _session_max_drawdown:
+        _session_max_drawdown = current_dd
+        
+    # 2. Métricas Expertas
+    pf = gp / abs(gl) if gl != 0 else (gp if gp > 0 else 0)
+    
+    # 3. Score de Maestría (0-100)
+    # 30% Volumen (meta 50) | 40% Rentabilidad (meta PF 1.4) | 30% Estabilidad (Drawdown < 1500)
+    score_vol = min(1.0, n_trades / 50) * 30
+    score_pf  = min(1.0, pf / 1.4) * 40
+    score_dd  = max(0.0, 1.0 - (_session_max_drawdown / 1500.0)) * 30.0
+    
+    total_score = round(score_vol + score_pf + score_dd, 1)
+    # Si no hay trades ni drawdown, dar base de estabilidad (30%)
+    if n_trades == 0 and _session_max_drawdown == 0:
+        total_score = 30.0
+    
+    # 4. Capital recomendado
+    # Multiplicador según comando del usuario (1x, 2x, 3x)
+    try:
+        if config.COMMAND_FILE.exists():
+            with open(config.COMMAND_FILE, "r") as cf:
+                cdata = json.load(cf)
+                mult = float(cdata.get("trade_multiplier", 1.0))
+                tier = cdata.get("risk_tier", "Normal (1x)")
+        else:
+            mult = 1.0
+            tier = "Normal (1x)"
+    except:
+        mult, tier = 1.0, "Normal (1x)"
+        
+    # El capital sugerido es el Drawdown * 2.5 + el capital por operación (base 500)
+    rec_cash = (500 * mult) + (_session_max_drawdown * 2.5)
+    
+    status = "APRENDIENDO"
+    checklist = []
+    
+    # Evaluar checklist
+    if n_trades < 50: checklist.append(f"📦 Muestras: {n_trades}/50 trades")
+    if pf < 1.4: checklist.append(f"📈 Profit Factor: {pf:.1f}/1.4")
+    if _session_max_drawdown > 1500: checklist.append("🛡️ Drawdown: Reducir riesgo")
+    
+    if n_trades >= 50 and pf >= 1.4 and _session_max_drawdown <= 1500: 
+        status = "LISTO PARA VIVO"
+    elif n_trades >= 20: 
+        status = "VALIDANDO"
+    
+    return {
+        "mastery_score": total_score,
+        "mastery_status": status,
+        "recommended_cash": round(rec_cash, 2),
+        "risk_tier": tier,
+        "actual_profit_factor": round(pf, 2),
+        "actual_max_drawdown": round(_session_max_drawdown, 2),
+        "mastery_checklist": checklist
+    }

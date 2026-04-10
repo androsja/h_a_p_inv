@@ -124,6 +124,10 @@ def watch_commands():
     api_key    = config.ALPACA_API_KEY
     secret_key = config.ALPACA_SECRET_KEY
 
+    last_live_mode = "DEMO"  # Guardar el último modo para el watchdog
+    _was_running = False      # Flag para detectar transición corriendo → muerto
+    _watchdog_check_counter = 0  # Contador para revisar watchdog cada N iteraciones
+
     while not _global_stop.is_set():
         try:
             if config.COMMAND_FILE.exists():
@@ -133,7 +137,9 @@ def watch_commands():
                 if cmds.get("live_start"):
                     log.info("[AlpacaLauncher] 📥 Comando live_start recibido")
                     mode = cmds.get("live_mode", "PAPER")
+                    last_live_mode = mode  # Guardar para watchdog
                     launch(api_key, secret_key, live_mode_type=mode)
+                    _was_running = True
                     # Limpiar flag
                     cmds["live_start"] = False
                     with open(config.COMMAND_FILE, "w") as f:
@@ -142,12 +148,13 @@ def watch_commands():
                 elif cmds.get("live_stop"):
                     log.info("[AlpacaLauncher] 📥 Comando live_stop recibido")
                     stop_all()
+                    _was_running = False
                     cmds["live_stop"] = False
                     with open(config.COMMAND_FILE, "w") as f:
                         json.dump(cmds, f)
 
                 elif cmds.get("reset_neural"):
-                    log.info("[AlpacaLauncher] 🧨 Comando reset_neural recibido — limpiando IA en memoria...")
+                    log.info("[AlpacaLauncher] 💨 Comando reset_neural recibido — limpiando IA en memoria...")
                     # Detener hilos para que no sigan escribiendo el modelo
                     stop_all()
                     # Resetear el singleton de la Red Neuronal en memoria
@@ -162,8 +169,31 @@ def watch_commands():
                     with open(config.COMMAND_FILE, "w") as f:
                         json.dump(cmds, f)
 
+            # ─── WATCHDOG: Auto-reinicio si los hilos murieron inesperadamente ────────────
+            _watchdog_check_counter += 1
+            if _watchdog_check_counter >= 15:  # Cada 30s (15 ciclos x 2s)
+                _watchdog_check_counter = 0
+                
+                # Solo actuar si había hilos antes y ya no hay ninguno vivo
+                if _was_running and _threads and not is_running():
+                    # Verificar que live_stop no esté activo (pa no reiniciar si fue intencional)
+                    should_restart = True
+                    try:
+                        if config.COMMAND_FILE.exists():
+                            with open(config.COMMAND_FILE) as f:
+                                check_cmds = json.load(f)
+                            if check_cmds.get("live_stop") or not check_cmds.get("force_paper_trading", True):
+                                should_restart = False
+                    except Exception:
+                        pass
+                    
+                    if should_restart:
+                        log.warning("[AlpacaLauncher] ⚠️ WATCHDOG: Todos los hilos están muertos. Reiniciando automáticamente...")
+                        launch(api_key, secret_key, live_mode_type=last_live_mode)
+                        log.info(f"[AlpacaLauncher] ✅ WATCHDOG: Hilos relanzados en modo {last_live_mode}")
+
         except Exception as e:
-            log.debug(f"[AlpacaLauncher] watch_commands error: {e}")
+            log.error(f"[AlpacaLauncher] watch_commands error: {e}", exc_info=True)
 
         time.sleep(2)
 

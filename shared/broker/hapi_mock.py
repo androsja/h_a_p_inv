@@ -16,6 +16,7 @@ import uuid
 import time
 from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from typing import Optional, Union, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -42,13 +43,13 @@ class HapiMock(BrokerInterface):
       4. El capital virtual se actualiza con cada fill.
     """
 
-    def __init__(self, symbol: str | None = None, initial_cash: float = 10_000.0, live_paper: bool = False, start_date: str | None = None):
+    def __init__(self, symbol: Optional[str] = None, initial_cash: float = 10_000.0, live_paper: bool = False, start_date: Optional[str] = None):
         self._live_paper     = live_paper
         self._replay         = LivePaperReplay(symbol) if live_paper else MarketReplay(symbol, start_date=start_date)
         self._cash           = initial_cash
         self._initial_cash   = initial_cash
-        self._pending_orders: list[PendingOrder] = []
-        self._current_bar: pd.Series | None       = None
+        self._pending_orders: List[PendingOrder] = []
+        self._current_bar: Optional[pd.Series]       = None
         self._stats          = SessionStats()
         # Settlement: {fecha_str: amount}
         self._pending_settlement: dict[str, float] = {}
@@ -97,14 +98,37 @@ class HapiMock(BrokerInterface):
             raise StopIteration("No quedan más datos históricos para simular.")
 
         try:
+            is_mock_active = _is_mock_time_active()
+            
+            # --- LÓGICA DE AVANCE DIFERENCIADA ---
+            if is_mock_active:
+                from shared.utils.market_hours import now_nyc
+                import pytz
+                current_mock_time = now_nyc().astimezone(pytz.UTC)
+                
+                # REGLA 1: Si ya llegamos a las 4:00 PM NYC, terminamos la sesión
+                from datetime import time as dt_time
+                if now_nyc().time() >= dt_time(16, 0):
+                    log.info("🏁 Mock Time alcanzó las 4:00 PM (Cierre). Finalizando sesión.")
+                    raise StopIteration("Cierre de mercado mock alcanzado.")
+
+                # REGLA 2: Solo avanzar si la siguiente vela ya aconteció en el reloj mock
+                if hasattr(self._replay, "peek_next_timestamp"):
+                    next_ts = self._replay.peek_next_timestamp()
+                    if next_ts and next_ts > current_mock_time:
+                        # Todavía no es hora de la siguiente vela. Retenemos barra actual.
+                        if self._current_bar is None:
+                            # Si es el arranque, forzamos la primera para no colgar el motor
+                            self._current_bar = self._replay.next_bar()
+                        return self._generate_quote(self._current_bar, symbol)
+                
+            # Avance normal (o forzado por falta de Mock)
             new_bar = self._replay.next_bar()
             
-            # Si en Test Nocturno el reloj acelerado aún no ha revelado una nueva vela
             if new_bar is None:
                 if self._current_bar is None:
                     raise ConnectionError("Esperando la primera vela del día...")
-                # Retenemos la vela anterior si todavía no hay una nueva
-            elif _is_mock_time_active() and self._current_bar is not None:
+            elif is_mock_active and self._current_bar is not None:
                 if new_bar.name == self._current_bar.name:
                     pass # Mantenemos el _current_bar anterior, no avanzamos "tiempo"
                 else:
@@ -112,6 +136,8 @@ class HapiMock(BrokerInterface):
             else:
                 self._current_bar = new_bar
                 
+        except StopIteration:
+            raise StopIteration("No quedan más datos históricos para simular.")
         except Exception as e:
             if _is_mock_time_active() and isinstance(e, ConnectionError):
                  raise e # Dejar pasar el ConnectionError para que main.py duerma 5s
@@ -122,21 +148,30 @@ class HapiMock(BrokerInterface):
                 raise StopIteration(f"No quedan más datos históricos para simular. ({e})")
         
         bar = self._current_bar
+        return self._generate_quote(bar, symbol)
 
-        # Simular bid/ask razonable: bid ligeramente por debajo del close,
-        # ask ligeramente por encima (spread de 1 centavo)
-        close = float(bar["Close"])
-        bid   = round(close - 0.005, 4)
-        ask   = round(close + 0.005, 4)
+    def _generate_quote(self, bar: pd.Series, symbol: str) -> Quote:
+        """Centraliza la generación de Quote con lógica de spread/slippage."""
+        close_p = float(bar["Close"])
+        high_p  = float(bar["High"])
+        low_p   = float(bar["Low"])
+        
+        # 10% de la volatilidad intraburbuja, con piso de 0.02c (bluechips tranquilas)
+        volatility_spread = (high_p - low_p) * 0.10
+        spread_val = round(max(0.02, volatility_spread), 3)
+
+        bid    = round(close_p - (spread_val / 2), 4)
+        ask    = round(close_p + (spread_val / 2), 4)
 
         # Intentar rellenar órdenes pendientes con el precio de esta vela
         self._try_fill_pending_orders(bar)
 
+        from datetime import datetime, timezone
         return Quote(
             symbol=symbol,
             bid=bid,
             ask=ask,
-            last=close,
+            last=close_p,
             timestamp=str(bar.name) if hasattr(bar, "name") else datetime.now(timezone.utc).isoformat(),
         )
 
@@ -320,7 +355,7 @@ class HapiMock(BrokerInterface):
         for o in filled:
             self._pending_orders.remove(o)
 
-    def _execute_buy(self, order: PendingOrder, fill_price: float, timestamp: str | None = None) -> None:
+    def _execute_buy(self, order: PendingOrder, fill_price: float, timestamp: Optional[str] = None) -> None:
         # Slippage simulado de compra (0.05% de penalización por latencia)
         slippage = 0.0005
         actual_fill_price = round(fill_price * (1 + slippage), 2)
@@ -346,6 +381,8 @@ class HapiMock(BrokerInterface):
             "side": "BUY",
             "price": actual_fill_price,
             "qty": order.qty,
+            "reason": order.reason,
+            "metadata": order.metadata,
             "timestamp": timestamp or datetime.now(timezone.utc).isoformat()
         })
         
@@ -363,7 +400,7 @@ class HapiMock(BrokerInterface):
             _state.available_cash = self._cash
         except: pass
 
-    def _execute_sell(self, order: PendingOrder, fill_price: float, timestamp: str | None = None) -> None:
+    def _execute_sell(self, order: PendingOrder, fill_price: float, timestamp: Optional[str] = None) -> None:
         # Slippage simulado de venta (0.05% de penalización por latencia)
         slippage = 0.0005
         actual_fill_price = round(fill_price * (1 - slippage), 2)
@@ -397,7 +434,7 @@ class HapiMock(BrokerInterface):
         )
         log.info(f"🏦 IBKR FEES COBRADOS: Com=${comm:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
         
-        self._stats.record_trade(net_pnl, current_balance=self._cash, price=actual_fill_price, timestamp=timestamp)
+        self._stats.record_trade(net_pnl, current_balance=self._cash, side="SELL", qty=order.qty, price=actual_fill_price, timestamp=timestamp, reason=order.reason, metadata=order.metadata)
         
         # Update global state
         try:

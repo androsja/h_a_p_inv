@@ -12,6 +12,7 @@ import os
 import joblib
 import pandas as pd
 from functools import lru_cache
+from typing import Optional, Union, Dict, List, Tuple
 
 from shared import config
 from shared.utils.logger import log
@@ -45,7 +46,7 @@ def get_ai_model():
         return _load_ai_model(os.path.getmtime(p))
     return None
 
-_regime_buffer: dict[str, tuple[str | None, float]] = {}  # {symbol: (last_label, last_time)}
+_regime_buffer: Dict[str, Tuple[Optional[str], float]] = {}  # {symbol: (last_label, last_time)}
 
 def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> SignalResult:
     sym_prefix = f"[{symbol}] " if symbol else ""
@@ -236,14 +237,25 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             is_quality_blocked = True
             blocks.append(f"Calidad (RSI+ADX en {current_regime})")
 
-    # Log de depuración final para saber qué estamos enviando
-    if signal == SIGNAL_BUY:
-        log.info(f"{sym_prefix}DEBUG: prob_win={prob_win}, is_ml_blocked={is_ml_blocked}, is_quality_blocked={is_quality_blocked}")
+    # Log de depuración final (solo en modo DEBUG para no frenar la simulación)
+    # Generar Recomendación Verbal Didáctica
+    ai_rec = "Analizando mercado..."
+    if regime_label == "CAOS":
+        ai_rec = "☢️ MERCADO EN CAOS: Mejor observar desde afuera."
+    elif signal == SIGNAL_BUY:
+        if prob_win > 0.75: ai_rec = "🧠 IA SUGIERE: Compra con ALTA confianza."
+        elif prob_win > 0.60: ai_rec = "📈 IA COINCIDE: Estructura técnica sólida."
+        else: ai_rec = "⚖️ IA EN DUDA: Señal técnica débil."
+    else:
+        if regime_label == "TREND_UP": ai_rec = "🌤️ TENDENCIA ALCISTA: Buscando retroceso."
+        elif regime_label == "TREND_DOWN": ai_rec = "⛈️ TENDENCIA BAJISTA: Vigilando rebote."
+        else: ai_rec = "💤 ESPERANDO OPORTUNIDAD: Sin señales claras."
 
     return SignalResult(
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,
         rsi_value=rsi_now, macd_hist=macd_now, vwap_value=vwap_now, atr_value=atr_now,
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
         ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked,
-        is_ml_blocked=is_ml_blocked, ai_win_prob=round(prob_win if signal == SIGNAL_BUY else 0.5, 2)
+        is_ml_blocked=is_ml_blocked, ai_win_prob=round(prob_win if signal == SIGNAL_BUY else 0.5, 2),
+        ai_recommendation=ai_rec
     )

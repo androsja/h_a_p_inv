@@ -933,6 +933,30 @@
             color: var(--muted);
         }
 
+        .log-line.order-sent {
+            color: var(--accent);
+            font-weight: bold;
+            border-left: 2px solid var(--accent);
+            padding-left: 5px;
+        }
+
+        .log-line.avoided {
+            color: #555;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .log-line.ghost-open {
+            color: var(--purple);
+            font-weight: 600;
+        }
+
+        .log-line.ghost-close {
+            color: var(--purple);
+            opacity: 0.9;
+            font-style: italic;
+        }
+
         /* ─── TAB: TRADES ─── */
         #tab-trades {
             overflow-y: auto;
@@ -1122,25 +1146,26 @@
         /* ─── TOAST NOTIFICATIONS ─── */
         #toast-container {
             position: fixed;
-            top: 70px;
-            right: 20px;
+            bottom: 20px;
+            left: 20px;
             display: flex;
-            flex-direction: column;
-            gap: 10px;
+            flex-direction: column-reverse;
+            gap: 8px;
             z-index: 9999;
             pointer-events: none;
         }
 
         .toast {
-            background: rgba(13, 22, 38, 0.95);
-            border-left: 4px solid var(--accent);
+            background: rgba(13, 22, 38, 0.98);
+            border-left: 3px solid var(--accent);
             color: var(--text);
-            padding: 14px 20px;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            padding: 10px 14px;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
             font-family: 'Inter', sans-serif;
             min-width: 250px;
-            animation: slideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+            max-width: 320px;
+            animation: slideInLeft 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
             backdrop-filter: blur(10px);
         }
 
@@ -1176,9 +1201,9 @@
             animation: fadeOut 0.4s ease forwards !important;
         }
 
-        @keyframes slideIn {
+        @keyframes slideInLeft {
             from {
-                transform: translateX(100%);
+                transform: translateX(-100%);
                 opacity: 0;
             }
 
@@ -1195,7 +1220,7 @@
             }
 
             to {
-                transform: translateX(100%);
+                transform: translateX(-100%);
                 opacity: 0;
             }
         }

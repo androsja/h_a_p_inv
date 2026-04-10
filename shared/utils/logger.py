@@ -11,6 +11,7 @@ import logging
 import logging.handlers
 import sys
 from pathlib import Path
+from typing import Optional, Union, Any
 from shared import config
 
 try:
@@ -120,7 +121,7 @@ def log_order_attempt(symbol: str, side: str, price: float, qty: float, reason: 
     )
 
 
-def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl: float | None = None, timestamp: str | None = None, reason: str = "", metadata: dict = None) -> None:
+def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl: Optional[float] = None, timestamp: Optional[str] = None, reason: str = "", metadata: Optional[dict] = None) -> None:
     """Registra la confirmación de ejecución de una orden."""
     pnl_str = f"| PnL=${pnl:+.2f}" if pnl is not None else ""
     log.info(
@@ -137,7 +138,7 @@ def log_order_filled(symbol: str, side: str, fill_price: float, qty: float, pnl:
         log.error(f"Error registrando trade en state.json: {e}")
 
 
-def log_rate_limit(endpoint: str, retry_after: int | None = None) -> None:
+def log_rate_limit(endpoint: str, retry_after: Optional[int] = None) -> None:
     """Registra un error 429 (Rate Limit) de la API de Hapi."""
     retry_str = f"Retry-After={retry_after}s" if retry_after else "sin cabecera Retry-After"
     log.warning(

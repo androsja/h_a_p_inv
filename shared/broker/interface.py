@@ -16,6 +16,7 @@ Métodos obligatorios:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Optional
 
 
 # ─── Tipos de datos de respuesta ────────────────────────────────────────────
@@ -48,7 +49,7 @@ class OrderResponse:
     status:      str           # "PENDING" | "FILLED" | "CANCELLED" | "REJECTED"
     limit_price: float
     qty:         float
-    fill_price:  float | None  # Precio real de ejecución (None si aún no se ejecuta)
+    fill_price:  Optional[float] = None  # Precio real de ejecución (None si aún no se ejecuta)
     message:     str = ""      # Mensaje del bróker (útil para errores)
 
 

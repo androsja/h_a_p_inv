@@ -335,7 +335,7 @@ async def live_alpaca_status():
         import time
         if config.STATE_FILE_LIVE.exists():
             mtime = config.STATE_FILE_LIVE.stat().st_mtime
-            if (time.time() - mtime) < 120:
+            if (time.time() - mtime) < 90:  # 90s = 1.5x el ciclo de scan (60s)
                 return {"status": "success", "running": True}
         return {"status": "success", "running": False}
     except Exception:

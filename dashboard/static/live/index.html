@@ -55,7 +55,7 @@
                 </button>
                 <!-- Se eliminó el botón redundante de "Símbolos", todo se maneja desde el GESTOR SÍMBOLOS -->
                 <button id="btn-start-paper" onclick="startPaperTrade()"
-                    style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                    style="background:#ffab40; color:#111; border:none; border-radius:4px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold; display:none; align-items:center; gap:5px;">
                     ▶️ LIVE PAPER
                 </button>
                 <button id="btn-stop-paper" onclick="stopPaperTrade()"
@@ -172,9 +172,7 @@
                     <button class="tab-btn" data-tab="pnl" id="tbtn-pnl">
                         <span class="tab-icon">📈</span> PnL en el Tiempo
                     </button>
-                    <button class="tab-btn" data-tab="indicators" id="tbtn-indicators">
-                        <span class="tab-icon">📊</span> Indicadores
-                    </button>
+
                     <button class="tab-btn" data-tab="trades" id="tbtn-trades">
                         <span class="tab-icon">⚡</span> Operaciones
                     </button>
@@ -204,127 +202,7 @@
                     <canvas id="pnl-chart"></canvas>
                 </div>
 
-                <!-- ═══ TAB: INDICADORES ═══ -->
-                <div class="tab-content" id="tab-indicators">
 
-                    <div class="ind-card">
-                        <div class="ind-card-title">Tendencia</div>
-                        <div class="ind-row">
-                            <span class="ind-key">Precio Actual</span>
-                            <span class="ind-val" id="ind-price">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">EMA 12 (rápida)</span>
-                            <span class="ind-val" id="ind-ema12">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">EMA 26 (lenta)</span>
-                            <span class="ind-val" id="ind-ema26">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">EMA 200 (macro)</span>
-                            <span class="ind-val" id="ind-ema200">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Precio vs EMA200</span>
-                            <span class="ind-val" id="ind-vs-ema200">─</span>
-                        </div>
-                    </div>
-
-                    <div class="ind-card">
-                        <div class="ind-card-title">Momentum / RSI</div>
-                        <div class="ind-row">
-                            <span class="ind-key">RSI (14)</span>
-                            <span class="ind-val" id="ind-rsi">─</span>
-                        </div>
-                        <div class="rsi-bar-wrap">
-                            <div class="rsi-bar-track">
-                                <div class="rsi-bar-zones"></div>
-                                <div class="rsi-bar-needle" id="rsi-needle" style="left:50%"></div>
-                            </div>
-                            <div class="rsi-labels">
-                                <span>0</span>
-                                <span style="color:var(--red);">Sobreventa (35)</span>
-                                <span>Neutral</span>
-                                <span style="color:var(--red);">Sobrecompra (65)</span>
-                                <span>100</span>
-                            </div>
-                        </div>
-                        <div class="ind-row" style="margin-top:8px;">
-                            <span class="ind-key">Estado RSI</span>
-                            <span class="ind-val" id="ind-rsi-state">─</span>
-                        </div>
-                    </div>
-
-                    <div class="ind-card">
-                        <div class="ind-card-title">MACD · Histograma</div>
-                        <div class="ind-row">
-                            <span class="ind-key">MACD Histograma</span>
-                            <span class="ind-val" id="ind-macd">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Dirección</span>
-                            <span class="ind-val" id="ind-macd-dir">─</span>
-                        </div>
-                    </div>
-
-                    <div class="ind-card">
-                        <div class="ind-card-title">VWAP · Precio Institucional</div>
-                        <div class="ind-row">
-                            <span class="ind-key">VWAP</span>
-                            <span class="ind-val" id="ind-vwap">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Precio vs VWAP</span>
-                            <span class="ind-val" id="ind-vs-vwap">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Spread VWAP</span>
-                            <span class="ind-val" id="ind-vwap-spread">─</span>
-                        </div>
-                    </div>
-
-                    <div class="ind-card">
-                        <div class="ind-card-title">ATR · Volatilidad Real</div>
-                        <div class="ind-row">
-                            <span class="ind-key">ATR Actual</span>
-                            <span class="ind-val" id="ind-atr">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">ATR como % del precio</span>
-                            <span class="ind-val" id="ind-atr-pct">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">SL dinámico (1.5×ATR)</span>
-                            <span class="ind-val" id="ind-atr-sl">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Volatilidad</span>
-                            <span class="ind-val" id="ind-atr-state">─</span>
-                        </div>
-                    </div>
-
-                    <div class="ind-card">
-                        <div class="ind-card-title">Cuenta · Capital</div>
-                        <div class="ind-row">
-                            <span class="ind-key">Cash inicial</span>
-                            <span class="ind-val" id="ind-cash-init">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Cash disponible</span>
-                            <span class="ind-val" id="ind-cash-avail">─</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Profit bruto</span>
-                            <span class="ind-val g" id="ind-gp">$0.00</span>
-                        </div>
-                        <div class="ind-row">
-                            <span class="ind-key">Loss bruto</span>
-                            <span class="ind-val r" id="ind-gl">$0.00</span>
-                        </div>
-                    </div>
-
-                </div>
 
                 <!-- ═══ TAB: OPERACIONES ═══ -->
                 <div class="tab-content" id="tab-trades">
@@ -437,7 +315,17 @@
 
                 <!-- ═══ TAB: LOG ═══ -->
                 <div class="tab-content" id="tab-log">
-                    <div class="log-terminal" id="log-terminal"></div>
+                    <div class="log-header" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(0,0,0,0.3); border-bottom:1px solid rgba(255,255,255,0.05); border-radius:8px 8px 0 0;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:10px; color:var(--accent); opacity:0.8;">●</span>
+                            <span style="font-weight:600; font-size:11px; color:var(--muted); letter-spacing:0.5px; text-transform:uppercase;">Terminal de Eventos</span>
+                        </div>
+                        <button onclick="clearLogs()" class="btn-clear-logs">
+                            <i class="fas fa-trash-alt" style="margin-right:5px; font-size:10px;"></i>
+                            Limpiar Bitácora
+                        </button>
+                    </div>
+                    <div class="log-terminal" id="log-terminal" style="border-top:none; border-radius:0 0 8px 8px;"></div>
                 </div>
 
 

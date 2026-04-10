@@ -31,6 +31,7 @@ class TradingEngine:
         self.args = args
         self.is_mock = isinstance(broker, HapiMock)
         self.symbol = broker.symbol if self.is_mock else (args.symbol or "AAPL")
+        self.is_live_paper = getattr(broker, "_live_paper", False)
         
         # Estado de la sesión
         self.account = None
@@ -70,7 +71,7 @@ class TradingEngine:
         self.position = None
         
         log.info(f"{'─'*60}")
-        log.info(f"Engine iniciado | Símbolo: {self.symbol} | Modo: {self.broker.name}")
+        log.info(f"Engine iniciado | Símbolo: {self.symbol} | Modo: {self.broker.name} | LivePaper: {self.is_live_paper}")
         log.info(f"Capital inicial: ${acct_info.total_cash:,.2f}")
         log.info(f"{'─'*60}")
 
@@ -135,7 +136,18 @@ class TradingEngine:
                 self._handle_ghost_exits(quote, signal)
 
                 # 5. UI Update per iteration
-                if iteration % 2 == 0 or signal.signal != SIGNAL_HOLD:
+                # En simulación histórica (modo mock) actualizamos con menos frecuencia
+                # para maximizar la velocidad. Solo actualizamos si:
+                # - Hay una señal activa (BUY/SELL)
+                # - Hay una posición o ghost trade abierto
+                # - Cada 50 iteraciones (heartbeat de la UI)
+                _has_activity = (
+                    signal.signal != SIGNAL_HOLD
+                    or self.position is not None
+                    or len(self.ghost_positions) > 0
+                )
+                _ui_interval = 50 if self.is_mock else 2
+                if _has_activity or iteration % _ui_interval == 0:
                     update_state(
                         mode=self.args.mode, symbol=self.symbol, session=self.session_num,
                         iteration=iteration, bid=quote.bid, ask=quote.ask, signal=signal.signal,
@@ -151,6 +163,7 @@ class TradingEngine:
                         total_fees=round(getattr(self.broker.stats, 'total_fees', 0.0), 2),
                         total_slippage=round(self.broker.stats.total_trades * 0.10, 2),
                         position=self.position.__dict__ if self.position else None,
+                        trades=self.broker.stats.trade_history,
                         total_ghosts=self.total_ghosts,
                         ghost_trades_count=len(self.active_ghosts),
                         candles=[], timestamp=quote.timestamp,
@@ -159,9 +172,18 @@ class TradingEngine:
                         investment_style=self.investment_style,
                         # Reportar estadísticas de aprendizaje de la IA (del NeuralFilter, que es el que aprende dinámicamente)
                         **(nf.get_stats() if 'nf' in locals() else {"total_samples": 0, "model_accuracy": 0.0}),
+                        ai_recommendation=getattr(signal, 'ai_recommendation', 'Analizando...'),
                         ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5,
-                        sim_duration=time.time() - getattr(self, '_engine_start_time', time.time())
+                        sim_duration=time.time() - getattr(self, '_engine_start_time', time.time()),
+                        sim_start=self.sim_start_date,
+                        sim_end=self.sim_end_date,
+                        is_live_paper=self.is_live_paper
                     )
+
+                # 6. Throttling for Live Paper
+                if self.is_live_paper:
+                    # En modo Live Paper (Mock o Real), pausamos para no saturar CPU y API
+                    time.sleep(config.SCAN_INTERVAL_SEC)
 
             # --- Forzar liquidación al terminar la simulación (End of Data) ---
             if self.position and self.is_mock and 'quote' in locals() and quote:
@@ -266,10 +288,21 @@ class TradingEngine:
 
         # 6. Ejecución (Real o Ghost)
         if buy_plan.is_viable and not is_ghost_force:
+            who_decided = "AI Oportunity" if getattr(signal, "ai_win_prob", getattr(signal, "ml_features", {}).get("ml_prob", 0)) > 0.8 else "Technical Indicators"
             metadata = {
                 "confirmations": signal.confirmations,
                 "ml_prob": signal.ml_features.get('ml_prob', 0.5),
-                "conf_mult": conf_mult
+                "conf_mult": conf_mult,
+                "xai_metrics": {
+                    "rsi": signal.rsi_value,
+                    "zscore": getattr(signal.ml_features, 'get', lambda k,d: d)('zscore_vwap', 0.0),
+                    "regime": signal.regime,
+                    "ema_fast": signal.ema_fast,
+                    "ema_slow": signal.ema_slow,
+                    "ema_200": signal.ema_200,
+                    "who_decided": who_decided,
+                    "blocks_ignored": signal.blocks
+                }
             }
             
             log_order_attempt(self.symbol, "BUY", buy_plan.limit_price, buy_plan.qty, f"conf={conf_mult:.2f}")
@@ -307,7 +340,17 @@ class TradingEngine:
                     "confirmations": signal.confirmations,
                     "ml_prob": signal.ml_features.get('ml_prob', 0.5),
                     "conf_mult": conf_mult,
-                    "block_reason": buy_plan.block_reason or "Filtro de Calidad"
+                    "block_reason": buy_plan.block_reason or "Filtro de Calidad",
+                    "xai_metrics": {
+                        "rsi": signal.rsi_value,
+                        "zscore": signal.ml_features.get('zscore_vwap', 0.0),
+                        "regime": signal.regime,
+                        "ema_fast": signal.ema_fast,
+                        "ema_slow": signal.ema_slow,
+                        "ema_200": signal.ema_200,
+                        "who_decided": "Ghost Analyst",
+                        "blocks_ignored": signal.blocks
+                    }
                 }
                 ghost_reason = buy_plan.block_reason or ("ML Blocked" if getattr(signal, 'is_ml_blocked', False) else "Quality Blocked")
                 ghost = OpenPosition(

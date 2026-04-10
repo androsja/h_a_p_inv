@@ -6,6 +6,7 @@ estado que se envía al dashboard.
 """
 
 from dataclasses import dataclass, field
+from typing import Optional, List, Dict
 
 @dataclass
 class TradeRecord:
@@ -23,6 +24,7 @@ class TradeRecord:
     entry_price: float = 0.0
     date: str = ""
     fees: float = 0.0
+    xai_metrics: dict = field(default_factory=dict)
 
 @dataclass
 class BotState:
@@ -78,7 +80,7 @@ class BotState:
     ghost_trades_count: int = 0
 
     # Posición abierta
-    position: dict | None = None
+    position: Optional[dict] = None
     trades: list = field(default_factory=list)
     candles: list = field(default_factory=list)
 
@@ -86,7 +88,7 @@ class BotState:
     next_scan_in: int = 0
     is_waiting: bool = False
     mock_time_930: bool = False
-    blocks: list[str] = field(default_factory=list)
+    blocks: List[str] = field(default_factory=list)
     blocking_summary: dict = field(default_factory=dict)
     sim_start: str = ""
     sim_end:   str = ""
@@ -106,4 +108,13 @@ class BotState:
     is_ml_blocked: bool = False
     is_quality_blocked: bool = False
     last_action: str = ""
+
+    # 🏆 Certificación de Maestría y Gestión de Capital
+    mastery_score: float = 0.0          # 0-100%
+    mastery_status: str = "APRENDIENDO" # APRENDIENDO, VALIDANDO, MAESTRÍA
+    recommended_cash: float = 500.0     # Capital sugerido para el riesgo actual
+    risk_tier: str = "Normal (1x)"      # Normal, Agresivo, Alto Riesgo
+    actual_profit_factor: float = 0.0
+    actual_max_drawdown: float = 0.0
+    mastery_checklist: List[str] = field(default_factory=list)
 

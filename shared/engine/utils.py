@@ -7,6 +7,7 @@ import json
 import os
 import pandas as pd
 import threading
+from typing import Optional, List, Dict
 from shared import config
 from shared.utils.logger import log
 from shared.broker.interface import BrokerInterface, Quote
@@ -99,7 +100,7 @@ def print_status(
     symbol: str,
     quote: Quote,
     signal_str: str,
-    position: OpenPosition | None,
+    position: Optional[OpenPosition],
     account: AccountState,
 ) -> None:
     """Imprime una línea de estado legible en la consola."""

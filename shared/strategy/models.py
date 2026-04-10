@@ -7,6 +7,7 @@ Son utilizadas tanto por RiskManager como por el bucle principal del bot.
 
 from dataclasses import dataclass, field
 from datetime    import date, datetime, timezone
+from typing import Optional, Union, Dict, List
 
 from shared.utils.logger import log
 
@@ -68,7 +69,7 @@ class AccountState:
     def __init__(self, total_cash: float):
         self.total_cash: float = total_cash
         self._pending_settlement: dict[date, float] = {}
-        self.open_position: OpenPosition | None = None
+        self.open_position: Optional[OpenPosition] = None
 
     def record_sale(self, amount: float) -> None:
         """Registra capital de una venta como bloqueado hasta T+1."""

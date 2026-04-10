@@ -12,6 +12,7 @@ Responsabilidades:
 import json
 import time
 from pathlib import Path
+from typing import Optional, Union, Dict, List
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -29,19 +30,20 @@ router = APIRouter(prefix="/api", tags=["simulation"])
 # ─── Request Models ──────────────────────────────────────────────────────────
 
 class ResetRequest(BaseModel):
-    sim_start_date: str | None = None
+    sim_start_date: Optional[str] = None
 
 class MultiplierRequest(BaseModel):
     multiplier: float
+    tier: Optional[str] = "Normal (1x)"
 
 class FreezeRequest(BaseModel):
     frozen: bool
-    label: str | None = None
+    label: Optional[str] = None
 
 class PaperTradeRequest(BaseModel):
     symbols: str  # Comma separated: "TSLA,AAPL,NVDA"
     mockTime: bool = False
-    sim_start_date: str | None = None
+    sim_start_date: Optional[str] = None
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
@@ -68,10 +70,12 @@ async def set_trade_multiplier(req: MultiplierRequest):
         if COMMAND_FILE.exists():
             with open(COMMAND_FILE) as f:
                 data = json.load(f)
-        data["trade_multiplier"] = max(0.1, min(10.0, req.multiplier))
+        mult = max(0.1, min(10.0, req.multiplier))
+        data["trade_multiplier"] = mult
+        data["risk_tier"] = req.tier or "Normal (1x)"
         with open(COMMAND_FILE, "w") as f:
             json.dump(data, f)
-        return {"status": "success", "multiplier": data["trade_multiplier"]}
+        return {"status": "success", "multiplier": mult, "tier": data["risk_tier"]}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

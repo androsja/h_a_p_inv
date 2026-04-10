@@ -81,6 +81,7 @@
             font-weight: 900;
             background: linear-gradient(135deg, #818cf8 0%, #22d3ee 50%, #f59e0b 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 20px;
             line-height: 1.1;
@@ -109,6 +110,7 @@
             font-weight: 900;
             background: linear-gradient(135deg, var(--accent), var(--accent2));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent
         }
 
@@ -570,6 +572,7 @@
             font-weight: 900;
             background: linear-gradient(135deg, #818cf8, #22d3ee);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
         }
@@ -963,7 +966,7 @@
                 <div class="stat-label">Regímenes</div>
             </div>
             <div class="stat">
-                <div class="stat-val">11</div>
+                <div class="stat-val">13</div>
                 <div class="stat-label">Features IA</div>
             </div>
             <div class="stat">
@@ -1301,7 +1304,7 @@
                 <div class="nn-viz">
 
                     <div class="nn-layer">
-                        <div class="nn-layer-title">Entradas<br><span style="color:#6366f1">(11 features)</span></div>
+                        <div class="nn-layer-title">Entradas<br><span style="color:#6366f1">(13 features)</span></div>
                         <div class="nn-nodes">
                             <div class="neuron ni">RSI</div>
                             <div class="neuron ni">MACD</div>
@@ -1373,7 +1376,7 @@
                 </div>
 
                 <!-- Features -->
-                <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">📐 Vector de 11 Features que recibe la
+                <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:6px">📐 Vector de 13 Features que recibe la
                     IA</h3>
                 <p style="color:var(--muted);font-size:0.85rem;margin-bottom:24px">Cada valor se normaliza antes de
                     entrar a la red para mantener escala uniforme y evitar dominancia de magnitud</p>
@@ -1382,78 +1385,92 @@
                     <div class="feat-row">
                         <div class="feat-idx">0</div>
                         <div class="feat-info">
+                            <h5>Hora Militar (H_Norm)</h5>
+                            <p><code>hour / 24.0</code> → Ubica el trade en el ciclo del día</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">1</div>
+                        <div class="feat-info">
+                            <h5>Distancia VWAP %</h5>
+                            <p><code>dist / 5.0</code> → Distancia porcentual al precio institucional</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">2</div>
+                        <div class="feat-info">
                             <h5>RSI</h5>
                             <p><code>rsi / 100</code> → rango [0.0, 1.0]</p>
                         </div>
                     </div>
                     <div class="feat-row">
-                        <div class="feat-idx">1</div>
+                        <div class="feat-idx">3</div>
                         <div class="feat-info">
                             <h5>MACD Histograma</h5>
                             <p><code>tanh(macd_hist)</code> → rango [-1.0, 1.0]</p>
                         </div>
                     </div>
                     <div class="feat-row">
-                        <div class="feat-idx">2</div>
+                        <div class="feat-idx">4</div>
                         <div class="feat-info">
-                            <h5>ATR%</h5>
+                            <h5>ATR% (Volatilidad)</h5>
                             <p><code>min(atr_pct / 5.0, 1.0)</code> → cap en 5%</p>
                         </div>
                     </div>
                     <div class="feat-row">
-                        <div class="feat-idx">3</div>
+                        <div class="feat-idx">5</div>
                         <div class="feat-info">
                             <h5>Ratio de Volumen</h5>
                             <p><code>min(vol_ratio / 5.0, 1.0)</code> → cap en 5x promedio</p>
                         </div>
                     </div>
                     <div class="feat-row">
-                        <div class="feat-idx">4</div>
-                        <div class="feat-info">
-                            <h5>EMA Spread % (Corregido)</h5>
-                            <p><code>ema_diff_pct</code> → Medida viva que alimenta al filtro sin perder escala de precios en tiempo real</p>
-                        </div>
-                    </div>
-                    <div class="feat-row">
-                        <div class="feat-idx">5</div>
-                        <div class="feat-info">
-                            <h5>Z-Score VWAP</h5>
-                            <p><code>clip(zscore / 3.0, -1, 1)</code> → distancia al VWAP</p>
-                        </div>
-                    </div>
-                    <div class="feat-row">
                         <div class="feat-idx">6</div>
                         <div class="feat-info">
-                            <h5>Régimen (encoded)</h5>
-                            <p><code>TREND_UP=0 DOWN=1 RANGE=2 NEUTRAL=3 MOM=4 CHAOS=5</code> / 5</p>
+                            <h5>EMA Spread (Vigor)</h5>
+                            <p><code>tanh(ema_diff_pct)</code> → Fuerza relativa de la tendencia corta vs larga</p>
                         </div>
                     </div>
                     <div class="feat-row">
                         <div class="feat-idx">7</div>
                         <div class="feat-info">
-                            <h5>Nº Confirmaciones</h5>
-                            <p><code>min(num_conf / 7.0, 1.0)</code> → cuántos indicadores confirmaron</p>
+                            <h5>Z-Score VWAP</h5>
+                            <p><code>clip(zscore / 3.0, -1, 1)</code> → anomalía estadística de precio</p>
                         </div>
                     </div>
                     <div class="feat-row">
                         <div class="feat-idx">8</div>
                         <div class="feat-info">
-                            <h5>ADX</h5>
-                            <p><code>min(adx / 50.0, 1.0)</code> → fuerza de la tendencia, cap en 50</p>
+                            <h5>Régimen (encoded)</h5>
+                            <p><code>UP=0 DOWN=1 RANGE=2 NEUTRON=3 MOM=4 CHAOS=5</code> / 5</p>
                         </div>
                     </div>
                     <div class="feat-row">
                         <div class="feat-idx">9</div>
                         <div class="feat-info">
-                            <h5>Tiene Patrón de Vela</h5>
-                            <p><code>1.0</code> si Hammer, Engulfing o toque BB inferior · <code>0.0</code> si no</p>
+                            <h5>Nº Confirmaciones</h5>
+                            <p><code>min(num / 7.0, 1.0)</code> → cuántos indicadores confluyen</p>
                         </div>
                     </div>
                     <div class="feat-row">
                         <div class="feat-idx">10</div>
                         <div class="feat-info">
-                            <h5>ADX Subiendo</h5>
-                            <p><code>1.0</code> si ADX ahora > ADX barra anterior · <code>0.0</code> si está cayendo</p>
+                            <h5>ADX (Fuerza)</h5>
+                            <p><code>min(adx / 50.0, 1.0)</code> → robustez de la tendencia actual</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">11</div>
+                        <div class="feat-info">
+                            <h5>Patrón de Vela</h5>
+                            <p><code>1.0</code> si Hammer/Engulfing · <code>0.0</code> si no</p>
+                        </div>
+                    </div>
+                    <div class="feat-row">
+                        <div class="feat-idx">12</div>
+                        <div class="feat-info">
+                            <h5>Sostenibilidad ADX</h5>
+                            <p><code>1.0</code> si ADX sube → Tendencia se acelera</p>
                         </div>
                     </div>
                 </div>
@@ -1501,10 +1518,10 @@
                     <!-- Caja 2 -->
                     <div class="strat-card" style="flex:1; border-top: 3px solid #ef4444; padding: 24px;">
                         <h3 style="font-size:1rem; color:#e2e8f0; margin-bottom:12px;">2. Deducción Aritmética Dinámica</h3>
-                        <p style="font-size:0.85rem; color:var(--muted); margin-bottom: 10px;">El algoritmo inyecta los costos ineludibles ($0.35 fijos de IBKR/Hapi) más una penalidad predictiva por Slippage del 0.001.</p>
+                        <p style="font-size:0.85rem; color:var(--muted); margin-bottom: 10px;">El algoritmo inyecta los costos ineludibles (Comisiones bancarias) más una penalidad fija por Slippage de **$0.10 por orden**.</p>
                         <div style="background:rgba(239,68,68,0.1); padding:10px; border-radius:8px; text-align:center;">
-                            <span style="display:block; font-size:0.75rem; color:#fca5a5;">Filtro de Costos Netos</span>
-                            <strong style="color:#f87171; font-size:1.1rem;">-$1.10 (Fee + Slippage)</strong>
+                            <span style="display:block; font-size:0.75rem; color:#fca5a5;">Filtro de Costos Dashboard</span>
+                            <strong style="color:#f87171; font-size:1.1rem;">Comisión + $0.10 Slippage</strong>
                         </div>
                     </div>
 

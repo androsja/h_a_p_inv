@@ -72,15 +72,19 @@ class SessionStats:
         full_kelly = (rr_ratio * p - q) / rr_ratio
         return max(0.005, min(0.02, full_kelly * 0.25))
 
-    def record_trade(self, pnl: float, current_balance: float, price: float = 0.0, timestamp: str = "") -> None:
+    def record_trade(self, pnl: float, current_balance: float, side: str = "SELL", qty: float = 0.0, price: float = 0.0, timestamp: str = "", reason: str = "", metadata: dict = None) -> None:
         self.total_trades += 1
         self.total_pnl    += pnl
         self._pnl_history.append(pnl)
         
         # Append to detailed history
         self.trade_history.append({
+            "side": side,
+            "qty": qty,
             "price": price,
             "pnl": pnl,
+            "reason": reason,
+            "metadata": metadata or {},
             "timestamp": timestamp or datetime.now(timezone.utc).isoformat()
         })
         

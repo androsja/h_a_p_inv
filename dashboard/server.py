@@ -145,6 +145,8 @@ def read_last_logs(n: int = 200) -> list[str]:
 async def state_broadcaster():
     loop_count = 0
     cached_logs = []
+    last_sim_mtime = 0
+    last_live_mtime = 0
 
     while True:
         try:
@@ -170,20 +172,25 @@ async def state_broadcaster():
                 await manager.broadcast({"status": "idle"}, mode="sim")
 
             # --- MODO LIVE ---
+            live_data = None
             if config.STATE_FILE_LIVE.exists():
-                mtime = config.STATE_FILE_LIVE.stat().st_mtime
-                if mtime > last_live_mtime:
+                try:
+                    mtime = config.STATE_FILE_LIVE.stat().st_mtime
+                    content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
+                    live_data = json.loads(content)
                     last_live_mtime = mtime
-                    try:
-                        content = config.STATE_FILE_LIVE.read_text(encoding="utf-8")
-                        data = json.loads(content)
-                        data["logs"] = cached_logs
-                        await manager.broadcast(data, mode="live")
-                    except Exception as e_json:
-                        print(f"Error parse live state: {e_json}")
+                except Exception as e_json:
+                    print(f"Error parse live state: {e_json}")
+            
+            if live_data or cached_logs:
+                # Si no hay data del estado, enviamos un objeto base con logs
+                broadcast_payload = live_data or {"status": "running"}
+                broadcast_payload["logs"] = cached_logs
+                # print(f"DEBUG: Broadcasting live logs (count: {len(cached_logs)})")
+                await manager.broadcast(broadcast_payload, mode="live")
             elif last_live_mtime > 0:
                 last_live_mtime = 0
-                await manager.broadcast({"status": "idle"}, mode="live")
+                await manager.broadcast({"status": "idle", "logs": cached_logs}, mode="live")
 
         except Exception as e:
             print(f"Error en broadcaster: {e}")
@@ -279,3 +286,8 @@ async def websocket_live(websocket: WebSocket):
 @app.get("/api/state")
 async def get_state(mode: str = "sim"):
     return read_state(mode=mode)
+
+
+@app.get("/api/logs")
+async def get_logs(n: int = 200):
+    return read_last_logs(n)

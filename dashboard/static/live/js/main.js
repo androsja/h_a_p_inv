@@ -1,6 +1,13 @@
 'use strict';
 
 // ═══════════════════════════════════════════════════════
+// ESTADO DEL BOT — Fuente de verdad única para los botones
+// Solo updateBotStatus() puede modificar _botRunning.
+// updateUI() NO toca los botones para evitar conflictos con el WebSocket.
+// ═══════════════════════════════════════════════════════
+let _botRunning = null; // null = desconocido, true = corriendo, false = detenido
+
+// ═══════════════════════════════════════════════════════
 // RELOJ
 // ═══════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════
@@ -17,8 +24,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         const tab = btn.dataset.tab;
         // Ocultar todo
         TAB_IDS.forEach(id => {
-            document.getElementById(`tab-${id}`).classList.remove('visible');
-            document.getElementById(`tbtn-${id}`).classList.remove('active');
+            const tabEl = document.getElementById(`tab-${id}`);
+            const btnEl = document.getElementById(`tbtn-${id}`);
+            if (tabEl) tabEl.classList.remove('visible');
+            if (btnEl) btnEl.classList.remove('active');
         });
         // Mostrar el seleccionado
         document.getElementById(`tab-${tab}`).classList.add('visible');
@@ -31,6 +40,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
             });
         }
         if (tab === 'pnl') pnlChart.resize();
+        if (tab === 'log') {
+            fetch('/api/logs')
+                .then(res => res.json())
+                .then(lines => {
+                    if (Array.isArray(lines)) appendLog(lines);
+                })
+                .catch(err => console.error("Error fetching logs:", err));
+        }
     });
 });
 
@@ -226,8 +243,8 @@ function updateCandleChart(state) {
             vwapSeries.setData(candles.map(c => ({ time: c.time, value: state.vwap || 0 })));
             candleChart.timeScale().scrollToRealTime();
         } catch (e) { }
-    } else if (lastTs > prevCandleTs) {
-        // Solo actualizar la última vela
+    } else if (lastTs >= prevCandleTs) {
+        // Actualizar la vela actual o agregar una nueva
         try {
             const last = candles[candles.length - 1];
             candleSeries.update(last);
@@ -246,6 +263,10 @@ let logLines = [];
 function classifyLog(l) {
     if (l.includes('🟢 BUY') || l.includes('ORDER_FILLED | BUY')) return 'order-buy';
     if (l.includes('🔴 SELL') || l.includes('ORDER_FILLED | SELL')) return 'order-sell';
+    if (l.includes('[ORDER_SENT]')) return 'order-sent';
+    if (l.includes('[TRADE_AVOIDED]')) return 'avoided';
+    if (l.includes('[GHOST_OPEN]')) return 'ghost-open';
+    if (l.includes('[GHOST_CLOSE]')) return 'ghost-close';
     if (l.includes('| ERROR')) return 'error';
     if (l.includes('| WARNING')) return 'warning';
     if (l.includes('| INFO')) return 'info';
@@ -254,14 +275,14 @@ function classifyLog(l) {
 function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function appendLog(lines) {
     if (!lines || !lines.length) return;
-    // Deduplicar: Solo agregar líneas que no estén ya en el final del buffer
-    const lastLines = logLines.slice(-30);
-    const newFiltered = lines.filter(l => !lastLines.includes(l) && l.trim());
+    
+    // El backend envía un snapshot integro de los últimos 200 logs
+    // Verificamos si hay algún cambio real para evitar re-renderizar todo
+    if (logLines.length > 0 && logLines[logLines.length - 1] === lines[lines.length - 1] && logLines.length === lines.length) {
+        return; 
+    }
 
-    if (newFiltered.length === 0) return;
-
-    logLines.push(...newFiltered);
-    if (logLines.length > MAX_LOG) logLines = logLines.slice(-MAX_LOG);
+    logLines = lines; // Reemplazar directamente en lugar de duplicar/mezclar array slices
 
     const term = document.getElementById('log-terminal');
     if (!term) return;
@@ -271,6 +292,15 @@ function appendLog(lines) {
         `<span class="log-line ${classifyLog(l)}">${esc(l)}</span>`
     ).join('\n');
     if (wasBottom) term.scrollTop = term.scrollHeight;
+}
+
+function clearLogs() {
+    logLines = [];
+    const term = document.getElementById('log-terminal');
+    if (term) {
+        term.innerHTML = '<div class="log-line info" style="text-align:center; padding: 20px; opacity: 0.5;">— Bitácora limpiada. Esperando nuevos eventos... —</div>';
+    }
+    console.log("Log terminal cleared by user.");
 }
 
 // ═══════════════════════════════════════════════════════
@@ -285,12 +315,18 @@ function showToast(trade) {
     toast.className = `toast ${trade.side}`;
 
     toast.innerHTML = `
-        <div class="toast-side">${isBuy ? '🟢 ORDEN EJECUTADA: COMPRA' : '🔴 ORDEN EJECUTADA: VENTA'}</div>
-        <div class="toast-details">
-            Activo: <b>${trade.symbol || ''}</b><br>
-            Precio: $${(trade.price || 0).toFixed(2)}<br>
-            ${!isBuy ? `PnL: <span style="color:${trade.pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${trade.pnl >= 0 ?
-            '+' : ''}${(trade.pnl || 0).toFixed(2)}</span>` : ''}
+        <div class="toast-side" style="margin-bottom: 2px;">
+            ${isBuy ? '🟢 COMPRA' : '🔴 VENTA'} | <b>${trade.symbol || ''}</b>
+        </div>
+        <div class="toast-details" style="font-size: 11px; line-height: 1.4;">
+            <div style="display: flex; justify-content: space-between;">
+               <span>Precio: $${(trade.price || 0).toFixed(2)}</span>
+               ${!isBuy ? `<span>PnL: <b style="color:${trade.pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${trade.pnl >= 0 ? '+' : ''}${(trade.pnl || 0).toFixed(2)}</b></span>` : ''}
+            </div>
+            <div style="margin-top: 4px; color: var(--muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px;">
+               ${trade.reason ? `Motivo: ${trade.reason}<br>` : ''}
+               ${trade.ml_prob ? `Certeza IA: ${(trade.ml_prob * 100).toFixed(1)}%` : ''}
+            </div>
         </div>
         `;
     container.appendChild(toast);
@@ -681,29 +717,16 @@ async function handleBank(action) {
 // Llamada inicial 
 loadResults();
 
-// Cargar historial de trades inicial
-fetch('/api/trades_history')
-    .then(res => res.json())
-    .then(data => {
-        if (data && data.length > 0) {
-            renderTrades(data);
-        }
-    })
-    .catch(err => console.error("Error loading trades history:", err));
+// Removed historical /api/trades_history fetch to keep session clean
 
 let sessionTrades = []; // Cache para persistencia en vivo
 
 async function renderTrades(trades) {
     if (!trades) return;
 
-    const now = new Date();
-    const today = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0');
-
-    // 1. Integrar nuevos trades al cache global de la sesión
+    // 1. Integrar nuevos trades al cache de la sesión
     trades.forEach(t => {
-        if (!t.date || (!t.date.startsWith(today) && t.date !== today)) return;
+        if (!t.date) return;
 
         // Evitar duplicados (mismo símbolo, hora y precio)
         const exists = sessionTrades.some(st =>
@@ -725,13 +748,12 @@ async function renderTrades(trades) {
 
     const list = document.getElementById('trades-list');
 
-    // Si no hay nada hoy, mostrar mensaje de espera
+    // Si no hay nada, mostrar mensaje de espera
     if (sessionTrades.length === 0) {
         list.innerHTML = `
             <div class="no-trades" style="text-align:center; padding:30px; opacity:0.6;">
                 <div style="font-size:24px; margin-bottom:10px;">📅</div>
-                Sin operaciones hoy (${today})<br>
-                <span style="font-size:10px;">Las operaciones de días anteriores están ocultas.</span>
+                Sin operaciones en esta sesión aún<br>
             </div>`;
         return;
     }
@@ -865,19 +887,29 @@ function _renderTradesSubRow(sym) {
     const subRow = document.getElementById(`trades-subrow-${sym}`);
     if (!subRow) return;
 
-    // Filtrar trades del día para este símbolo
-    const now = new Date();
-    const today = now.getFullYear() + '-' +
-        String(now.getMonth() + 1).padStart(2, '0') + '-' +
-        String(now.getDate()).padStart(2, '0');
-
-    const trades = sessionTrades
-        .filter(t => t.symbol === sym && t.date && t.date.startsWith(today))
-        .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+    // FUENTE DE VERDAD: leer directamente del estado WebSocket más reciente
+    // (en lugar del cache sessionTrades que puede estar vacío al inicio)
+    const symState = fullState && fullState[sym];
+    const directTrades = (symState && symState.trades) ? [...symState.trades] : [];
+    
+    // También integrar cualquier trade en sessionTrades para no perder datos históricos de la sesión
+    const cachedTrades = sessionTrades.filter(t => t.symbol === sym);
+    
+    // Mezclar ambas fuentes evitando duplicados
+    const allKeys = new Set(directTrades.map(t => `${t.time}|${t.price}|${t.side}`));
+    cachedTrades.forEach(t => {
+        const key = `${t.time}|${t.price}|${t.side}`;
+        if (!allKeys.has(key)) {
+            directTrades.push(t);
+            allKeys.add(key);
+        }
+    });
+    
+    const trades = directTrades.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
 
     if (trades.length === 0) {
         subRow.innerHTML = `<td colspan="11" style="padding:10px 20px; font-size:11px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.05);">
-            📭 Sin trades hoy para <strong>${sym}</strong>
+            📭 Sin operaciones registradas para <strong>${sym}</strong> en esta sesión
         </td>`;
         return;
     }
@@ -988,11 +1020,6 @@ async function setFocusSymbol(sym) {
         if (data.status === 'success' && data.candles) {
             const cdata = data.candles;
             candleSeries.setData(cdata);
-            // Actualizar indicadores visuales
-            if (cdata.length > 0) {
-                const last = cdata[cdata.length - 1];
-                document.getElementById('ind-price').textContent = `$${last.close.toFixed(2)}`;
-            }
         }
     } catch (e) { console.error("Error fetching history for focus", e); }
 
@@ -1192,9 +1219,8 @@ function updateUI(data) {
                 const regimeCode = sState.regime || liveRegimes[sSym] || 'NEUTRAL';
                 const regimeBadge = buildRegimeBadge(regimeCode);
 
-                // Número de trades del día para este símbolo (del cache sessionTrades)
-                const symTodayTrades = sessionTrades.filter(t => t.symbol === sSym);
-                const tradesCount = sState.total_trades || symTodayTrades.length || 0;
+                // Número de trades de esta sesión para este símbolo
+                const tradesCount = sState.total_trades || 0;
                 const tradesBadge = tradesCount > 0
                     ? `<span onclick="event.stopPropagation(); toggleTradesSubRow('${sSym}')" style="cursor:pointer; background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.35); color:var(--accent); font-size:11px; padding:2px 7px; border-radius:10px; font-weight:bold;" title="Ver trades">${tradesCount} ▼</span>`
                     : `<span style="color:var(--muted);">0</span>`;
@@ -1313,16 +1339,6 @@ function updateUI(data) {
                 symDisplay.value = sym;
             }
         }
-
-        // Indicadores pestaña
-        document.getElementById('ind-price').textContent = bid ? `$${bid.toFixed(2)} ` : '─';
-        document.getElementById('ind-ema12').textContent = (state.ema_fast || 0).toFixed(4);
-        document.getElementById('ind-ema26').textContent = (state.ema_slow || 0).toFixed(4);
-        document.getElementById('ind-ema200').textContent = (state.ema_200 || 0).toFixed(4);
-        document.getElementById('ind-rsi').textContent = (state.rsi || 0).toFixed(1);
-        document.getElementById('ind-macd').textContent = (state.macd_hist || 0).toFixed(4);
-        document.getElementById('ind-vwap').textContent = (state.vwap || 0).toFixed(2);
-        document.getElementById('ind-atr').textContent = (state.atr || 0).toFixed(4);
     }
 
     // Sidebar estadísticas (esto es global de la cuenta)
@@ -1433,20 +1449,12 @@ function updateUI(data) {
     const modeChip = document.getElementById('mode-chip');
     if (modeChip) modeChip.textContent = modeTitle;
 
-    // Botones visibilidad
-    const anyRunning = activeStates && activeStates.length > 0;
-    const btnStart = document.getElementById('btn-start-paper');
-    const btnStop = document.getElementById('btn-stop-paper');
-    if (btnStart) btnStart.style.display = anyRunning ? 'none' : 'flex';
-    if (btnStop) btnStop.style.display = anyRunning ? 'flex' : 'none';
+    // Botones de inicio/stop: controlados EXCLUSIVAMENTE por updateBotStatus()
+    // updateUI() NO modifica estos botones para evitar conflicto con datos stale del WebSocket
 
     // Body class para CSS
     document.body.classList.remove('mode-live-paper');
     document.body.classList.add('mode-live-paper');
-
-    // Mostrar/ocultar botón de actualización en modal
-    const updateC = document.getElementById('update-symbols-container');
-    if (updateC) updateC.style.display = anyRunning ? 'block' : 'none';
 
     // PnL chart — solo agregar punto si cambió
     const ts = new Date().toLocaleTimeString('es-CO', { timeZone: 'America/Bogota', hour12: false });
@@ -1472,77 +1480,20 @@ function updateUI(data) {
     // Posición
     renderPosition(state);
 
-    // Trades
-    renderTrades(state.trades);
+    // Trades — Recolectar de TODOS los símbolos activos para no perder trades de símbolos no enfocados
+    const allSymbolTrades = [];
+    for (const [k, v] of Object.entries(fullState)) {
+        if (RESERVED_KEYS.has(k) || !v || typeof v !== 'object' || !v.symbol) continue;
+        if (v.trades && v.trades.length > 0) {
+            allSymbolTrades.push(...v.trades);
+        }
+    }
+    if (allSymbolTrades.length > 0) renderTrades(allSymbolTrades);
 
     // Log - Leer de la raíz del mensaje (fullState), no del sub-estado
     if (fullState && fullState.logs) appendLog(fullState.logs);
 
-    // ─── Tab Indicadores ───
-    const price = state.bid ?? 0;
-    const ema200 = state.ema_200 ?? 0;
-    const vwap = state.vwap ?? 0;
-    const atr = state.atr ?? 0;
-    const rsi = state.rsi ?? 50;
-    const macd = state.macd_hist ?? 0;
-
-    document.getElementById('ind-price').textContent = price ? `$${price.toFixed(2)} ` : '─';
-    document.getElementById('ind-ema12').textContent = state.ema_fast ? `$${state.ema_fast.toFixed(2)} ` :
-        '─';
-    document.getElementById('ind-ema26').textContent = state.ema_slow ? `$${state.ema_slow.toFixed(2)} ` :
-        '─';
-    document.getElementById('ind-ema200').textContent = ema200 ? `$${ema200.toFixed(2)} ` : '─';
-
-    const vsEma = ema200 > 0 ? ((price - ema200) / ema200 * 100) : null;
-    const vsEmaEl = document.getElementById('ind-vs-ema200');
-    if (vsEma != null) {
-        vsEmaEl.textContent = `${vsEma >= 0 ? '▲' : ''} ${Math.abs(vsEma).toFixed(2)}% ${vsEma >= 0 ?
-            '(alcista)' : '(bajista)'
-            } `;
-        vsEmaEl.style.color = vsEma >= 0 ? 'var(--green)' : 'var(--red)';
-    }
-
-    document.getElementById('ind-rsi').textContent = rsi.toFixed(1);
-    document.getElementById('rsi-needle').style.left = `${rsi}% `;
-    const rsiState = rsi > 65 ? '🔴 Sobrecomprado' : rsi < 35 ? '🟢 Sobreventa (oportunidad)'
-        : '✅ Zona neutral'; document.getElementById('ind-rsi-state').textContent = rsiState;
-    document.getElementById('ind-rsi-state').style.color = rsi > 65 ? 'var(--red)' : rsi < 35
-        ? 'var(--green)' : 'var(--accent)';
-    document.getElementById('ind-macd').textContent = macd.toFixed(4);
-    document.getElementById('ind-macd').style.color = macd > 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('ind-macd-dir').textContent = macd > 0 ? '📈 Positivo (alcista)' : '📉 Negativo (bajista)';
-
-    document.getElementById('ind-vwap').textContent = vwap ? `$${vwap.toFixed(2)} ` : '─';
-    const vsVwap = vwap > 0 ? ((price - vwap) / vwap * 100) : null;
-    const vsVwapEl = document.getElementById('ind-vs-vwap');
-    if (vsVwap != null) {
-        vsVwapEl.textContent = vsVwap >= 0 ? `▲ ${vsVwap.toFixed(2)}% (por encima)` : `▼ ${Math.abs(vsVwap).toFixed(2)}% (por debajo)`;
-        vsVwapEl.style.color = vsVwap >= 0 ? 'var(--green)' : 'var(--red)';
-    }
-    document.getElementById('ind-vwap-spread').textContent = vwap > 0 ? `$${Math.abs(price -
-        vwap).toFixed(2)
-        } de distancia` : '─';
-
-    document.getElementById('ind-atr').textContent = atr ? `$${atr.toFixed(2)} ` : '─';
-    const atrPct = price > 0 && atr > 0 ? (atr / price * 100) : 0;
-    const atrSlDist = atr * 1.5;
-    document.getElementById('ind-atr-pct').textContent = atrPct ? `${atrPct.toFixed(2)}% ` : '─';
-    document.getElementById('ind-atr-sl').textContent = atrSlDist ? `$${atrSlDist.toFixed(2)} (precio SL ≈ $${(price - atrSlDist).toFixed(2)})` : '─';
-    const atrStateEl = document.getElementById('ind-atr-state');
-    if (atrPct > 3) {
-        atrStateEl.textContent = '🔴 Alta — Bot bloqueado'; atrStateEl.style.color = 'var(--red)';
-    } else if (atrPct > 1.5) {
-        atrStateEl.textContent = '🟡 Media — Operable con cautela'; atrStateEl.style.color =
-            'var(--yellow)';
-    } else {
-        atrStateEl.textContent = '🟢 Baja — Condiciones óptimas'; atrStateEl.style.color =
-            'var(--green)';
-    }
-
-    document.getElementById('ind-cash-init').textContent = `$${init.toFixed(2)} `;
-    document.getElementById('ind-cash-avail').textContent = `$${avail.toFixed(2)} `;
-    document.getElementById('ind-gp').textContent = `$${gp.toFixed(2)} `;
-    document.getElementById('ind-gl').textContent = `$${gl.toFixed(2)} `;
+    // ─── Tab Indicadores (Eliminado a petición del usuario) ───
 }
 
 // ═══════════════════════════════════════════════════════

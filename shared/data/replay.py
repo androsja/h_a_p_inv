@@ -11,6 +11,7 @@ Clases:
 
 import time
 import random
+from typing import Optional, Union
 
 import pandas as pd
 import pytz
@@ -32,7 +33,7 @@ class MarketReplay:
     El MockBroker usa esta clase para simular el mercado intraday.
     """
 
-    def __init__(self, symbol: str | None = None, start_date: str | None = None):
+    def __init__(self, symbol: Optional[str] = None, start_date: Optional[str] = None):
         """
         Args:
             symbol:     Ticker a simular. Si es None, elige uno al azar de assets.json.
@@ -89,6 +90,12 @@ class MarketReplay:
         self._index += 1
         return bar
 
+    def peek_next_timestamp(self) -> Optional[pd.Timestamp]:
+        """Devuelve el timestamp de la siguiente vela sin avanzar el cursor."""
+        if not self.has_next():
+            return None
+        return self.df.index[self._index]
+
     def current_slice(self, window: int = 50) -> pd.DataFrame:
         """Devuelve las últimas `window` velas hasta la posición actual."""
         end   = self._index
@@ -124,9 +131,16 @@ class LivePaperReplay:
         self._warned_no_data = False
 
     def has_next(self) -> bool:
-        return True  # Siempre hay una vela siguiente en modo vivo
+        """En modo Mock Time, termina la sesión si llegamos a las 4:00 PM NYC."""
+        from shared.utils.market_hours import _is_mock_time_active, now_nyc
+        from datetime import time as dt_time
+        
+        if _is_mock_time_active():
+            if now_nyc().time() >= dt_time(16, 0):
+                return False
+        return True
 
-    def next_bar(self) -> pd.Series | None:
+    def next_bar(self) -> Optional[pd.Series]:
         """Devuelve la vela más reciente (real o simulada)."""
         from shared.utils.market_hours import _is_mock_time_active, now_nyc
         import pytz

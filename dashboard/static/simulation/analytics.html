@@ -446,8 +446,8 @@
 
         function renderStats() {
             document.getElementById('totalSims').textContent = historyData.length;
-            const avg = historyData.reduce((acc, s) => acc + s.symbols_count, 0) / historyData.length;
-            document.getElementById('avgTrades').textContent = avg.toFixed(1);
+            const avg = historyData.reduce((acc, s) => acc + (s.trades_learned || 0), 0) / historyData.length;
+            document.getElementById('avgTrades').textContent = Math.round(avg);
             
             // Sumar ghosts de los registros y Ranking
             let ghosts = 0;
@@ -513,6 +513,7 @@
                 item.innerHTML = `
                     <div class="history-item-header">
                         <span class="history-date">${date} <small style="color:var(--text-dim); margin-left:5px;">${startTime} → ${finishTime}</small></span>
+                        ${sim.is_partial ? '<span style="background:#f59e0b; color:#000; font-size:0.6rem; font-weight:800; padding:2px 6px; border-radius:4px; margin-left:8px;">PARCIAL</span>' : ''}
                         <span class="history-stats">#${historyData.length - idx}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: flex-end">

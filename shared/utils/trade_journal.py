@@ -21,6 +21,7 @@ import csv
 import json
 import threading
 from pathlib import Path
+from typing import Optional, Union, Dict, List
 from datetime import datetime, timezone
 from shared import config
 
@@ -50,6 +51,8 @@ COLUMNS = [
     "exit_reason",       # TAKE_PROFIT, STOP_LOSS, TRAILING_STOP, FORCED_SELL
     "gross_pnl",         # PnL bruto (sin fees/slippage)
     "gross_pnl_pct",     # PnL bruto % sobre capital invertido
+    "fees",              # Comisiones pagadas ($)
+    "slippage",          # Deslizamiento estimado ($)
     "is_win",            # 1 = ganador, 0 = perdedor
 
     # ── Ratio R/R real ───────────────────────────────────────────
@@ -91,7 +94,9 @@ def record_trade(
     exit_reason: str,
     ml_features: dict,
     hold_bars: int = 0,
-    timestamp: str | None = None,
+    fees: float = 0.0,
+    slippage: float = 0.0,
+    timestamp: Optional[str] = None,
 ):
     """
     Registra un trade cerrado en el diario completo.
@@ -156,6 +161,8 @@ def record_trade(
             "exit_reason":     exit_reason,
             "gross_pnl":       round(gross_pnl, 4),
             "gross_pnl_pct":   round(gross_pnl_pct, 4),
+            "fees":            round(fees, 4),
+            "slippage":        round(slippage, 4),
             "is_win":          is_win,
             "risk_distance":   round(risk_distance, 4),
             "reward_distance": round(reward_distance, 4),
