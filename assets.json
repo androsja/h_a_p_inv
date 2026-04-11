@@ -2,17 +2,17 @@
     "assets": [
         {
             "symbol": "SPY",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
             "symbol": "QQQ",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
             "symbol": "DIA",
-            "enabled": true,
+            "enabled": false,
             "type": "index"
         },
         {
@@ -25,183 +25,183 @@
         },
         {
             "symbol": "ABNB",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ACN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ADBE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ADI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AFRM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMAT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMGN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AMZN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ARM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ASML",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AVGO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AXP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BAC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BILL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BRK.B",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BTI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "C",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CAT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CDNS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CELH",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "COIN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "COST",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CRM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CRWD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CSCO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CVS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CVX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "D",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DASH",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DDOG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DHR",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DOCU",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DUK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "FDX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "FTNT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GOOGL",
@@ -209,474 +209,470 @@
         },
         {
             "symbol": "GS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GTLB",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HON",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HOOD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HSY",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "IBM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "INTC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "IONQ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ISRG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "JNJ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "JPM",
-            "enabled": true
-        },
-        {
-            "symbol": "K",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KLAC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LLY",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LMT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LOW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LRCX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "LYFT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MCD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MCHP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MDB",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MDLZ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "META",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MMM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MNDY",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MRK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MSFT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MSTR",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "MU",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NEE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NET",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NFLX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NKE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NOC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NOW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "NVDA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "O",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "OPEN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ORCL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PANW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PEP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PFE",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PLTR",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "PSQ",
-            "enabled": true,
+            "enabled": false,
             "type": "inverted"
         },
         {
             "symbol": "PYPL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "QCOM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "RBLX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ROKU",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "RTX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SAP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SBUX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SH",
-            "enabled": true,
+            "enabled": false,
             "type": "inverted"
         },
         {
             "symbol": "SHOP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SMCI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SNOW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SNPS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SOFI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SPG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SQ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "SQQQ",
-            "enabled": true,
+            "enabled": false,
             "type": "inverted"
         },
         {
             "symbol": "STZ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "T",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TAP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TGT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TMO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TSLA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TTD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TWLO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "TXN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "U",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "UBER",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "UNH",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "UPS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "V",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "VZ",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "WFC",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "WMT",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "XOM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ZM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ZS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ADSK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "AIG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ALL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "APA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "APO",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BLK",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BMY",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BSX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "BX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CB",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "CI",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "COP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "DAL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "EL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "EOG",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "EQIX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ETN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "EW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "FIS",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "FISV",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GILD",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HCA",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "HUM",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "IDXX",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ILMN",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ITW",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KDP",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KMB",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "KMI",
-            "enabled": true
+            "enabled": false
         }
     ]
 }

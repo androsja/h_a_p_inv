@@ -585,6 +585,9 @@
                     <button class="tab-btn" data-tab="log" id="tbtn-log">
                         <span class="tab-icon">🖥️</span> Log
                     </button>
+                    <button onclick="openCalcModal()" class="tab-btn" style="margin-left:auto; border:1px solid rgba(0,255,213,0.3); background:rgba(0,255,213,0.05); color:var(--accent); font-weight:800; border-radius:6px; padding:0 15px;">
+                        ❓ ¿Cómo se calcula?
+                    </button>
                 </div>
 
 
@@ -2244,6 +2247,9 @@
             });
 
             if (combined.length === 0) {
+                // Actualizar tarjetas a cero si no hay datos
+                updateSummaryCards(0, 0, 0, 0, 0, window.INITIAL_CAPITAL || 10000, 0);
+                
                 // Si el WS está conectado, el bot está arrancando; si no, es que no hay datos
                 const wsActive = window._wsConnected;
                 tbody.innerHTML = `<tr><td colspan="14" style="padding:30px; text-align:center; color:var(--muted);">
@@ -2412,7 +2418,7 @@
             `;
             tbody.appendChild(cashoutRow);
 
-            // Actualizar tarjetas de resumen superior (opcional pero recomendado)
+            // Actualizar tarjetas de resumen superior (GLOBALES)
             updateSummaryCards(totalWins, totalLosses, totalFees, totalSlip, totalNet, netToBank, finalProfit);
             updateGlobalAIStats(rowsToRender);
         }
@@ -2595,6 +2601,59 @@
             // Actualizar la fecha simulada
             const simDateDisplay = document.getElementById('sim-date');
 
+            // Actualizar indicadores solo si es el símbolo enfocado
+            const isFocusActive = (sym === focusSymbol);
+            if (isFocusActive) {
+                // Header (Precio y Señal en tiempo real)
+                setT('hdr-price', bid ? `$${bid.toFixed(2)}` : 'Cargando...');
+                const chg = prevBid > 0 ? bid - prevBid : 0;
+                const chgEl = document.getElementById('hdr-change');
+                if (chgEl && chg !== 0) {
+                    chgEl.textContent = `${chg > 0 ? '+' : ''}${chg.toFixed(3)}`;
+                    chgEl.style.color = chg > 0 ? 'var(--green)' : 'var(--red)';
+                }
+                prevBid = bid;
+
+                const sig = state.signal || 'HOLD';
+                const sigEl = document.getElementById('hdr-sig');
+                if (sigEl) {
+                    sigEl.textContent = sig;
+                    sigEl.className = `sig-badge ${sig}`;
+                }
+
+                // Símbolo en header (Combobox)
+                const symDisplay = document.getElementById('hdr-sym');
+                if (symDisplay && symDisplay.tagName === 'SELECT') {
+                    const activeSyms = Object.values(fullState)
+                        .filter(v => v && typeof v === 'object' && v.symbol && v.symbol !== '─' && v.symbol !== '_main')
+                        .map(v => v.symbol);
+
+                    const currentOptions = Array.from(symDisplay.options).map(o => o.value);
+                    if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
+                        symDisplay.innerHTML = '';
+                        activeSyms.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s;
+                            opt.textContent = `👁 ${s}`;
+                            symDisplay.appendChild(opt);
+                        });
+                    }
+                    if (symDisplay.value !== sym) {
+                        symDisplay.value = sym;
+                    }
+                }
+
+                // Indicadores pestaña
+                document.getElementById('ind-price').textContent = bid ? `$${bid.toFixed(2)} ` : '─';
+                document.getElementById('ind-ema12').textContent = (state.ema_fast || 0).toFixed(4);
+                document.getElementById('ind-ema26').textContent = (state.ema_slow || 0).toFixed(4);
+                document.getElementById('ind-ema200').textContent = (state.ema_200 || 0).toFixed(4);
+                document.getElementById('ind-rsi').textContent = (state.rsi || 0).toFixed(1);
+                document.getElementById('ind-macd').textContent = (state.macd_hist || 0).toFixed(4);
+                document.getElementById('ind-vwap').textContent = (state.vwap || 0).toFixed(2);
+                document.getElementById('ind-atr').textContent = (state.atr || 0).toFixed(4);
+            }
+
             // Inyectar indicador de MOCK TIME o SIMULACIÓN si está activo
             const liveBadge = document.getElementById('results-live-badge');
             const modeText = document.getElementById('results-mode-text');
@@ -2658,67 +2717,13 @@
             // Ignoramos claves genéricas y extraemos solo los estados de símbolos individuales
             renderUnifiedTable(); // Motor unificado
 
-            // Actualizar indicadores solo si es el símbolo enfocado
-            const isFocusActive = (sym === focusSymbol);
-            if (isFocusActive) {
-                // Header
-                setT('hdr-price', bid ? `$${bid.toFixed(2)} ` : '$─.──');
-                const chg = prevBid > 0 ? bid - prevBid : 0;
-                const chgEl = document.getElementById('hdr-change');
-                if (chgEl && chg !== 0) {
-                    chgEl.textContent = `${chg > 0 ? '+' : ''}${chg.toFixed(3)} `;
-                    chgEl.style.color = chg > 0 ? 'var(--green)' : 'var(--red)';
-                }
-                prevBid = bid;
-
-                const sig = state.signal || 'HOLD';
-                const sigEl = document.getElementById('hdr-sig');
-                if (sigEl) {
-                    sigEl.textContent = sig;
-                    sigEl.className = `sig-badge ${sig}`;
-                }
-
-                // Gráfico de velas (Mantenimiento delegado a updateCandleChart más abajo)
-
-
-                // Símbolo en header (Combobox)
-                const symDisplay = document.getElementById('hdr-sym');
-                if (symDisplay && symDisplay.tagName === 'SELECT') {
-                    const activeSyms = Object.values(fullState)
-                        .filter(v => v && typeof v === 'object' && v.symbol && v.symbol !== '─' && v.symbol !== '_main')
-                        .map(v => v.symbol);
-
-                    const currentOptions = Array.from(symDisplay.options).map(o => o.value);
-                    if (activeSyms.length > 0 && JSON.stringify(activeSyms.sort()) !== JSON.stringify(currentOptions.sort())) {
-                        symDisplay.innerHTML = '';
-                        activeSyms.forEach(s => {
-                            const opt = document.createElement('option');
-                            opt.value = s;
-                            opt.textContent = `👁 ${s}`;
-                            symDisplay.appendChild(opt);
-                        });
-                    }
-                    if (symDisplay.value !== sym) {
-                        symDisplay.value = sym;
-                    }
-                }
-
-                // Indicadores pestaña
-                document.getElementById('ind-price').textContent = bid ? `$${bid.toFixed(2)} ` : '─';
-                document.getElementById('ind-ema12').textContent = (state.ema_fast || 0).toFixed(4);
-                document.getElementById('ind-ema26').textContent = (state.ema_slow || 0).toFixed(4);
-                document.getElementById('ind-ema200').textContent = (state.ema_200 || 0).toFixed(4);
-                document.getElementById('ind-rsi').textContent = (state.rsi || 0).toFixed(1);
-                document.getElementById('ind-macd').textContent = (state.macd_hist || 0).toFixed(4);
-                document.getElementById('ind-vwap').textContent = (state.vwap || 0).toFixed(2);
-                document.getElementById('ind-atr').textContent = (state.atr || 0).toFixed(4);
-            }
-
             // --- Sidebar: P&L GLOBAL (Ahora es el principal) ---
             const gPnl = state.total_sim_pnl ?? 0.0;
             const pnlEl = document.getElementById('pnl-val');
-            pnlEl.textContent = `${gPnl >= 0 ? '+' : ''}$${gPnl.toFixed(2)} `;
-            pnlEl.className = `pnl-big-val ${gPnl > 0 ? 'g' : gPnl < 0 ? 'r' : 'n'} `;
+            if (pnlEl) {
+                pnlEl.textContent = `${gPnl >= 0 ? '+' : ''}$${gPnl.toFixed(2)} `;
+                pnlEl.className = `pnl-big-val ${gPnl > 0 ? 'g' : gPnl < 0 ? 'r' : 'n'} `;
+            }
 
             // --- Sidebar: P&L ACTIVO ACTUAL (Antes era el principal) ---
             const init = state.initial_cash ?? (window.INITIAL_CAPITAL || 10000);
@@ -2766,34 +2771,52 @@
             }
             setT('global-wr-val', `${parseFloat(gWr).toFixed(2)}%`);
 
-            // 🏆 BARRA DE RESUMEN SUPERIOR (Global Simulation Stats)
+            // 🏆 BARRA DE RESUMEN SUPERIOR (Mostrando Datos del Símbolo ACTUAL)
             const sWinsEl = document.getElementById('summary-gross-wins');
-            if (sWinsEl) sWinsEl.textContent = `+$${(state.total_sim_gross_profit || 0).toFixed(2)}`;
+            const curGrossProfit = state.gross_profit || 0;
+            const curGrossLoss = state.gross_loss || 0;
+            const curFees = state.total_fees || 0;
+            const curSlip = state.slippage_est || 0;
+            const curNet = curGrossProfit + curGrossLoss - curFees - curSlip;
+
+            if (sWinsEl) {
+                sWinsEl.textContent = `+$${curGrossProfit.toFixed(2)}`;
+                sWinsEl.style.color = 'var(--green)';
+            }
 
             const sLossesEl = document.getElementById('summary-gross-losses');
-            if (sLossesEl) sLossesEl.textContent = `-$${Math.abs(state.total_sim_gross_loss || 0).toFixed(2)}`;
+            if (sLossesEl) {
+                sLossesEl.textContent = `-$${Math.abs(curGrossLoss).toFixed(2)}`;
+                sLossesEl.style.color = 'var(--red)';
+            }
 
             const sFeesEl = document.getElementById('summary-total-fees');
-            if (sFeesEl) sFeesEl.textContent = `-$${(state.total_sim_fees || 0).toFixed(2)}`;
+            if (sFeesEl) {
+                sFeesEl.textContent = `-$${curFees.toFixed(2)}`;
+                sFeesEl.style.color = '#ff9800';
+            }
 
             const sSlipEl = document.getElementById('summary-total-slippage');
-            if (sSlipEl) sSlipEl.textContent = `-$${(state.total_sim_slippage || 0).toFixed(2)}`;
+            if (sSlipEl) {
+                sSlipEl.textContent = `-$${curSlip.toFixed(2)}`;
+                sSlipEl.style.color = '#ff5722';
+            }
 
             const sNetEl = document.getElementById('summary-net-pnl');
             if (sNetEl) {
-                const net = state.total_sim_pnl || 0;
-                sNetEl.textContent = `${net >= 0 ? '+' : ''}$${net.toFixed(2)}`;
-                sNetEl.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+                sNetEl.textContent = `${curNet >= 0 ? '+' : ''}$${curNet.toFixed(2)}`;
+                sNetEl.style.color = curNet >= 0 ? 'var(--green)' : 'var(--red)';
+                sNetEl.style.fontSize = Math.abs(curNet) >= 1000 ? '20px' : '24px';
             }
 
             const initCash = window.INITIAL_CAPITAL || 10000;
             const sBalEl = document.getElementById('summary-final-balance');
-            if (sBalEl) sBalEl.textContent = `$${(initCash + (state.total_sim_pnl || 0)).toFixed(2)}`;
+            if (sBalEl) sBalEl.textContent = `$${(initCash + curNet).toFixed(2)}`;
 
             const sProfitEl = document.getElementById('summary-real-profit');
             if (sProfitEl) {
                 const withdrawalFee = 1.99;
-                const netToBank = (initCash + (state.total_sim_pnl || 0)) - withdrawalFee;
+                const netToBank = (initCash + curNet) - withdrawalFee;
                 const finalProfit = netToBank - initCash;
                 sProfitEl.textContent = `${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}`;
                 sProfitEl.style.color = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
@@ -5533,6 +5556,57 @@
             </div>
         </div>
     </div>
-</body>
 
+    <script>
+        // ══ MODAL DE CÁLCULOS ══
+        function openCalcModal() {
+            const modal = document.createElement('div');
+            modal.id = 'calc-modal-overlay';
+            modal.style = `
+                position: fixed; inset: 0; z-index: 100000;
+                background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+                display: flex; align-items: center; justify-content: center;
+                font-family: 'Inter', sans-serif;
+            `;
+            modal.innerHTML = `
+                <div style="background:var(--panel); border:1px solid var(--border); width:600px; max-width:90vw; border-radius:16px; padding:30px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h2 style="margin:0; color:var(--accent); font-size:20px;">🧮 Metodología de Cálculo</h2>
+                        <button onclick="this.closest('#calc-modal-overlay').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+                    </div>
+                    <div style="color:rgba(255,255,255,0.8); line-height:1.6; font-size:14px;">
+                        <p>Para garantizar transparencia total, el bot utiliza las siguientes fórmulas en tiempo real:</p>
+                        
+                        <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:10px; margin:15px 0;">
+                            <strong style="color:var(--green);">1. Rendimiento Bruto:</strong> Sumatoria de todos los PnL de operaciones cerradas antes de costos operativos.
+                        </div>
+                        
+                        <div style="background:rgba(253,224,71,0.05); padding:15px; border-radius:10px; margin:15px 0;">
+                            <strong style="color:var(--yellow);">2. Resultado Neto:</strong> 
+                            <span style="font-family:'JetBrains Mono'; display:block; margin-top:5px; background:black; padding:8px; border-radius:4px;">
+                                Neto = (Bruto - Pérdidas) - Comisiones - Slippage
+                            </span>
+                        </div>
+
+                        <div style="background:rgba(56,189,248,0.05); padding:15px; border-radius:10px; margin:15px 0;">
+                            <strong style="color:var(--accent2);">3. Comisiones (Fees):</strong> Costos fijos de la plataforma Hapi ($0.01 por acción aprox + regulaciones SEC/FINRA).
+                        </div>
+
+                        <div style="background:rgba(255,87,34,0.05); padding:15px; border-radius:10px; margin:15px 0;">
+                            <strong style="color:#ff5722;">4. Slippage (Deslize):</strong> Diferencia entre el precio solicitado y el precio de ejecución real del mercado.
+                        </div>
+
+                        <div style="border-top:1px solid var(--border); padding-top:15px; margin-top:20px;">
+                            <p style="font-size:12px; color:var(--muted);">
+                                💡 <strong>Nota sobre el Header:</strong> La franja superior siempre muestra el acumulado de <strong>TODOS</strong> los activos que han operado en la sesión actual, coincidiendo con el total al pie de la tabla. El sidebar derecho muestra estadísticas filtradas solo para el activo que estás visualizando.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
+            document.body.appendChild(modal);
+        }
+    </script>
+</body>
 </html>

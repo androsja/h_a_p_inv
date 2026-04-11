@@ -1,4 +1,5 @@
 import json
+import time
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from shared.utils.state_models import TradeRecord, BotState
 from shared import config
 _state_path = config.STATE_FILE
 _state_lock = threading.Lock()
+_last_flush_time = 0.0
+_flush_throttle_ms = 1000 # Solo escribir en disco cada 1 segundo máximo
 
 def set_state_file(path: Path) -> None:
     global _state_path
@@ -167,7 +170,7 @@ def clear_symbol_states() -> None:
 
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, 
                  timestamp: Optional[str] = None, reason: str = "", metadata: Optional[dict] = None) -> None:
-    global _global_sim_trades, _global_sim_wins, _global_sim_pnl
+    global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_fees, _global_sim_slippage
     with _state_lock:
         # Usar timestamp proporcionado o el actual (formato HH:MM:SS para el historial rápido)
         t_str = timestamp.split('T')[1][:8] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%H:%M:%S")
@@ -312,22 +315,22 @@ def update_state(
 
     # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
     # Estos valores son los que el Dashboard muestra en la franja superior
-    ts_trades  = globals()['_global_sim_trades'] + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_wins    = globals()['_global_sim_wins']   + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_pnl     = round(globals()['_global_sim_pnl']    + sum(s.gross_profit + s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_ghosts  = globals()['_global_sim_ghosts'] + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
-    ts_fees    = round(globals()['_global_sim_fees']   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_slippage= round(globals()['_global_sim_slippage'] + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_profit = round(globals()['_global_sim_gross_profit'] + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_loss   = round(globals()['_global_sim_gross_loss']   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_trades  = _global_sim_trades  + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_wins    = _global_sim_wins    + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
+    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
+    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
 
-    # Añadir los datos del símbolo actual (que aún no está en _symbol_states con sus valores nuevos)
+    # Añadir los datos del símbolo actual (que se está enviando en esta iteración)
     ts_trades += total_trades
     ts_wins += winning_trades
     ts_fees += total_fees
     ts_slippage += total_slippage
     ts_gross_profit += gross_profit
     ts_gross_loss += gross_loss
+    ts_ghosts += total_ghosts
     
     # ─── CÁLCULO DE PNL NETO TOTAL ───
     # ts_pnl = (Beneficio Bruto - Pérdida Bruta) - Fees - Slippage
@@ -400,22 +403,28 @@ def update_state(
         _flush()
 
 def _flush() -> None:
+    """Vuelca el estado a disco con protección de concurrencia y throttling."""
+    global _last_flush_time
+    now = time.time()
+    
+    # Throttle: No escribir más de una vez por segundo para evitar corrupción y saturación de IO
+    if (now - _last_flush_time) < (_flush_throttle_ms / 1000.0):
+        return
+
     try:
         _state_path.parent.mkdir(parents=True, exist_ok=True)
         # El estado final es un diccionario de símbolos
         output = {}
+        
+        # Trabajamos bajo el lock para asegurar que nadie modifique los diccionarios mientras serializamos
         for sym, st in _symbol_states.items():
             d = asdict(st)
-            # Inyectar métricas IA POR SÍMBOLO (no la global compartida)
             sym_stats = _symbol_model_stats.get(sym, {})
             d["model_accuracy"] = sym_stats.get("model_accuracy", 0.0)
             d["total_samples"] = sym_stats.get("total_samples", 0)
             output[sym] = d
         
-        # Inyectar una vista "global" (el primer símbolo o una mezcla relevante)
-        # para compatibilidad parcial o para que el UI sepa qué símbolos hay
         if _symbol_states:
-            # Seleccionamos el ÚLTIMO símbolo actualizado para ser el 'main'
             keys = list(_symbol_states.keys())
             if keys:
                 last_sym = keys[-1]
@@ -426,9 +435,15 @@ def _flush() -> None:
                 d_main["total_samples"] = main_stats.get("total_samples", getattr(st_main, "total_samples", 0))
                 output["_main"] = d_main
         
+        # Serializar a JSON
+        json_str = json.dumps(output, indent=2, default=str)
+        
+        # Escritura atómica
         tmp = _state_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(output, indent=2, default=str))
+        tmp.write_text(json_str, encoding="utf-8")
         tmp.replace(_state_path)
+        
+        _last_flush_time = now
     except Exception as e:
         from shared.utils.logger import log
         log.error(f"Error flushing state: {e}")
