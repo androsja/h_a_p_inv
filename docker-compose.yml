@@ -1,5 +1,31 @@
 services:
 
+  # ─── Orchestrator (Cerebro y Banco Central) ──────────────────────────────────
+  orchestrator:
+    build:
+      context: .
+      dockerfile: orchestrator/Dockerfile
+    image: hapi-orchestrator:latest
+    container_name: hapi_orchestrator
+    user: root
+    privileged: true
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "9000:9000" # → Abrir http://localhost:9000
+    volumes:
+      - ./orchestrator:/app/orchestrator
+      - ./shared:/app/shared
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./assets.json:/app/assets.json # <--- Para exponer los símbolos al UI
+      - /Users/jflorezgaleano/.docker/run/docker.sock:/var/run/docker.sock # <--- Acceso para crear contenedores (Directo en MacOS)
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/api/bank/balance')" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
   # ─── Bot simulado ────────────────────────────────────────────────────────────
   trading-bot-sim:
     build:

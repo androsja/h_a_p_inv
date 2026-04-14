@@ -1,0 +1,11 @@
+{
+  "841057b2": {
+    "id": "841057b2",
+    "symbol": "TSLA",
+    "mode": "SIMULATED",
+    "frequency": "DAILY",
+    "next_run": "2026-04-15T01:38:56.655368",
+    "last_run": "2026-04-14T01:38:56.655363",
+    "status": "RUNNING"
+  }
+}

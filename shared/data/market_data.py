@@ -5,6 +5,7 @@ Responsabilidad única: descargar velas OHLCV, cachearlas localmente
 y proveer la lista de símbolos activos.
 """
 
+import os
 import json
 import time
 import random
@@ -117,18 +118,21 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
     required_start_dt = None
     
     try:
-        if COMMAND_FILE.exists():
+        env_start = os.environ.get("HAPI_SIM_START_DATE")
+        sim_start = env_start.strip() if env_start and env_start.strip() else None
+        
+        if not sim_start and COMMAND_FILE.exists():
             with open(COMMAND_FILE, "r") as f:
                 cmds = json.load(f)
                 sim_start = cmds.get("sim_start_date")
-                if sim_start:
-                    target_dt = pd.to_datetime(sim_start).tz_localize(ET).tz_convert(pytz.UTC)
-                    required_start_dt = target_dt - timedelta(days=7) # Buffer para indicadores
-                    diff = datetime.now(pytz.UTC) - required_start_dt
-                    days_to_fetch = max(7, diff.days + 1)
-                    log.info(f"data | {symbol} | Ventana dinámica: {days_to_fetch} días (sim_start: {sim_start})")
-                else:
-                    days_to_fetch = int(config.DATA_PERIOD.replace('d', ''))
+                
+        if sim_start:
+            target_dt = pd.to_datetime(sim_start).tz_localize(ET).tz_convert(pytz.UTC)
+            required_start_dt = target_dt - timedelta(days=7) # Buffer para indicadores
+            diff = datetime.now(pytz.UTC) - required_start_dt
+            # Si target_dt está en el futuro, no intentes descargar un rango irreal
+            days_to_fetch = max(7, diff.days + 1) if diff.days > 0 else 180
+            log.info(f"data | {symbol} | Ventana dinámica calculada: {days_to_fetch} días (sim_start: {sim_start})")
         else:
             days_to_fetch = int(config.DATA_PERIOD.replace('d', ''))
     except Exception as e:

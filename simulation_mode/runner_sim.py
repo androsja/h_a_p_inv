@@ -13,7 +13,7 @@ from pathlib import Path
 from shared import config
 from shared.utils.logger import log
 from shared.data import market_data
-from shared.utils.state_writer import update_state, clear_state
+from shared.utils.state_writer import update_state, clear_state, force_flush
 from shared.utils.market_hours import _is_mock_time_active
 from shared.utils.checkpoint import load_simulation_checkpoint, save_simulation_checkpoint, clear_simulation_checkpoints
 from shared.engine.utils import SessionInterrupted, smart_sleep
@@ -43,11 +43,26 @@ class SimulationRunner:
         self.total_sim_ghosts = 0
         self.all_done = False  # 🏁 Bandera de finalización global
         self.start_real_time = None # 🕒 Momento real en que inició la simulación global
+        self.equity_history = [0.0] # 📈 Historial de equidad para sparklines
         
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 MOTOR SIMULADOR HISTÓRICO: Preparando...")
+
+        # ── Worker Mode (Orchestrator) ──
+        target = os.getenv("TARGET_SYMBOL")
+        if target:
+            log.info(f"🐳 MODO WORKER ORQUESTADO: Procesando exclusivamente {target}")
+            args.symbol = target
+            self.session_num = 1
+            # Forzamos que sea el único elemento porsiacaso la lógica intente iterar
+            self.all_symbols = [target]
+            self.symbol_idx = 0
+            self._run_single_session(args)
+            self._handle_completion()
+            log.info(f"✅ WORKER FINALIZADO ({target}). Apagando contenedor...")
+            return # Sale del loop principal y termina el proceso docker
         
-        # Restore checkpoint
+        # Restore checkpoint (Legacy / Standalone loop)
         self._restore_checkpoint()
         
         while True:
@@ -227,10 +242,25 @@ class SimulationRunner:
         checkpoint.save_simulation_checkpoint(self.symbol_idx, "FIN", self.session_num, is_finished=True)
         
         wr = (self.total_sim_wins / self.total_sim_trades * 100) if getattr(self, "total_sim_trades", 0) > 0 else 0
+        
+        # 🎯 Usar el símbolo real si hay uno disponible para que la maestría sea correcta
+        final_sym = "─"
+        if self.all_symbols:
+            # En modo worker, el primer símbolo es el objetivo
+            final_sym = self.all_symbols[0]
+            
+        # 🎯 Downsamplear historial de equidad para el Orquestador (máx 20 puntos)
+        hist = self.equity_history
+        if len(hist) > 20:
+            step = len(hist) // 20
+            hist = hist[::step][:20]
+        if self.equity_history[-1] not in hist:
+            hist.append(self.equity_history[-1])
+
         update_state(
             mode="SIMULATED", 
             status="completed", 
-            symbol="─", 
+            symbol=final_sym, 
             session=self.session_num,
             total_sim_trades=int(getattr(self, "total_sim_trades", 0)),
             total_sim_wins=int(getattr(self, "total_sim_wins", 0)),
@@ -238,8 +268,18 @@ class SimulationRunner:
             total_sim_fees=float(round(float(getattr(self, "total_sim_fees", 0.0)), 2)),
             total_sim_slippage=float(round(float(getattr(self, "total_sim_slippage", 0.0)), 2)),
             total_sim_ghosts=int(getattr(self, "total_sim_ghosts", 0)),
-            win_rate=float(round(float(wr), 2))
+            win_rate=float(round(float(wr), 2)),
+            equity_history=hist
         )
+        
+        # 🚀 FORZAR ENVÍO: Asegurar que el Orquestador recibe el estatus "completed"
+        # antes de que Docker mate el contenedor.
+        try:
+            force_flush()
+            time.sleep(0.5) # Pequeño margen de seguridad para que el socket cierre bien
+        except:
+            pass
+            
         return True
 
     def _save_full_run_to_history(self, is_partial=False):
@@ -384,8 +424,8 @@ class SimulationRunner:
                 "gross_loss": round(getattr(stats, 'gross_loss', 0.0), 2),
                 "drawdown": round(getattr(stats, 'max_drawdown', 0.0), 2),
                 "insight": insight,
-                "sim_start": engine.sim_start_date,
-                "sim_end": engine.sim_end_date,
+                "sim_start": str(engine.sim_start_date) if engine.sim_start_date else "",
+                "sim_end": str(engine.sim_end_date) if engine.sim_end_date else "",
                 "sim_duration": round(time.time() - getattr(engine, '_engine_start_time', time.time()), 2),
                 "investment_style": engine.investment_style,
                 "blocking_summary": dict(engine.blocking_history or {}),
@@ -403,6 +443,7 @@ class SimulationRunner:
             self.total_sim_gross_profit += float(session_result.get("gross_profit", 0.0))
             self.total_sim_gross_loss += float(session_result.get("gross_loss", 0.0))
             self.total_sim_ghosts += int(session_result.get("total_ghosts", 0))
+            self.equity_history.append(float(round(self.total_sim_pnl, 2)))
 
             excluded_keys = ["symbol", "status", "blocking_summary", "timestamp", "session_num", "accuracy", "total_samples"]
             update_state(

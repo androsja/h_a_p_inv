@@ -22,6 +22,7 @@ import os
 import threading
 from pathlib import Path
 from typing import Optional, Union, Tuple, List, Dict
+import requests
 
 import joblib
 import numpy as np
@@ -345,25 +346,78 @@ class NeuralTradeFilter:
             log.info(f"🧨 [{self._symbol}] RESET — modelo borrado de memoria y disco.")
 
 
+# ── RPC Proxy para entorno Multi-Docker ──────────────────────────────────────
+class RPCNeuralTradeFilter:
+    """Proxy que redirige las llamadas de Neural al Orquestador Central."""
+    def __init__(self, orchestrated_url: str):
+        self.url = orchestrated_url
+        self._symbol = "GLOBAL"
+        self._frozen = False
+
+    def freeze(self) -> None:
+        self._frozen = True
+
+    def unfreeze(self) -> None:
+        self._frozen = False
+
+    @property
+    def is_frozen(self) -> bool:
+        return self._frozen
+
+    def build_features(self, *args, **kwargs) -> list[float]:
+        # Usamos la misma lógica local para features ya que no requiere IA
+        # Necesitamos la clase base para esto.
+        nf = NeuralTradeFilter("DUMMY")
+        return nf.build_features(*args, **kwargs)
+
+    def predict(self, features: list[float]) -> tuple[float, str]:
+        try:
+            resp = requests.post(f"{self.url}/api/ai/predict", json={"features": features}, timeout=2)
+            if resp.status_code == 200:
+                data = resp.json()
+                return float(data.get("proba", 0.5)), data.get("reason", "RPC OK")
+        except Exception as e:
+            log.warning(f"Error RPC Predict AI: {e}")
+        return 0.5, "RPC Error — usando neutro"
+
+    def fit(self, features: list[float], won: bool) -> None:
+        if self._frozen:
+            return
+        # Lanzamos el POST y no bloqueamos esperando mucho
+        def _bg_post():
+            try:
+                requests.post(f"{self.url}/api/ai/train", json={"features": features, "won": won}, timeout=2)
+            except Exception:
+                pass
+        threading.Thread(target=_bg_post, daemon=True).start()
+
+    def get_stats(self) -> dict:
+        return {
+            "total_samples": 0, "wins": 0, "losses": 0, "win_rate_hist": 0.0,
+            "model_accuracy": 0.0, "ai_mode": "RPC-Orchestrated", "threshold": CONFIDENCE_THRESHOLD
+        }
+
+    def reset(self):
+        pass
+
 # ── Registry por símbolo (reemplaza el singleton global) ─────────────────────
-_filter_registry: dict[str, NeuralTradeFilter] = {}
+_filter_registry: dict[str, Union[NeuralTradeFilter, RPCNeuralTradeFilter]] = {}
 _filter_lock = threading.Lock()
 
-
-def get_neural_filter(symbol: str = "GLOBAL") -> NeuralTradeFilter:
-    """Devuelve la instancia ÚNICA GLOBAL del filtro neural de toda la bolsa.
+def get_neural_filter(symbol: str = "GLOBAL") -> Union[NeuralTradeFilter, RPCNeuralTradeFilter]:
+    """Devuelve la instancia ÚNICA GLOBAL del filtro neural de toda la bolsa."""
+    orchestrator_url = os.getenv("ORCHESTRATOR_URL")
     
-    Se ha sustituido la arquitectura de un modelo por empresa (Especialista) 
-    por un Cerebro Macro / Sectorial para abolir el Overfitting y habilitar 
-    Transferencia de Conocimiento Cruzado entre activos.
-    """
-    key = "GLOBAL"  # 🧠 Enrutamiento forzoso: Toda empresa se congrega en la misma Mente
+    key = "GLOBAL"  # 🧠 Enrutamiento forzoso
     if key not in _filter_registry:
         with _filter_lock:
             if key not in _filter_registry:
-                _filter_registry[key] = NeuralTradeFilter(symbol=key)
+                if orchestrator_url:
+                    log.info(f"🧠 [NeuralFilter] Usando cerebro central: {orchestrator_url}")
+                    _filter_registry[key] = RPCNeuralTradeFilter(orchestrator_url)
+                else:
+                    _filter_registry[key] = NeuralTradeFilter(symbol=key)
     return _filter_registry[key]
-
 
 def reset_neural_filter(symbol: Optional[str] = None) -> None:
     """🧨 Resetea el modelo de un símbolo específico o de TODOS si symbol=None."""
@@ -376,11 +430,9 @@ def reset_neural_filter(symbol: Optional[str] = None) -> None:
                 del _filter_registry[key]
                 log.info(f"🧨 [NeuralFilter] Modelo de {key} reseteado.")
         else:
-            # WIPE TOTAL — borrar todos los modelos
             for inst in _filter_registry.values():
                 inst.reset()
             _filter_registry.clear()
-            # También borrar archivos viejos del formato anterior
             old = config.DATA_DIR / "neural_model.joblib"
             if old.exists():
                 old.unlink()

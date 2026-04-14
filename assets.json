@@ -17,11 +17,11 @@
         },
         {
             "symbol": "AAPL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ABBV",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "ABNB",
@@ -65,7 +65,7 @@
         },
         {
             "symbol": "AMZN",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ARM",
@@ -205,7 +205,7 @@
         },
         {
             "symbol": "GOOGL",
-            "enabled": true
+            "enabled": false
         },
         {
             "symbol": "GS",

@@ -1,0 +1,22 @@
+{
+  "DIA": {
+    "sim_start_date": "2026-04-06",
+    "launched_at": "2026-04-13 20:29"
+  },
+  "SPY": {
+    "sim_start_date": "2026-04-06",
+    "launched_at": "2026-04-14 01:35"
+  },
+  "ADBE": {
+    "sim_start_date": "2026-04-06",
+    "launched_at": "2026-04-14 01:42"
+  },
+  "ABNB": {
+    "sim_start_date": "2024-12-30",
+    "launched_at": "2026-04-14 03:50"
+  },
+  "AAPL": {
+    "sim_start_date": "2024-12-30",
+    "launched_at": "2026-04-14 03:55"
+  }
+}

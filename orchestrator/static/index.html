@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hapi Orchestrator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #060d1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; max-width: 900px; }
+        .full-width { grid-column: 1 / -1; }
+
+        .card {
+            background: #0f1e35;
+            border: 1px solid #1e3a5f;
+            border-radius: 14px;
+            padding: 1.2rem 1.4rem;
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid #1e3a5f;
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: #94a3b8; font-size: 0.9rem; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 600; }
+        .green { color: #10b981; }
+        .red { color: #ef4444; }
+        .yellow { color: #f59e0b; }
+
+        /* Launch section */
+        .launch-row { display: flex; gap: 0.6rem; align-items: center; }
+        select {
+            flex: 1;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid #1e3a5f;
+            background: #0a1628;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        button {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        button:hover { opacity: 0.85; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-kill { background: #ef4444; color: white; }
+        .btn-console { background: #1e3a5f; color: #93c5fd; }
+        .btn-dismiss { background: #292020; color: #f87171; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th { text-align: left; padding: 0.5rem 0.6rem; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #1e3a5f; }
+        td { padding: 0.55rem 0.6rem; font-size: 0.85rem; border-bottom: 1px solid #0f1e35; }
+        tr:last-child td { border-bottom: none; }
+
+        /* Status pill */
+        .pill {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .pill-running { background: #052e16; color: #4ade80; }
+        .pill-completed { background: #1e293b; color: #94a3b8; }
+
+        /* AI status bar */
+        #ai-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #60a5fa;
+            padding: 0.4rem 0.8rem;
+            background: #091524;
+            border-radius: 8px;
+            border: 1px solid #1e3a5f;
+            margin-top: 0.6rem;
+        }
+
+        .empty-msg { color: #475569; font-size: 0.85rem; padding: 0.8rem 0; text-align: center; }
+
+        /* Pulse dot */
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+        .dot-green { background: #4ade80; animation: pulse 1.5s infinite; }
+        .dot-gray { background: #475569; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: #1e3a5f;
+            border-left: 4px solid #3b82f6;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            font-size: 0.9rem;
+            min-width: 250px;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { border-left-color: #10b981; }
+        .toast.info { border-left-color: #3b82f6; }
+        .toast-close { cursor: pointer; margin-left: 15px; opacity: 0.6; font-weight: bold; }
+        .toast-close:hover { opacity: 1; }
+
+        /* Highlight animation for new rows */
+        @keyframes highlightRow {
+            0% { background: rgba(59, 130, 246, 0.2); }
+            100% { background: transparent; }
+        }
+        .row-new {
+            animation: highlightRow 3s ease-out;
+        }
+
+        /* Maturity Hub Tags */
+        .mastery-progress-bg { background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; width: 80px; overflow: hidden; display:inline-block; vertical-align:middle; margin-right:8px; }
+        .mastery-progress-fill { height: 100%; background: #3b82f6; transition: width 0.3s; }
+        .tag-ready { color: #10b981; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .tag-validating { color: #f59e0b; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .tag-learning { color: #94a3b8; background: rgba(148,163,184,0.1); border: 1px solid rgba(148,163,184,0.3); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+
+        /* Sparklines */
+        .sparkline-container { width: 100px; height: 30px; display: inline-block; vertical-align: middle; }
+        .sparkline-svg { width: 100%; height: 100%; }
+        .sparkline-path { fill: none; stroke: #3b82f6; stroke-width: 2; stroke-linecap: round; }
+        .sparkline-path-positive { stroke: #10b981; }
+        .sparkline-path-negative { stroke: #ef4444; }
+
+        /* Analyst Columns */
+        .metric-pro { font-size: 0.75rem; color: #94a3b8; display: block; margin-top: 2px; }
+        .metric-pro b { color: #e2e8f0; }
+        .stability-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+
+        /* Scheduler Styles */
+        .btn-delete { background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 6px; cursor:pointer; font-size: 0.75rem; }
+        .btn-delete:hover { background:rgba(239, 68, 68, 0.2); }
+        .job-tag { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .auto-btn { background: #8b5cf6; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+        .auto-btn:hover { background: #7c3aed; }
+    </style>
+</head>
+<body>
+    <div id="toast-container"></div>
+    <h1>🧠 Hapi Master Orchestrator</h1>
+
+    <div class="grid">
+
+        <!-- BANCO CENTRAL -->
+        <div class="card">
+            <h2>💰 Central Bank</h2>
+            <div class="stat-row">
+                <span class="stat-label">Disponible</span>
+                <span class="stat-value green" id="av-cash">—</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Capital Inicial</span>
+                <span class="stat-value" id="init-cash" style="color:#94a3b8">—</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">PnL Global</span>
+                <span class="stat-value" id="tot-pnl">—</span>
+            </div>
+        </div>
+
+        <!-- IA CENTRAL -->
+        <div class="card">
+            <h2>🤖 IA Central</h2>
+            <div class="stat-row">
+                <span class="stat-label">Modelo Activo</span>
+                <span class="stat-value green">RandomForest-GLOBAL</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Instancias usando IA</span>
+                <span class="stat-value" id="ai-instances">—</span>
+            </div>
+            <div id="ai-status">Esperando eventos de entrenamiento…</div>
+        </div>
+
+        <!-- CERTIFICACIÓN DE MAESTRÍA (MATURITY HUB) -->
+        <div class="card full-width" id="maturity-hub-card" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>🏆 Certificación de Maestría (Maturity Hub)</h2>
+                <div id="ai-global-advisor" style="font-size:0.8rem; font-weight:600; color:#3b82f6; padding:0.4rem 0.8rem; background:rgba(59,130,246,0.1); border-radius:30px; border:1px solid rgba(59,130,246,0.2);">
+                    🌀 Analizando mejor activo...
+                </div>
+            </div>
+            <table id="maturity-table">
+                <thead><tr>
+                    <th>Símbolo</th>
+                    <th>Tendencia (Equity)</th>
+                    <th>Madurez</th>
+                    <th>Estatus</th>
+                    <th>Análisis (Expect./Eficiencia)</th>
+                    <th>Estabilidad</th>
+                    <th>Cap. Sugerido</th>
+                </tr></thead>
+                <tbody id="maturity-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- LANZAR SIMULACIÓN -->
+        <div class="card full-width">
+            <h2>🚀 Lanzar Simulación</h2>
+            <div class="launch-row">
+                <select id="sym-input">
+                    <option value="">Selecciona un símbolo…</option>
+                </select>
+                <input type="date" id="date-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de inicio (opcional)">
+                <button class="btn-primary" onclick="launchBot()">▶ Start Simulation</button>
+            </div>
+        </div>
+
+        <!-- PLANIFICADOR GLOBAL (AUTOMACIÓN) -->
+        <div class="card full-width">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>📅 Planificador Global (Automación)</h2>
+                <button class="auto-btn" onclick="autoPerfectionist()">✨ Auto-Perfeccionador</button>
+            </div>
+            
+            <div class="launch-row" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <select id="sched-sym">
+                   <option value="">Símbolo...</option>
+                </select>
+                <select id="sched-freq">
+                    <option value="HOURLY">Cada Hora</option>
+                    <option value="DAILY" selected>Cada Día</option>
+                    <option value="WEEKLY">Cada Semana</option>
+                </select>
+                <select id="sched-mode">
+                    <option value="SIMULATED">Simulación</option>
+                    <option value="LIVE">Live Mode</option>
+                </select>
+                <button class="btn-primary" onclick="addScheduleJob()">✚ Programar</button>
+            </div>
+
+            <table id="scheduler-table">
+                <thead><tr>
+                    <th>Símbolo</th><th>Frecuencia</th><th>Modo</th><th>Última Ejec.</th><th>Próxima Ejec.</th><th>Estatus</th><th>Acción</th>
+                </tr></thead>
+                <tbody id="scheduler-tbody">
+                    <tr><td colspan="7" class="empty-msg">No hay tareas programadas</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BOTS ACTIVOS -->
+        <div class="card full-width">
+            <h2>📦 Bots Activos <span id="running-count" style="color:#4ade80;font-size:0.85rem;text-transform:none;font-weight:400;"></span></h2>
+            <table id="bot-table">
+                <thead><tr>
+                    <th>Símbolo</th><th>Modo</th><th>Container ID</th><th>Estado</th><th>Acciones</th>
+                </tr></thead>
+                <tbody id="running-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- BOTS COMPLETADOS -->
+        <div class="card full-width">
+            <h2>✅ Simulaciones Completadas</h2>
+            <table id="done-table">
+                <thead><tr>
+                    <th>Símbolo</th><th>Inicio Sim.</th><th>Finalizado</th><th>Trades</th><th>Win Rate</th><th>PnL</th><th>Acción</th>
+                </tr></thead>
+                <tbody id="done-tbody"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        // ─── ANALYST TOOLS ──────────────────────────────────────
+        function drawSparkline(data, colorClass = '') {
+            if (!data || data.length < 2) return '<span style="color:#475569; font-size:10px;">Sin historial</span>';
+            
+            const width = 100;
+            const height = 30;
+            const padding = 2;
+            
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = (max - min) || 1;
+            
+            const points = data.map((val, i) => {
+                const x = (i / (data.length - 1)) * width;
+                const y = height - padding - ((val - min) / range) * (height - 2 * padding);
+                return `${x},${y}`;
+            }).join(' ');
+            
+            const trend = data[data.length - 1] - data[0];
+            const trendColor = trend > 0 ? 'sparkline-path-positive' : (trend < 0 ? 'sparkline-path-negative' : '');
+
+            return `
+                <div class="sparkline-container">
+                    <svg class="sparkline-svg" viewBox="0 0 ${width} ${height}">
+                        <polyline class="sparkline-path ${trendColor}" points="${points}" />
+                    </svg>
+                </div>
+            `;
+        }
+
+        // ─── BANK ───────────────────────────────────────────────
+        async function fetchBank() {
+            try {
+                const res = await fetch('/api/bank/balance');
+                const d = await res.json();
+                document.getElementById('av-cash').textContent = '$' + d.available_cash.toFixed(2);
+                document.getElementById('init-cash').textContent = '$' + d.initial_cash.toFixed(2);
+                const pnl = d.total_pnl;
+                const el = document.getElementById('tot-pnl');
+                el.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+                el.className = 'stat-value ' + (pnl >= 0 ? 'green' : 'red');
+            } catch(e) { console.error('bank', e); }
+        }
+
+        // ─── DOCKER STATUS ──────────────────────────────────────
+        let lastRunningSymbols = new Set();
+        let isFirstLoad = true;
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span><span class="toast-close" onclick="this.parentElement.remove()">×</span>`;
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Auto hide after 6 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 6000);
+        }
+
+        async function fetchBots() {
+            try {
+                const res = await fetch('/api/docker/status');
+                const d = await res.json();
+
+                const currentRunning = new Set((d.containers || []).map(c => c.symbol));
+                
+                // Detectar si alguno terminó
+                if (!isFirstLoad) {
+                    lastRunningSymbols.forEach(sym => {
+                        if (!currentRunning.has(sym)) {
+                            // Estaba antes, ya no está. Revisar si está en completados
+                            const isDone = (d.completed || []).some(b => b.symbol === sym);
+                            if (isDone) {
+                                showToast(`✅ Simulación de <b>${sym}</b> Finalizada`, 'success');
+                            }
+                        }
+                    });
+                }
+                lastRunningSymbols = currentRunning;
+                isFirstLoad = false;
+
+                // --- Bots corriendo ---
+                const runningTbody = document.getElementById('running-tbody');
+                const containers = d.containers || [];
+                document.getElementById('running-count').textContent =
+                    containers.length ? `(${containers.length} activo${containers.length > 1 ? 's' : ''})` : '';
+                document.getElementById('ai-instances').textContent = containers.length;
+
+                // --- IA Central Stats ---
+                if (d.ai) {
+                    const statusDiv = document.getElementById('ai-status');
+                    statusDiv.innerHTML = `
+                        <div style="margin-top:10px; display:flex; flex-direction:column; gap:4px;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                <span style="color:#64748b;">Muestras de Aprendizaje:</span>
+                                <span style="color:white; font-weight:bold;">${d.ai.total_samples} trades</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                <span style="color:#64748b;">Estatus de IA:</span>
+                                <span style="color:${d.ai.ai_mode === 'MLP' ? '#4ade80' : '#fb923c'}; font-weight:bold;">${d.ai.ai_mode === 'MLP' ? 'ENTRENADO 🧠' : 'COLD-START ❄️'}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:13px;">
+                                <span style="color:#64748b;">Precisión del Modelo:</span>
+                                <span style="color:${d.ai.model_accuracy >= 50 ? '#00ffd5' : '#ff4f4f'}; font-weight:bold;">${d.ai.model_accuracy}%</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (containers.length === 0) {
+                    runningTbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No hay bots corriendo</td></tr>';
+                } else {
+                    runningTbody.innerHTML = '';
+                    containers.forEach(c => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-weight:600;">${c.symbol}</td>
+                            <td>${c.mode}</td>
+                            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">${c.id}</td>
+                            <td><span class="pill pill-running"><span class="dot dot-green"></span>running</span></td>
+                            <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button class="btn-kill" onclick="killBot('${c.symbol}')">⛔ Kill</button>
+                                <button class="btn-console" onclick="openConsole('${c.symbol}')">💻 Consola</button>
+                            </td>`;
+                        runningTbody.appendChild(tr);
+                    });
+                }
+
+                // --- Bots completados ---
+                const doneTbody = document.getElementById('done-tbody');
+                const maturityTbody = document.getElementById('maturity-tbody');
+                const maturityHub = document.getElementById('maturity-hub-card');
+                const completed = d.completed || [];
+                
+                if (completed.length === 0) {
+                    doneTbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Ninguna simulación finalizada todavía</td></tr>';
+                    maturityHub.style.display = 'none';
+                } else {
+                    doneTbody.innerHTML = '';
+                    maturityTbody.innerHTML = '';
+                    maturityHub.style.display = 'block';
+
+                    let bestSymbol = null;
+                    let maxPF = 0;
+
+                    const latestPerSymbol = {};
+
+                    completed.forEach(b => {
+                        // --- Fila en Tabla de Completados ---
+                        const pnl = b.pnl || 0;
+                        const pnlClass = pnl >= 0 ? 'green' : 'red';
+                        const wr = b.win_rate != null ? (b.win_rate * 100).toFixed(1) + '%' : '—';
+                        const tr = document.createElement('tr');
+                        if (new Date() - new Date(b.finished_at) < 15000) tr.className = 'row-new';
+                        
+                        tr.innerHTML = `
+                            <td style="font-weight:600;">${b.symbol}</td>
+                            <td style="color:#4ade80;font-size:0.8rem;font-family:'JetBrains Mono',monospace;">${b.sim_start_date || '—'}</td>
+                            <td style="color:#64748b;font-size:0.8rem;">${b.finished_at || '—'}</td>
+                            <td>${b.trades ?? '—'}</td>
+                            <td>${wr}</td>
+                            <td class="${pnlClass}" style="font-family:'JetBrains Mono',monospace;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+                            <td><button class="btn-dismiss" onclick="dismissBot('${b.run_id || b.symbol}')">🗑 Limpiar</button></td>`;
+                        doneTbody.appendChild(tr);
+
+                        if (!latestPerSymbol[b.symbol]) {
+                            latestPerSymbol[b.symbol] = b;
+                        }
+                    });
+
+                    // --- Filas agrupadas en Maturity Hub ---
+                    Object.values(latestPerSymbol).forEach(b => {
+                        const mScore = b.mastery_score || 0;
+                        const mStatus = b.mastery_status || "APRENDIENDO";
+                        const mPF = b.actual_profit_factor || 0;
+                        const mDD = b.actual_max_drawdown || 0;
+                        const mCash = b.recommended_cash || 500;
+                        const mExpect = b.expectancy || 0;
+                        const mEff = b.efficiency || 0;
+                        const mStab = b.stability_score || 0;
+                        const mHistory = b.equity_history || [];
+                        
+                        if (mPF > maxPF) { maxPF = mPF; bestSymbol = b.symbol; }
+
+                        const tagClass = mStatus === "LISTO PARA VIVO" ? "tag-ready" : 
+                                       mStatus === "VALIDANDO" ? "tag-validating" : "tag-learning";
+
+                        const stabColor = mStab > 70 ? '#10b981' : mStab > 40 ? '#f59e0b' : '#ef4444';
+
+                        const mTr = document.createElement('tr');
+                        mTr.innerHTML = `
+                            <td style="font-weight:700;">${b.symbol}</td>
+                            <td>${drawSparkline(mHistory)}</td>
+                            <td>
+                                <div class="mastery-progress-bg"><div class="mastery-progress-fill" style="width:${mScore}%"></div></div>
+                                <span style="font-size:0.8rem; font-weight:bold;">${mScore.toFixed(0)}%</span>
+                            </td>
+                            <td><span class="${tagClass}">${mStatus}</span></td>
+                            <td>
+                                <span class="metric-pro">Expectancia: <b style="color:${mExpect >= 0 ? '#4ade80' : '#f87171'}">$${mExpect.toFixed(2)}</b></span>
+                                <span class="metric-pro">Eficiencia: <b style="color:${mEff > 80 ? '#4ade80' : '#fb923c'}">${mEff.toFixed(1)}%</b></span>
+                            </td>
+                            <td>
+                                <div style="display:flex; align-items:center;">
+                                    <span class="stability-badge" style="background:${stabColor}"></span>
+                                    <span style="font-family:'JetBrains Mono',monospace; font-weight:700;">${mStab.toFixed(1)}</span>
+                                </div>
+                                <span style="font-size:0.65rem; color:#64748b;">Profit Factor: ${mPF.toFixed(2)}</span>
+                            </td>
+                            <td style="font-weight:600; color:#3b82f6;">$${mCash.toLocaleString()}</td>
+                        `;
+                        maturityTbody.appendChild(mTr);
+                    });
+
+                    // --- Global Advisor & Concentration Check ---
+                    const advisor = document.getElementById('ai-global-advisor');
+                    const activeSymbols = Array.from(lastRunningSymbols);
+                    
+                    // Lógica de Correlación (Sectores)
+                    const sectors = {
+                        'AAPL': 'TECH', 'NVDA': 'TECH', 'MSFT': 'TECH', 'TSLA': 'TECH/AUTO',
+                        'AMD': 'TECH', 'INTC': 'TECH', 'AMZN': 'RETAIL/TECH', 'GOOGL': 'TECH',
+                        'META': 'TECH', 'NFLX': 'TECH', 'SPY': 'INDEX', 'QQQ': 'INDEX'
+                    };
+                    
+                    const activeSectors = activeSymbols.map(s => sectors[s] || 'OTHER');
+                    const sectorCounts = activeSectors.reduce((acc, s) => { acc[s] = (acc[s] || 0) + 1; return acc; }, {});
+                    const overloadedSectors = Object.keys(sectorCounts).filter(s => sectorCounts[s] > 1);
+
+                    if (overloadedSectors.length > 0) {
+                        advisor.innerHTML = `⚠️ ALERTA: Concentración de Riesgo en sector <b>${overloadedSectors.join(', ')}</b>`;
+                        advisor.style.background = "rgba(239, 68, 68, 0.1)";
+                        advisor.style.color = "#ef4444";
+                        advisor.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                    } else if (bestSymbol && maxPF >= 1) {
+                        advisor.innerHTML = `✨ Recomendado: <b style="color:white;">${bestSymbol}</b> (PF: ${maxPF.toFixed(2)})`;
+                        advisor.style.background = "rgba(16,185,129,0.1)";
+                        advisor.style.color = "#10b981";
+                        advisor.style.borderColor = "rgba(16,185,129,0.3)";
+                    } else {
+                        advisor.innerHTML = "🌀 IA: Necesito más datos para recomendar.";
+                    }
+                }
+            } catch(e) { console.error('bots', e); }
+        }
+
+        // ─── ACTIONS ────────────────────────────────────────────
+        async function launchBot() {
+            const sym = document.getElementById('sym-input').value;
+            const startDate = document.getElementById('date-input').value; // puede ser vacío
+            if (!sym) { alert('Selecciona un símbolo primero'); return; }
+            
+            // Persistir la fecha para la próxima vez
+            if (startDate) {
+                localStorage.setItem('hapi_last_sim_date', startDate);
+            } else {
+                localStorage.removeItem('hapi_last_sim_date');
+            }
+            
+            const payload = {symbol: sym, mode: 'SIMULATED'};
+            if (startDate) payload.start_date = startDate;
+            
+            try {
+                const res = await fetch('/api/docker/launch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const d = await res.json();
+                if (d.status === 'error') { alert('Error: ' + d.message); return; }
+                document.getElementById('sym-input').value = '';
+                logAI(`🚀 Worker ${sym} lanzado → entrenando IA Central…`);
+                fetchBots();
+            } catch(e) { alert('Fallo al lanzar: ' + e.message); }
+        }
+
+        async function killBot(sym) {
+            // Optimistic UI update: deshabilitar botones y cambiar texto para feedback visual inmediato
+            const buttons = document.querySelectorAll(`button[onclick="killBot('${sym}')"]`);
+            buttons.forEach(b => {
+                b.textContent = '⏳ Matando...';
+                b.disabled = true;
+                b.style.opacity = '0.5';
+            });
+            
+            try {
+                await fetch(`/api/docker/kill/${sym}`, {method: 'POST'});
+            } catch(e) {
+                console.error("Error al matar bot", e);
+            }
+            
+            // Refrescar al instante y también esperar 2 segundos para asegurar sincronía con Docker
+            fetchBots();
+            setTimeout(fetchBots, 2000); 
+        }
+
+        async function dismissBot(sym) {
+            await fetch(`/api/docker/dismiss/${sym}`, {method: 'POST'});
+            fetchBots();
+        }
+
+        function openConsole(sym) {
+            window.open(`http://localhost:8080/?symbol=${sym}`, '_blank');
+        }
+
+        // ─── INITIALIZATION ─────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchBank();
+            fetchBots();
+            fetchSymbols();
+            fetchSchedules();
+            setInterval(fetchBank, 10000);
+            setInterval(fetchBots, 5000);
+            setInterval(fetchSchedules, 60000);
+        });
+
+        // ─── SCHEDULER LOGIC ──────────────────────────────────────
+        async function fetchSchedules() {
+            try {
+                const res = await fetch('/api/scheduler/jobs');
+                const d = await res.json();
+                const tbody = document.getElementById('scheduler-tbody');
+                
+                if (!d.jobs || d.jobs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No hay tareas programadas</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                d.jobs.forEach(j => {
+                    const row = document.createElement('tr');
+                    const nextRun = new Date(j.next_run).toLocaleString();
+                    const lastRun = j.last_run ? new Date(j.last_run).toLocaleString() : '—';
+                    
+                    row.innerHTML = `
+                        <td style="font-weight:700;">${j.symbol}</td>
+                        <td><span class="job-tag">${j.frequency}</span></td>
+                        <td style="font-size:0.8rem; color:#94a3b8;">${j.mode}</td>
+                        <td style="font-size:0.8rem;">${lastRun}</td>
+                        <td style="color:#3b82f6; font-weight:600; font-size:0.8rem;">${nextRun}</td>
+                        <td><span style="color:${j.status==='ERROR'?'#ef4444':'#10b981'}; font-size:0.75rem;">● ${j.status}</span></td>
+                        <td>
+                            <button class="btn-action" onclick="runJobNow('${j.id}')" title="Lanzar ahora" style="background:#10b98122; border:1px solid #10b98144; color:#10b981; margin-right:5px; padding:2px 6px; border-radius:4px; cursor:pointer;">▶️</button>
+                            <button class="btn-delete" onclick="deleteJob('${j.id}')" title="Eliminar" style="background:#ef444422; border:1px solid #ef444444; color:#ef4444; padding:2px 6px; border-radius:4px; cursor:pointer;">🗑</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch(e) { console.error('schedules', e); }
+        }
+
+        async function addScheduleJob() {
+            const symbol = document.getElementById('sched-sym').value;
+            const frequency = document.getElementById('sched-freq').value;
+            const mode = document.getElementById('sched-mode').value;
+            
+            if(!symbol) return alert('Selecciona un símbolo');
+
+            try {
+                const res = await fetch('/api/scheduler/jobs', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ symbol, frequency, mode })
+                });
+                if(res.ok) {
+                    showToast(`📅 Tarea programada para ${symbol}`, 'info');
+                    fetchSchedules();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function deleteJob(id) {
+            if(!confirm('¿Eliminar tarea programada?')) return;
+            try {
+                await fetch(`/api/scheduler/jobs/${id}`, { method: 'DELETE' });
+                fetchSchedules();
+            } catch(e) { console.error(e); }
+        }
+
+        async function runJobNow(id) {
+            try {
+                const res = await fetch(`/api/scheduler/jobs/${id}/run`, { method: 'POST' });
+                if (res.ok) {
+                    showToast("⚡ Lanzando tarea programada inmediatamente...", "success");
+                    fetchSchedules();
+                    // Refrescar el Hub de Madurez tras un pequeño delay para ver el nuevo contenedor
+                    setTimeout(fetchMaturityHub, 2000);
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function autoPerfectionist() {
+            showToast("🧠 IA: Identificando activos para auto-perfeccionamiento...", "info");
+            
+            // Buscar en el maturity hub activos con madurez < 50%
+            const rows = document.querySelectorAll('#maturity-tbody tr');
+            let scheduled = 0;
+            
+            for (let tr of rows) {
+                const symbol = tr.querySelector('td:first-child').innerText;
+                const status = tr.querySelector('.tag-learning, .tag-validating, .tag-ready')?.innerText;
+                
+                if (status === "APRENDIENDO" || status === "VALIDANDO") {
+                    await fetch('/api/scheduler/jobs', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ symbol, frequency: 'DAILY', mode: 'SIMULATED' })
+                    });
+                    scheduled++;
+                }
+            }
+
+            if (scheduled > 0) {
+                showToast(`🚀 Se programaron ${scheduled} ciclos de aprendizaje diario.`, "success");
+            } else {
+                showToast("✨ Todos los activos están en nivel óptimo.", "success");
+            }
+            fetchSchedules();
+        }
+
+        // ─── SYMBOLS ────────────────────────────────────────────
+        async function fetchSymbols() {
+            try {
+                const res = await fetch('/api/symbols');
+                const d = await res.json();
+                if (d.status === 'success') {
+                    const sel = document.getElementById('sym-input');
+                    const schedSel = document.getElementById('sched-sym');
+                    
+                    // Limpiar previos (menos el placeholder)
+                    sel.innerHTML = '<option value="">Selecciona un símbolo…</option>';
+                    schedSel.innerHTML = '<option value="">Símbolo...</option>';
+                    
+                    d.assets.forEach(a => {
+                        const opt = document.createElement('option');
+                        opt.value = a.symbol;
+                        opt.textContent = a.symbol + (a.name ? ` — ${a.name}` : '');
+                        sel.appendChild(opt.cloneNode(true));
+                        schedSel.appendChild(opt);
+                    });
+                }
+            } catch(e) { console.error('symbols', e); }
+        }
+
+        // ─── AI STATUS TICKER ───────────────────────────────────
+        function logAI(msg) {
+            document.getElementById('ai-status').textContent = msg;
+        }
+
+        // Poll cada 5 s (Bots y Banco)
+        setInterval(fetchBank, 10000);
+        setInterval(fetchBots, 5000);
+        
+        // Restaurar última fecha usada
+        const lastDate = localStorage.getItem('hapi_last_sim_date');
+        if (lastDate) {
+            const el = document.getElementById('date-input');
+            if (el) el.value = lastDate;
+        }
+    </script>
+</body>
+</html>

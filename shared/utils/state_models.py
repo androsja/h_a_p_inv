@@ -118,3 +118,9 @@ class BotState:
     actual_max_drawdown: float = 0.0
     mastery_checklist: List[str] = field(default_factory=list)
 
+    # --- Analyst Upgrade ---
+    expectancy: float = 0.0
+    efficiency: float = 0.0
+    stability_score: float = 0.0
+    equity_history: List[float] = field(default_factory=list)
+

@@ -38,24 +38,26 @@ def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
     """Callback para inicializar el bróker (Mock) basado en comandos o args."""
     is_live_paper = kwargs.get('is_live_paper_override', False)
     sim_start_date = None
-    
-    try:
-        cmd_file = config.COMMAND_FILE
-        if cmd_file.exists():
-            with open(cmd_file) as f:
-                cmds = json.load(f)
-            
-            # Si no hay override forzado desde kwargs, lee del archivo
-            if not is_live_paper:
-                is_live_paper = cmds.get("force_paper_trading", False)
-            
-            sim_start_date = cmds.get("sim_start_date")
-            
-            # Ajuste de símbolo forzado si aplica
-            force_symbol = cmds.get("force_symbol", "")
-            if is_live_paper and force_symbol and force_symbol != "AUTO":
-                args.symbol = force_symbol
-    except: pass
+    # Override date from modern Docker environment vars primarily
+    env_start = os.getenv("HAPI_SIM_START_DATE")
+    if env_start and env_start.strip():
+        sim_start_date = env_start.strip()
+    else:
+        try:
+            cmd_file = config.COMMAND_FILE
+            if cmd_file.exists():
+                with open(cmd_file) as f:
+                    cmds = json.load(f)
+                
+                if not is_live_paper:
+                    is_live_paper = cmds.get("force_paper_trading", False)
+                
+                sim_start_date = cmds.get("sim_start_date")
+                
+                force_symbol = cmds.get("force_symbol", "")
+                if is_live_paper and force_symbol and force_symbol != "AUTO":
+                    args.symbol = force_symbol
+        except: pass
 
     return HapiMock(
         symbol=args.symbol, 

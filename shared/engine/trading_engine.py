@@ -98,7 +98,9 @@ class TradingEngine:
                 # 2. Obtener Precio (o Fin de Simulación)
                 try:
                     quote = self.broker.get_quote(self.symbol)
-                    if not self.sim_start_date: self.sim_start_date = quote.timestamp
+                    if not self.sim_start_date: 
+                        self.sim_start_date = quote.timestamp
+                        log.info(f"📅 INICIANDO DATOS DEL MERCADO DESDE: {quote.timestamp}")
                     self.sim_end_date = quote.timestamp
                 except StopIteration:
                     log.info("▶ Datos agotados. Finalizando sesión.")
@@ -175,8 +177,8 @@ class TradingEngine:
                         ai_recommendation=getattr(signal, 'ai_recommendation', 'Analizando...'),
                         ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5,
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time()),
-                        sim_start=self.sim_start_date,
-                        sim_end=self.sim_end_date,
+                        sim_start=str(self.sim_start_date) if self.sim_start_date else "",
+                        sim_end=str(self.sim_end_date) if self.sim_end_date else "",
                         is_live_paper=self.is_live_paper
                     )
 

@@ -20,6 +20,8 @@ from typing import Optional, Union, Dict, List
 
 import numpy as np
 import pandas as pd
+import requests
+import os
 
 from shared import config
 from shared.broker.interface import BrokerInterface, Quote, OrderResponse, AccountInfo
@@ -365,13 +367,30 @@ class HapiMock(BrokerInterface):
         comm = max(0.35, min(0.01 * gross_cost, 0.0035 * order.qty))
         cost = gross_cost + comm
         
-        if cost > self._cash:
-            log.warning(
-                f"HapiMock | Orden BUY rechazada: costo ${cost:.2f} > "
-                f"cash ${self._cash:.2f}"
-            )
-            return
-        self._cash -= cost
+        # --- Orchestrator Bank Integration ---
+        orchestrator_url = os.getenv("ORCHESTRATOR_URL")
+        if orchestrator_url:
+            try:
+                resp = requests.post(f"{orchestrator_url}/api/bank/transaction", 
+                                     json={"symbol": order.symbol, "amount": float(cost), "type": "buy"}, 
+                                     timeout=3)
+                if resp.status_code != 200:
+                    log.warning(f"HapiMock | Orden BUY rechazada por Banco Central: {resp.text}")
+                    return
+                # Sincronizar cash local con el devuelto por el banco por si acaso
+                self._cash = resp.json().get("available_cash", self._cash)
+            except Exception as e:
+                log.warning(f"Error contactando al Banco Central: {e}")
+                return
+        else:
+            if cost > self._cash:
+                log.warning(
+                    f"HapiMock | Orden BUY rechazada: costo ${cost:.2f} > "
+                    f"cash ${self._cash:.2f}"
+                )
+                return
+            self._cash -= cost
+            
         self._last_buy_price = actual_fill_price
         self._last_buy_qty   = order.qty
         self._stats.total_fees += comm
@@ -422,7 +441,21 @@ class HapiMock(BrokerInterface):
         total_fees = comm + sec_fee + taf_fee
         
         net = gross - total_fees
-        self._cash += net
+        
+        # --- Orchestrator Bank Integration ---
+        orchestrator_url = os.getenv("ORCHESTRATOR_URL")
+        if orchestrator_url:
+            try:
+                resp = requests.post(f"{orchestrator_url}/api/bank/transaction", 
+                                     json={"symbol": order.symbol, "amount": float(net), "type": "sell"}, 
+                                     timeout=3)
+                if resp.status_code == 200:
+                    self._cash = resp.json().get("available_cash", self._cash)
+            except Exception as e:
+                log.warning(f"Error contactando Banco Central en SELL: {e}")
+        else:
+            self._cash += net
+            
         self._stats.total_fees += total_fees
         
         raw_pnl = (actual_fill_price - getattr(self, '_last_buy_price', actual_fill_price)) * order.qty

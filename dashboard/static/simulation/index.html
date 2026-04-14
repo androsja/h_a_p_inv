@@ -18,6 +18,32 @@
         // ... other dashboard script content ...
 
         console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
+
+        function showFinishSplash(state) {
+            const finishSplash = document.getElementById('bot-finish-splash');
+            if (!finishSplash || finishSplash.style.display === 'flex') return;
+
+            console.log('[UI] Mostrando Splash de Finalización ✅');
+            
+            document.getElementById('finish-symbol-label').textContent = 'ACTIVO: ' + (state.symbol || '??');
+            
+            const pnl = state.total_sim_pnl || 0;
+            const pnlEl = document.getElementById('finish-pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+            const wr = state.win_rate != null ? Number(state.win_rate).toFixed(1) + '%' : '0%';
+            document.getElementById('finish-wr').textContent = wr;
+            
+            const nTrades = state.total_trades || state.total_sim_trades || (Array.isArray(state.trades) ? state.trades.length : state.trades) || 0;
+            document.getElementById('finish-trades').textContent = nTrades;
+            
+            const mastery = state.mastery_score != null ? state.mastery_score.toFixed(0) + '%' : '0%';
+            document.getElementById('finish-mastery').textContent = mastery;
+
+            finishSplash.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     </script>
     <link rel="stylesheet" href="/static/simulation/simulation.css">
 </head>
@@ -109,6 +135,76 @@
             font-size:11px; color:rgba(255,255,255,0.2); text-align:center; max-width:600px;
         ">
             💡 La descarga de datos históricos puede tardar 1-5 min dependiendo del rango de fechas seleccionado
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         🏁 FINISH SUCCESS OVERLAY — aparece al completar simulación
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="bot-finish-splash" style="
+        display: none;
+        position: fixed; inset: 0; z-index: 99999;
+        background: rgba(8, 10, 20, 0.98);
+        backdrop-filter: blur(15px);
+        align-items: center; justify-content: center;
+        flex-direction: column;
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+    ">
+        <div style="
+            background: linear-gradient(160deg, #111827 0%, #030712 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 24px;
+            padding: 40px;
+            width: 480px;
+            max-width: 90vw;
+            box-shadow: 0 0 80px rgba(16, 185, 129, 0.15), inset 0 0 40px rgba(16, 185, 129, 0.05);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        ">
+            <!-- Background glow -->
+            <div style="position:absolute; top:-100px; left:50%; transform:translateX(-50%); width:300px; height:300px; background:radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%); pointer-events:none;"></div>
+
+            <div style="font-size: 64px; margin-bottom: 20px;">🏁</div>
+            <h2 style="font-size: 28px; font-weight: 800; margin-bottom: 8px; color: #10b981; letter-spacing: -0.5px;">SIMULACIÓN COMPLETADA</h2>
+            <p id="finish-symbol-label" style="font-size: 14px; color: #94a3b8; margin-bottom: 30px; letter-spacing: 1px; font-family: 'JetBrains Mono', monospace;">ACTIVO: --</p>
+            
+            <!-- Metrics Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 35px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px;">
+                    <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">PnL Final</div>
+                    <div id="finish-pnl" style="font-size: 20px; font-weight: 800; color: #10b981;">+$0.00</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px;">
+                    <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Win Rate</div>
+                    <div id="finish-wr" style="font-size: 20px; font-weight: 800; color: #fff;">0%</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px;">
+                    <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Operaciones</div>
+                    <div id="finish-trades" style="font-size: 20px; font-weight: 800; color: #fff;">0</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 15px;">
+                    <div style="font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Madurez</div>
+                    <div id="finish-mastery" style="font-size: 20px; font-weight: 800; color: #3b82f6;">0%</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button onclick="window.location.href='http://localhost:9000'" style="
+                    background: #10b981; color: #000; border: none; padding: 16px; border-radius: 12px;
+                    font-weight: 800; font-size: 14px; cursor: pointer; transition: 0.2s;
+                " onmouseover="this.style.background='#34d399'" onmouseout="this.style.background='#10b981'">
+                    🚀 VOLVER AL ORQUESTRADOR
+                </button>
+                <button onclick="document.getElementById('bot-finish-splash').style.display='none'; document.body.style.overflow='';" style="
+                    background: transparent; color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 14px; border-radius: 12px;
+                    font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s;
+                " onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    Ver Detalles / Logs
+                </button>
+            </div>
         </div>
     </div>
 
@@ -797,7 +893,7 @@
                                     <tr
                                         style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted); font-size: 11px; text-transform: uppercase;">
                                         <th style="padding:10px;">Símbolo</th>
-                                        <th style="padding:10px;">📅 Momento</th>
+                                        <th style="padding:10px;">📅 Período Simulado</th>
                                         <th style="padding:10px;">⏱️ Duración</th>
                                         <th style="padding:10px;">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
@@ -924,6 +1020,59 @@
         window._historicalSessions = []; // Historial desde API
         window._lastFullState = {};      // Último estado desde WS
         window._simSavedToHistory = false; // Bandera para evitar guardados duplicados
+
+        // ═══════════════════════════════════════════════════════
+        // FILTRO POR SÍMBOLO PARA MULTI-CONSOLA
+        // Cuando la URL tiene ?symbol=NVDA, descarta todos los demás
+        // símbolos y usa los datos de NVDA como _main.
+        // ═══════════════════════════════════════════════════════
+        const _URL_TARGET_SYMBOL = new URLSearchParams(window.location.search).get('symbol') || '';
+
+        function filterStateForConsole(fullState) {
+            if (!_URL_TARGET_SYMBOL) return fullState; // Sin filtro: modo legado
+
+            const symData = fullState[_URL_TARGET_SYMBOL] || null;
+            if (!symData) {
+                // El símbolo objetivo todavía no envió datos → retornar estado vacío limpio
+                return {};
+            }
+
+            // Construir estado filtrado: SOLO el símbolo objetivo y su _main
+            const filtered = {};
+            filtered[_URL_TARGET_SYMBOL] = symData;
+            filtered['_main'] = symData; // Usar SUS datos como fuente de los paneles globales
+            return filtered;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // INITIAL LOAD
+        // ═══════════════════════════════════════════════════════
+        async function loadInitialState() {
+            try {
+                const orchestratorHost = location.hostname + ":9000";
+                const response = await fetch(`http://${orchestratorHost}/api/state/current`);
+                const rawState = await response.json();
+                const fullState = filterStateForConsole(rawState);
+
+                if (fullState && typeof fullState === 'object' && Object.keys(fullState).length > 0) {
+                    Object.keys(fullState).forEach(sym => {
+                        if (sym !== '_main') renderData(fullState[sym]);
+                    });
+                    if (fullState._main) {
+                        renderMainState(fullState._main);
+                        renderGlobalStats(fullState._main);
+                        renderHistoryLog(fullState._main);
+                    }
+                }
+
+                // Config pre-load
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+                renderConfig(config);
+            } catch (err) {
+                console.error("Error cargando estado inicial:", err);
+            }
+        }
 
         function setProcessing(active) {
             isProcessingAction = active;
@@ -1359,7 +1508,12 @@
             await fetchStatus();
             try {
                 const res = await fetch('/api/results');
-                const data = await res.json();
+                let data = await res.json();
+
+                // Filtrar historia también si hay un símbolo objetivo
+                if (_URL_TARGET_SYMBOL && Array.isArray(data)) {
+                    data = data.filter(session => session.symbol === _URL_TARGET_SYMBOL);
+                }
 
                 const tbody = document.getElementById('results-table-body');
                 window.completedSessions = {}; // Store highest session num per symbol
@@ -2357,7 +2511,7 @@
                         <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer;">📅</button>
                     </td>
                     <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight: 500;">
-                        ${row.last_order_date ? row.last_order_date.replace('T', ' ').substring(0, 19) : (row.sim_end || '-------')}
+                        ${(row.sim_start && row.sim_start !== '─') ? row.sim_start.split(' ')[0] + ' a ' + (row.sim_end ? row.sim_end.split(' ')[0] : '...') : 'Calculando fechas...'}
                     </td>
                     <td style="padding:10px; color:var(--muted); font-size:11px;">${durStr}</td>
                     <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
@@ -2476,28 +2630,38 @@
         }
         function updateSimSplash(state) {
             const splash = document.getElementById('bot-loading-splash');
+            const finishSplash = document.getElementById('bot-finish-splash');
             if (!splash) return;
 
             const status = (state.status || '').toLowerCase();
-            const isActive = ['restarting', 'starting', 'downloading'].includes(status);
+            const isLoading = ['restarting', 'starting', 'downloading'].includes(status);
+            const isFinished = status === 'completed';
 
-            if (!isActive) {
+            // 1. Mostrar/Ocultar Splash de Carga
+            if (!isLoading) {
                 if (splash.style.display !== 'none') {
-                    console.log("[UI] Splash oculto - Bot en estado:", status);
                     splash.style.display = 'none';
-                    // Re-habilitar scroll si se bloqueó
                     document.body.style.overflow = '';
                 }
-                return;
+            } else {
+                if (splash.style.display !== 'flex') {
+                    splash.style.display = 'flex';
+                    document.body.style.overflow = 'hidden'; 
+                    if (finishSplash) finishSplash.style.display = 'none'; // Ocultar el de fin si empezamos nuevo
+                }
             }
 
-            // Mostrar el splash
-            if (splash.style.display !== 'flex') {
-                splash.style.display = 'flex';
-                document.body.style.overflow = 'hidden'; // Bloquear scroll durante carga
+            // 2. Mostrar Splash de Finalización
+            if (isFinished) {
+                showFinishSplash(state);
+            } else if (!isLoading && finishSplash) {
+                // Si no está cargando ni completado (está activo), asegurar que el de fin esté oculto
+                // unless we want to keep it until they dismiss? The user might want to dismiss it.
             }
 
-            // Actualizar textos según fase
+            if (!isLoading) return;
+
+            // Actualizar textos según fase (solo si está cargando)
             const titleEl = document.getElementById('splash-title');
             const subEl = document.getElementById('splash-subtitle');
             const phaseEl = document.getElementById('splash-phase');
@@ -3131,7 +3295,8 @@
         // ═══════════════════════════════════════════════════════
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-            const ws = new WebSocket(`${proto}://${location.host}/ws/sim`);
+            const orchestratorHost = location.hostname + ":9000";
+            const ws = new WebSocket(`${proto}://${orchestratorHost}/api/state/stream`);
 
             ws.onopen = () => {
                 window._wsConnected = true;
@@ -3142,11 +3307,18 @@
             };
 
             ws.onmessage = (e) => {
+                // Ignorar silenciosamente mensajes de heartbeat ("pong") que no son JSON
+                if (typeof e.data === 'string' && !e.data.startsWith('{')) return;
+
                 console.log("[WS] Mensaje recibido de longitud:", e.data.length);
                 try {
-                    const d = JSON.parse(e.data);
+                    const raw = JSON.parse(e.data);
+                    const d = filterStateForConsole(raw); // ← solo datos del símbolo objetivo
+
+                    if (!d || Object.keys(d).length === 0) return; // Aún no hay datos de este símbolo
+
                     // Guardar régimen en vivo por símbolo
-                    if (d && typeof d === 'object') {
+                    if (typeof d === 'object') {
                         Object.keys(d).forEach(sym => {
                             if (d[sym] && d[sym].regime) {
                                 liveRegimes[d[sym].symbol || sym] = d[sym].regime;
@@ -3154,7 +3326,7 @@
                         });
                     }
 
-                    // ── 🔄 SPLASH OVERLAY: gestionar visibilidad según status ──
+                    // ── SPLASH OVERLAY: gestionar visibilidad según status ──
                     const mainState = d?._main || (d && Object.values(d).find(v => v && typeof v === 'object' && v.status));
                     if (mainState && mainState.status) {
                         updateSimSplash(mainState);
@@ -3460,6 +3632,32 @@
         }
 
         // ─── LÓGICA DE CALENDARIO (Extraída a js/calendar.js) ───
+
+        function showFinishSplash(state) {
+            const finishSplash = document.getElementById('bot-finish-splash');
+            if (!finishSplash || finishSplash.style.display === 'flex') return;
+
+            console.log('[UI] Mostrando Splash de Finalización ✅');
+            
+            document.getElementById('finish-symbol-label').textContent = 'ACTIVO: ' + (state.symbol || '??');
+            
+            const pnl = state.total_sim_pnl || 0;
+            const pnlEl = document.getElementById('finish-pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+            const wr = state.win_rate != null ? Number(state.win_rate).toFixed(1) + '%' : '0%';
+            document.getElementById('finish-wr').textContent = wr;
+            
+            const nTrades = state.total_trades || state.total_sim_trades || (Array.isArray(state.trades) ? state.trades.length : state.trades) || 0;
+            document.getElementById('finish-trades').textContent = nTrades;
+            
+            const mastery = state.mastery_score != null ? state.mastery_score.toFixed(0) + '%' : '0%';
+            document.getElementById('finish-mastery').textContent = mastery;
+
+            finishSplash.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     </script>
     <script>
 
@@ -4510,6 +4708,32 @@
         _preloadConfigAssets();
         checkFreezeStatus();  // Verificar estado de congelación al cargar
         connectWS();
+
+        function showFinishSplash(state) {
+            const finishSplash = document.getElementById('bot-finish-splash');
+            if (!finishSplash || finishSplash.style.display === 'flex') return;
+
+            console.log('[UI] Mostrando Splash de Finalización ✅');
+            
+            document.getElementById('finish-symbol-label').textContent = 'ACTIVO: ' + (state.symbol || '??');
+            
+            const pnl = state.total_sim_pnl || 0;
+            const pnlEl = document.getElementById('finish-pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+            const wr = state.win_rate != null ? Number(state.win_rate).toFixed(1) + '%' : '0%';
+            document.getElementById('finish-wr').textContent = wr;
+            
+            const nTrades = state.total_trades || state.total_sim_trades || (Array.isArray(state.trades) ? state.trades.length : state.trades) || 0;
+            document.getElementById('finish-trades').textContent = nTrades;
+            
+            const mastery = state.mastery_score != null ? state.mastery_score.toFixed(0) + '%' : '0%';
+            document.getElementById('finish-mastery').textContent = mastery;
+
+            finishSplash.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     </script>
     <!-- Symbol Manager Modal (Gestor Completo de Símbolos) -->
     <div id="sym-manager-wrapper"
@@ -5401,6 +5625,32 @@
             document.getElementById('xai-modal').classList.add('visible');
         }
 
+
+        function showFinishSplash(state) {
+            const finishSplash = document.getElementById('bot-finish-splash');
+            if (!finishSplash || finishSplash.style.display === 'flex') return;
+
+            console.log('[UI] Mostrando Splash de Finalización ✅');
+            
+            document.getElementById('finish-symbol-label').textContent = 'ACTIVO: ' + (state.symbol || '??');
+            
+            const pnl = state.total_sim_pnl || 0;
+            const pnlEl = document.getElementById('finish-pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+            const wr = state.win_rate != null ? Number(state.win_rate).toFixed(1) + '%' : '0%';
+            document.getElementById('finish-wr').textContent = wr;
+            
+            const nTrades = state.total_trades || state.total_sim_trades || (Array.isArray(state.trades) ? state.trades.length : state.trades) || 0;
+            document.getElementById('finish-trades').textContent = nTrades;
+            
+            const mastery = state.mastery_score != null ? state.mastery_score.toFixed(0) + '%' : '0%';
+            document.getElementById('finish-mastery').textContent = mastery;
+
+            finishSplash.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     </script>
 
     <!-- ─── XAI EXPLAINABLE AI MODAL ─── -->
@@ -5606,6 +5856,32 @@
             `;
             modal.addEventListener('click', (e) => { if(e.target === modal) modal.remove(); });
             document.body.appendChild(modal);
+        }
+
+        function showFinishSplash(state) {
+            const finishSplash = document.getElementById('bot-finish-splash');
+            if (!finishSplash || finishSplash.style.display === 'flex') return;
+
+            console.log('[UI] Mostrando Splash de Finalización ✅');
+            
+            document.getElementById('finish-symbol-label').textContent = 'ACTIVO: ' + (state.symbol || '??');
+            
+            const pnl = state.total_sim_pnl || 0;
+            const pnlEl = document.getElementById('finish-pnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.style.color = pnl >= 0 ? '#10b981' : '#ef4444';
+
+            const wr = state.win_rate != null ? Number(state.win_rate).toFixed(1) + '%' : '0%';
+            document.getElementById('finish-wr').textContent = wr;
+            
+            const nTrades = state.total_trades || state.total_sim_trades || (Array.isArray(state.trades) ? state.trades.length : state.trades) || 0;
+            document.getElementById('finish-trades').textContent = nTrades;
+            
+            const mastery = state.mastery_score != null ? state.mastery_score.toFixed(0) + '%' : '0%';
+            document.getElementById('finish-mastery').textContent = mastery;
+
+            finishSplash.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
     </script>
 </body>

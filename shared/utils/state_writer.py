@@ -402,17 +402,17 @@ def update_state(
         _symbol_states[symbol] = new_s
         _flush()
 
-def _flush() -> None:
+def _flush(blocking: bool = False) -> None:
     """Vuelca el estado a disco con protección de concurrencia y throttling."""
     global _last_flush_time
     now = time.time()
     
     # Throttle: No escribir más de una vez por segundo para evitar corrupción y saturación de IO
-    if (now - _last_flush_time) < (_flush_throttle_ms / 1000.0):
+    # A menos que sea un flush bloqueante (ej: al terminar)
+    if not blocking and (now - _last_flush_time) < (_flush_throttle_ms / 1000.0):
         return
 
     try:
-        _state_path.parent.mkdir(parents=True, exist_ok=True)
         # El estado final es un diccionario de símbolos
         output = {}
         
@@ -423,6 +423,30 @@ def _flush() -> None:
             d["model_accuracy"] = sym_stats.get("model_accuracy", 0.0)
             d["total_samples"] = sym_stats.get("total_samples", 0)
             output[sym] = d
+        
+        import os
+        orchestrator_url = os.getenv("ORCHESTRATOR_URL")
+        if orchestrator_url:
+            import requests
+            import threading
+            def _send_state(payload):
+                try:
+                    for s, data in payload.items():
+                        # We send to the orchestrator the internal data for this bot
+                        requests.post(f"{orchestrator_url}/api/state/update", json={"symbol": s, "data": data}, timeout=3.0)
+                except Exception:
+                    pass
+            
+            if blocking:
+                _send_state(output)
+            else:
+                threading.Thread(target=_send_state, args=(output,), daemon=True).start()
+                
+            _last_flush_time = now
+            return
+
+        # --- Legacy Fallback Para Standalone ---
+        _state_path.parent.mkdir(parents=True, exist_ok=True)
         
         if _symbol_states:
             keys = list(_symbol_states.keys())
@@ -447,6 +471,11 @@ def _flush() -> None:
     except Exception as e:
         from shared.utils.logger import log
         log.error(f"Error flushing state: {e}")
+
+def force_flush() -> None:
+    """Fuerza un volcado inmediato y síncrono del estado."""
+    with _state_lock:
+        _flush(blocking=True)
 
 def _calculate_mastery_cert(symbol: str, n_trades: int, gp: float, gl: float, pnl: float) -> dict:
     """Calcula métricas de maestría para decidir si el usuario puede ir en vivo."""
@@ -473,7 +502,25 @@ def _calculate_mastery_cert(symbol: str, n_trades: int, gp: float, gl: float, pn
     if n_trades == 0 and _session_max_drawdown == 0:
         total_score = 30.0
     
-    # 4. Capital recomendado
+    # 4. Métricas de Analista (Profesional)
+    expectancy = pnl / n_trades if n_trades > 0 else 0.0
+    
+    # Eficiencia: Qué tanto del lucro bruto queda tras costos
+    # (Si gross_profit es 100 y fees son 20, eficiencia es 80%)
+    efficiency = 0.0
+    if gp > 0:
+        total_costs = abs(gl) if gl < 0 else 0 # En este modelo GL es la pérdida bruta
+        # Pero aquí queremos medir el impacto de las COMISIONES si estuvieran separadas.
+        # Como en este simulador GP/GL ya incluyen costos usualmente, usaremos un proxy o
+        # si runner_sim pasa los fees por separado.
+        # Por ahora, usaremos: (Net PnL / Gross Profit) si GP > 0
+        efficiency = max(0.0, min(1.0, pnl / gp)) if pnl > 0 else 0.0
+
+    # Score de Estabilidad: Premia consistencia (muchos trades) y bajo drawdown
+    stability = (pf * (n_trades / 50)) / (1 + (_session_max_drawdown / 1000))
+    stability = round(min(100, stability * 10), 1) # Normalizado a 0-100 aprox
+
+    # 5. Capital recomendado
     # Multiplicador según comando del usuario (1x, 2x, 3x)
     try:
         if config.COMMAND_FILE.exists():
@@ -510,5 +557,9 @@ def _calculate_mastery_cert(symbol: str, n_trades: int, gp: float, gl: float, pn
         "risk_tier": tier,
         "actual_profit_factor": round(pf, 2),
         "actual_max_drawdown": round(_session_max_drawdown, 2),
-        "mastery_checklist": checklist
+        "mastery_checklist": checklist,
+        # --- Analyst Upgrade ---
+        "expectancy": round(expectancy, 2),
+        "efficiency": round(efficiency * 100, 1),
+        "stability_score": stability
     }
