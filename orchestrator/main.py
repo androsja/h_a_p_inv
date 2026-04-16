@@ -1,5 +1,6 @@
 import asyncio
 import json
+import psutil
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -13,6 +14,7 @@ from orchestrator.bank import BankManager
 from orchestrator.docker_manager import DockerManager
 from orchestrator.state_manager import StateManager
 from orchestrator.scheduler import ScheduleManager
+from orchestrator.auto_trainer import AutoTrainerManager
 from shared.utils.neural_filter import get_neural_filter
 
 app = FastAPI(title="Hapi Orchestrator")
@@ -39,6 +41,7 @@ bank = BankManager(initial_cash=10000.0)
 docker_mgr = DockerManager()
 state_mgr = StateManager()
 scheduler_mgr = ScheduleManager(docker_mgr)
+auto_trainer_mgr = AutoTrainerManager(docker_mgr)
 
 # --- Bank API ---
 class TransactionRequest(BaseModel):
@@ -70,13 +73,14 @@ class LaunchRequest(BaseModel):
     symbol: str
     mode: str = "SIMULATED"
     start_date: str = None  # Formato YYYY-MM-DD
+    end_date: str = None    # Formato YYYY-MM-DD
 
 @app.post("/api/docker/launch")
 async def launch_container(req: LaunchRequest):
     # 🧹 Limpiar caché de estado antes de lanzar para que el UI se vea limpio inmediatamente
     await state_mgr.clear_symbol(req.symbol)
     
-    success, msg = docker_mgr.launch_bot(req.symbol, req.mode, req.start_date)
+    success, msg = docker_mgr.launch_bot(req.symbol, req.mode, req.start_date, req.end_date)
     if not success:
          return JSONResponse(status_code=500, content={"status": "error", "message": msg})
     return {"status": "success", "message": msg}
@@ -168,6 +172,16 @@ async def run_scheduler_job_now(job_id: str):
         return JSONResponse(status_code=404, content={"status": "error", "message": "Job not found"})
     return {"status": "success", "message": f"Job {job_id} triggered immediately"}
 
+# --- Auto-Trainer API ---
+@app.get("/api/auto-trainer/status")
+async def get_auto_trainer_status():
+    return {"status": "success", "data": auto_trainer_mgr.get_status()}
+
+@app.post("/api/auto-trainer/toggle")
+async def toggle_auto_trainer():
+    is_running = auto_trainer_mgr.toggle()
+    return {"status": "success", "is_running": is_running}
+
 # --- State Sync (Dashboard / UI) API ---
 class StateUpdateRequest(BaseModel):
     symbol: str
@@ -214,6 +228,64 @@ async def websocket_state_stream(websocket: WebSocket):
         await state_mgr.disconnect(websocket)
     except Exception:
         await state_mgr.disconnect(websocket)
+
+
+# ─── System Health API ─────────────────────────────────────────────────────
+# RAM/CPU limits: each simulation container uses ~400MB RAM and ~10% CPU on average
+_RAM_PER_SIM_MB  = 400
+_CPU_PER_SIM_PCT = 10
+_MIN_FREE_RAM_MB = 512  # always keep 512MB free as buffer
+
+@app.get("/api/system/health")
+async def get_system_health():
+    """Returns real-time CPU, RAM and Docker container stats + recommended sim capacity."""
+    # ── RAM ──────────────────────────────────────────────────────────────
+    mem = psutil.virtual_memory()
+    total_ram_mb  = mem.total  // (1024 * 1024)
+    used_ram_mb   = mem.used   // (1024 * 1024)
+    avail_ram_mb  = mem.available // (1024 * 1024)
+    ram_pct       = mem.percent
+
+    # ── CPU (1-second sample to avoid blocking) ───────────────────────
+    try:
+        cpu_pct = psutil.cpu_percent(interval=0.5)
+    except Exception:
+        cpu_pct = 0.0
+
+    # ── Active containers ─────────────────────────────────────────────
+    active_containers = docker_mgr.list_active_bots()
+    running_count = len(active_containers)
+
+    # ── Capacity calculation ──────────────────────────────────────────
+    free_ram_for_sims = max(0, avail_ram_mb - _MIN_FREE_RAM_MB)
+    ram_slots   = int(free_ram_for_sims // _RAM_PER_SIM_MB)
+    free_cpu    = max(0, 100 - cpu_pct)
+    cpu_slots   = int(free_cpu // _CPU_PER_SIM_PCT)
+    max_new     = max(0, min(ram_slots, cpu_slots))
+
+    # ── Traffic-light status ──────────────────────────────────────────
+    if ram_pct < 60 and cpu_pct < 60:
+        status = "ok"
+        advice = f"Sistema saludable — puedes lanzar hasta {max_new} simulación(es) más"
+    elif ram_pct < 85 and cpu_pct < 85:
+        status = "warning"
+        advice = f"Recursos moderados — máximo {max_new} simulación(es) adicional(es) recomendada(s)"
+    else:
+        status = "critical"
+        advice = "Sistema saturado — espera a que termine una simulación antes de lanzar más"
+        max_new = 0
+
+    return {
+        "status": status,
+        "cpu_pct": round(cpu_pct, 1),
+        "ram_pct": round(ram_pct, 1),
+        "ram_used_mb": used_ram_mb,
+        "ram_total_mb": total_ram_mb,
+        "ram_avail_mb": avail_ram_mb,
+        "running_sims": running_count,
+        "max_new_sims": max_new,
+        "advice": advice,
+    }
 
 # UI Route
 

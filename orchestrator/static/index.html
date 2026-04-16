@@ -15,21 +15,20 @@
             color: #e2e8f0;
             min-height: 100vh;
             padding: 2rem 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            overflow-y: auto;
         }
 
         h1 {
             font-size: 1.8rem;
             font-weight: 700;
             margin-bottom: 1.5rem;
+            text-align: center;
             background: linear-gradient(135deg, #60a5fa, #a78bfa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; max-width: 900px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; max-width: 900px; margin: 0 auto; align-items: start; }
         .full-width { grid-column: 1 / -1; }
 
         .card {
@@ -256,49 +255,104 @@
             </table>
         </div>
 
-        <!-- LANZAR SIMULACIÓN -->
-        <div class="card full-width">
-            <h2>🚀 Lanzar Simulación</h2>
-            <div class="launch-row">
-                <select id="sym-input">
-                    <option value="">Selecciona un símbolo…</option>
-                </select>
-                <input type="date" id="date-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de inicio (opcional)">
-                <button class="btn-primary" onclick="launchBot()">▶ Start Simulation</button>
+        
+        <!-- SALUD DEL SISTEMA -->
+        <div class="card full-width" id="sys-health-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+                <h2 style="margin:0;">⚡ Capacidad del Sistema</h2>
+                <span id="sys-advice-badge" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; font-weight:700; background:rgba(100,116,139,0.2); color:#94a3b8; transition:all 0.4s;">
+                    Analizando…
+                </span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                <!-- CPU -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
+                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🖥 CPU</div>
+                    <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; margin-bottom:6px;" id="sys-cpu-val">—%</div>
+                    <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; overflow:hidden;">
+                        <div id="sys-cpu-bar" style="height:100%; width:0%; background:#3b82f6; transition:width 0.6s ease; border-radius:4px;"></div>
+                    </div>
+                </div>
+                <!-- RAM -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
+                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">💾 RAM</div>
+                    <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; margin-bottom:6px;" id="sys-ram-val">—%</div>
+                    <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; overflow:hidden;">
+                        <div id="sys-ram-bar" style="height:100%; width:0%; background:#8b5cf6; transition:width 0.6s ease; border-radius:4px;"></div>
+                    </div>
+                    <div style="font-size:10px; color:#475569; margin-top:4px;" id="sys-ram-detail">—</div>
+                </div>
+                <!-- Sims Activas -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
+                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🐳 Sims Activas</div>
+                    <div style="font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#4ade80;" id="sys-running-val">—</div>
+                </div>
+                <!-- Capacidad Disponible -->
+                <div id="sys-capacity-card" style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); border-radius:12px; padding:14px; transition:all 0.4s;">
+                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🚀 Puedes Lanzar</div>
+                    <div style="font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace;" id="sys-max-val">—</div>
+                    <div style="font-size:10px; color:#475569; margin-top:4px;">simulaciones más</div>
+                </div>
+            </div>
+            <!-- Advice bar -->
+            <div id="sys-advice-bar" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px 16px; font-size:12px; color:#94a3b8; display:flex; align-items:center; gap:10px; transition:all 0.4s;">
+                <span id="sys-advice-icon">ℹ️</span>
+                <span id="sys-advice-text">Cargando diagnóstico del sistema…</span>
             </div>
         </div>
 
-        <!-- PLANIFICADOR GLOBAL (AUTOMACIÓN) -->
+<!-- LANZAR SIMULACIÓN -->
+        <div class="card full-width">
+            <h2>🚀 Lanzar Simulación</h2>
+            <div class="launch-row" style="align-items:flex-end;">
+                <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">SÍMBOLO</span>
+                   <select id="sym-input">
+                       <option value="">Selecciona un símbolo…</option>
+                   </select>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">INICIO SIMULACIÓN</span>
+                   <input type="date" id="date-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de inicio (opcional)">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">FIN SIMULACIÓN</span>
+                   <input type="date" id="date-end-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de fin (opcional)">
+                </div>
+                <button class="btn-primary" onclick="launchBot()" style="padding:0.7rem 1.2rem; font-size:0.9rem;">▶ Start Simulation</button>
+            </div>
+        </div>
+
+        <!-- AUTO-PERFECCIONADOR AUTÓNOMO -->
         <div class="card full-width">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>📅 Planificador Global (Automación)</h2>
-                <button class="auto-btn" onclick="autoPerfectionist()">✨ Auto-Perfeccionador</button>
+                <h2>✨ Auto-Perfeccionador Autónomo</h2>
+                <button id="btn-toggle-auto" class="auto-btn" onclick="toggleAutoTrainer()">⚡ Iniciar Autónoma</button>
             </div>
             
-            <div class="launch-row" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                <select id="sched-sym">
-                   <option value="">Símbolo...</option>
-                </select>
-                <select id="sched-freq">
-                    <option value="HOURLY">Cada Hora</option>
-                    <option value="DAILY" selected>Cada Día</option>
-                    <option value="WEEKLY">Cada Semana</option>
-                </select>
-                <select id="sched-mode">
-                    <option value="SIMULATED">Simulación</option>
-                    <option value="LIVE">Live Mode</option>
-                </select>
-                <button class="btn-primary" onclick="addScheduleJob()">✚ Programar</button>
+            <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Estado del Motor</span>
+                        <div id="ai-auto-status" style="font-weight: 700; color: #f59e0b; font-size: 1.1rem;">Apagado</div>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Foco Actual</span>
+                        <div id="ai-auto-focus" style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #e2e8f0; font-size: 1.1rem;">—</div>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Próxima Acción</span>
+                        <div id="ai-auto-action" style="font-size: 0.9rem; color: #e2e8f0; margin-top: 4px;">—</div>
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                    <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; display:block;">Cerebro de Operaciones (Logs)</span>
+                    <ul id="ai-auto-logs" style="list-style:none; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; margin:0; display:flex; flex-direction:column; gap:4px; max-height:80px; overflow-y:auto;">
+                        <li>Esperando inicialización...</li>
+                    </ul>
+                </div>
             </div>
-
-            <table id="scheduler-table">
-                <thead><tr>
-                    <th>Símbolo</th><th>Frecuencia</th><th>Modo</th><th>Última Ejec.</th><th>Próxima Ejec.</th><th>Estatus</th><th>Acción</th>
-                </tr></thead>
-                <tbody id="scheduler-tbody">
-                    <tr><td colspan="7" class="empty-msg">No hay tareas programadas</td></tr>
-                </tbody>
-            </table>
         </div>
 
         <!-- BOTS ACTIVOS -->
@@ -317,7 +371,7 @@
             <h2>✅ Simulaciones Completadas</h2>
             <table id="done-table">
                 <thead><tr>
-                    <th>Símbolo</th><th>Inicio Sim.</th><th>Finalizado</th><th>Trades</th><th>Win Rate</th><th>PnL</th><th>Acción</th>
+                    <th>Símbolo</th><th>Inicio Sim.</th><th>Finalizado</th><th>Trades</th><th>Win Rate</th><th>PnL</th><th>Evolución IA</th><th>Acción</th>
                 </tr></thead>
                 <tbody id="done-tbody"></tbody>
             </table>
@@ -384,11 +438,11 @@
             // Trigger animation
             setTimeout(() => toast.classList.add('show'), 10);
             
-            // Auto hide after 6 seconds
+            // Auto hide after 12 seconds so user can read details
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
-            }, 6000);
+            }, 12000);
         }
 
         async function fetchBots() {
@@ -403,9 +457,27 @@
                     lastRunningSymbols.forEach(sym => {
                         if (!currentRunning.has(sym)) {
                             // Estaba antes, ya no está. Revisar si está en completados
-                            const isDone = (d.completed || []).some(b => b.symbol === sym);
-                            if (isDone) {
-                                showToast(`✅ Simulación de <b>${sym}</b> Finalizada`, 'success');
+                            const completedBot = (d.completed || []).find(b => b.symbol === sym);
+                            if (completedBot) {
+                                const pnl = completedBot.pnl || 0;
+                                const trades = completedBot.trades || 0;
+                                const wrRaw = completedBot.win_rate != null ? completedBot.win_rate : null;
+                                const wr = wrRaw != null ? (wrRaw <= 1.0 ? wrRaw * 100 : wrRaw).toFixed(1) + '%' : '—';
+                                const mStatus = completedBot.mastery_status || "APRENDIENDO";
+                                
+                                let readinessMsg = "";
+                                if (mStatus === "LISTO PARA VIVO") {
+                                    readinessMsg = "<br><span style='color:#10b981;font-weight:bold;font-size:0.85rem;'>🟢 IA APROBADA: ¡Símbolo LISTO para LIVE!</span>";
+                                } else if (pnl > 0) {
+                                    readinessMsg = "<br><span style='color:#f59e0b;font-weight:bold;font-size:0.85rem;'>🟡 Gana dinero pero falta madurez. Mas simulaciones sugeridas.</span>";
+                                } else {
+                                    readinessMsg = "<br><span style='color:#ef4444;font-weight:bold;font-size:0.85rem;'>🔴 Sigue perdiendo. Repetir entrenamiento.</span>";
+                                }
+
+                                const details = `<br><span style="font-size:0.8rem;color:#cbd5e1;font-family:'JetBrains Mono',monospace;">Trades: ${trades} | WR: ${wr} | PnL: $${pnl.toFixed(2)}</span>${readinessMsg}`;
+                                const toastType = pnl > 0 ? 'success' : 'info';
+
+                                showToast(`✅ Simulación de <b>${sym}</b> Finalizada${details}`, toastType);
                             }
                         }
                     });
@@ -483,9 +555,33 @@
                         // --- Fila en Tabla de Completados ---
                         const pnl = b.pnl || 0;
                         const pnlClass = pnl >= 0 ? 'green' : 'red';
-                        const wr = b.win_rate != null ? (b.win_rate * 100).toFixed(1) + '%' : '—';
+                        
+                        // Fix for raw win rate values vs pre-multiplied percentages
+                        let wrRaw = b.win_rate != null ? b.win_rate : null;
+                        if (wrRaw != null && wrRaw <= 1.0) wrRaw = wrRaw * 100; // Only multiply if fractional
+                        const wr = wrRaw != null ? wrRaw.toFixed(1) + '%' : '—';
+                        
                         const tr = document.createElement('tr');
                         if (new Date() - new Date(b.finished_at) < 15000) tr.className = 'row-new';
+
+                        // Calculate Evolution by looking for the chronologically previous simulation of the same symbol
+                        let evolutionHtml = '<span style="color:#64748b;font-size:0.75rem;">Primera vez</span>';
+                        let pastSymRuns = [];
+                        // We use the full completed array and find the next occurrence of this symbol (since array is reverse chronological)
+                        const currentIdx = completed.findIndex(x => x === b);
+                        if (currentIdx !== -1) {
+                            pastSymRuns = completed.slice(currentIdx + 1).filter(past => past.symbol === b.symbol);
+                        }
+                        const prevRun = pastSymRuns.length > 0 ? pastSymRuns[0] : null;
+
+                        if (prevRun) {
+                            const pnlDiff = pnl - (prevRun.pnl || 0);
+                            const diffColor = pnlDiff > 0 ? '#4ade80' : (pnlDiff < 0 ? '#f87171' : '#cbd5e1');
+                            const diffSign = pnlDiff > 0 ? '▲ +$' : (pnlDiff < 0 ? '▼ -$' : '=$');
+                            evolutionHtml = `<div style="display:flex; align-items:center;">
+                                             <span style="color:${diffColor}; font-weight:700; font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${diffSign}${Math.abs(pnlDiff).toFixed(2)}</span>
+                                             </div>`;
+                        }
                         
                         tr.innerHTML = `
                             <td style="font-weight:600;">${b.symbol}</td>
@@ -494,6 +590,7 @@
                             <td>${b.trades ?? '—'}</td>
                             <td>${wr}</td>
                             <td class="${pnlClass}" style="font-family:'JetBrains Mono',monospace;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
+                            <td>${evolutionHtml}</td>
                             <td><button class="btn-dismiss" onclick="dismissBot('${b.run_id || b.symbol}')">🗑 Limpiar</button></td>`;
                         doneTbody.appendChild(tr);
 
@@ -582,6 +679,7 @@
         async function launchBot() {
             const sym = document.getElementById('sym-input').value;
             const startDate = document.getElementById('date-input').value; // puede ser vacío
+            const endDate = document.getElementById('date-end-input').value; // puede ser vacío
             if (!sym) { alert('Selecciona un símbolo primero'); return; }
             
             // Persistir la fecha para la próxima vez
@@ -590,9 +688,15 @@
             } else {
                 localStorage.removeItem('hapi_last_sim_date');
             }
+            if (endDate) {
+                localStorage.setItem('hapi_last_sim_end_date', endDate);
+            } else {
+                localStorage.removeItem('hapi_last_sim_end_date');
+            }
             
             const payload = {symbol: sym, mode: 'SIMULATED'};
             if (startDate) payload.start_date = startDate;
+            if (endDate) payload.end_date = endDate;
             
             try {
                 const res = await fetch('/api/docker/launch', {
@@ -642,114 +746,58 @@
             fetchBank();
             fetchBots();
             fetchSymbols();
-            fetchSchedules();
+            fetchAutoTrainerStatus();
+            fetchSystemHealth();
             setInterval(fetchBank, 10000);
             setInterval(fetchBots, 5000);
-            setInterval(fetchSchedules, 60000);
+            setInterval(fetchAutoTrainerStatus, 5000);
         });
 
-        // ─── SCHEDULER LOGIC ──────────────────────────────────────
-        async function fetchSchedules() {
+        // ─── AUTO-TRAINER LOGIC ───────────────────────────────────
+        async function fetchAutoTrainerStatus() {
             try {
-                const res = await fetch('/api/scheduler/jobs');
+                const res = await fetch('/api/auto-trainer/status');
                 const d = await res.json();
-                const tbody = document.getElementById('scheduler-tbody');
-                
-                if (!d.jobs || d.jobs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No hay tareas programadas</td></tr>';
-                    return;
-                }
+                if (d.status === "success" && d.data) {
+                    const state = d.data;
+                    const statusEl = document.getElementById('ai-auto-status');
+                    const btn = document.getElementById('btn-toggle-auto');
+                    const focusEl = document.getElementById('ai-auto-focus');
+                    const actionEl = document.getElementById('ai-auto-action');
+                    const logsEl = document.getElementById('ai-auto-logs');
 
-                tbody.innerHTML = '';
-                d.jobs.forEach(j => {
-                    const row = document.createElement('tr');
-                    const nextRun = new Date(j.next_run).toLocaleString();
-                    const lastRun = j.last_run ? new Date(j.last_run).toLocaleString() : '—';
-                    
-                    row.innerHTML = `
-                        <td style="font-weight:700;">${j.symbol}</td>
-                        <td><span class="job-tag">${j.frequency}</span></td>
-                        <td style="font-size:0.8rem; color:#94a3b8;">${j.mode}</td>
-                        <td style="font-size:0.8rem;">${lastRun}</td>
-                        <td style="color:#3b82f6; font-weight:600; font-size:0.8rem;">${nextRun}</td>
-                        <td><span style="color:${j.status==='ERROR'?'#ef4444':'#10b981'}; font-size:0.75rem;">● ${j.status}</span></td>
-                        <td>
-                            <button class="btn-action" onclick="runJobNow('${j.id}')" title="Lanzar ahora" style="background:#10b98122; border:1px solid #10b98144; color:#10b981; margin-right:5px; padding:2px 6px; border-radius:4px; cursor:pointer;">▶️</button>
-                            <button class="btn-delete" onclick="deleteJob('${j.id}')" title="Eliminar" style="background:#ef444422; border:1px solid #ef444444; color:#ef4444; padding:2px 6px; border-radius:4px; cursor:pointer;">🗑</button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } catch(e) { console.error('schedules', e); }
+                    if (state.is_running) {
+                        statusEl.innerText = "Operativo (Autónomo)";
+                        statusEl.style.color = "#4ade80";
+                        btn.innerText = "🛑 Detener Autónoma";
+                        btn.style.background = "#ef4444";
+                    } else {
+                        statusEl.innerText = "Apagado";
+                        statusEl.style.color = "#f59e0b";
+                        btn.innerText = "⚡ Iniciar Autónoma";
+                        btn.style.background = "#8b5cf6";
+                    }
+
+                    focusEl.innerText = state.current_focus || "—";
+                    actionEl.innerText = state.next_action || "—";
+
+                    if (state.status_log && state.status_log.length > 0) {
+                        logsEl.innerHTML = state.status_log.map(msg => `<li>> ${msg}</li>`).join('');
+                    }
+                }
+            } catch(e) { console.error('autotrainer', e); }
         }
 
-        async function addScheduleJob() {
-            const symbol = document.getElementById('sched-sym').value;
-            const frequency = document.getElementById('sched-freq').value;
-            const mode = document.getElementById('sched-mode').value;
-            
-            if(!symbol) return alert('Selecciona un símbolo');
-
+        async function toggleAutoTrainer() {
             try {
-                const res = await fetch('/api/scheduler/jobs', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ symbol, frequency, mode })
-                });
-                if(res.ok) {
-                    showToast(`📅 Tarea programada para ${symbol}`, 'info');
-                    fetchSchedules();
+                const res = await fetch('/api/auto-trainer/toggle', { method: 'POST' });
+                const d = await res.json();
+                if(d.status === 'success') {
+                    showToast(d.is_running ? "⚡ Operación Autónoma Iniciada" : "🛑 Operación Autónoma Pausada", "info");
+                    fetchAutoTrainerStatus();
+            fetchSystemHealth();
                 }
             } catch(e) { console.error(e); }
-        }
-
-        async function deleteJob(id) {
-            if(!confirm('¿Eliminar tarea programada?')) return;
-            try {
-                await fetch(`/api/scheduler/jobs/${id}`, { method: 'DELETE' });
-                fetchSchedules();
-            } catch(e) { console.error(e); }
-        }
-
-        async function runJobNow(id) {
-            try {
-                const res = await fetch(`/api/scheduler/jobs/${id}/run`, { method: 'POST' });
-                if (res.ok) {
-                    showToast("⚡ Lanzando tarea programada inmediatamente...", "success");
-                    fetchSchedules();
-                    // Refrescar el Hub de Madurez tras un pequeño delay para ver el nuevo contenedor
-                    setTimeout(fetchMaturityHub, 2000);
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        async function autoPerfectionist() {
-            showToast("🧠 IA: Identificando activos para auto-perfeccionamiento...", "info");
-            
-            // Buscar en el maturity hub activos con madurez < 50%
-            const rows = document.querySelectorAll('#maturity-tbody tr');
-            let scheduled = 0;
-            
-            for (let tr of rows) {
-                const symbol = tr.querySelector('td:first-child').innerText;
-                const status = tr.querySelector('.tag-learning, .tag-validating, .tag-ready')?.innerText;
-                
-                if (status === "APRENDIENDO" || status === "VALIDANDO") {
-                    await fetch('/api/scheduler/jobs', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ symbol, frequency: 'DAILY', mode: 'SIMULATED' })
-                    });
-                    scheduled++;
-                }
-            }
-
-            if (scheduled > 0) {
-                showToast(`🚀 Se programaron ${scheduled} ciclos de aprendizaje diario.`, "success");
-            } else {
-                showToast("✨ Todos los activos están en nivel óptimo.", "success");
-            }
-            fetchSchedules();
         }
 
         // ─── SYMBOLS ────────────────────────────────────────────
@@ -759,21 +807,118 @@
                 const d = await res.json();
                 if (d.status === 'success') {
                     const sel = document.getElementById('sym-input');
-                    const schedSel = document.getElementById('sched-sym');
                     
                     // Limpiar previos (menos el placeholder)
-                    sel.innerHTML = '<option value="">Selecciona un símbolo…</option>';
-                    schedSel.innerHTML = '<option value="">Símbolo...</option>';
-                    
-                    d.assets.forEach(a => {
-                        const opt = document.createElement('option');
-                        opt.value = a.symbol;
-                        opt.textContent = a.symbol + (a.name ? ` — ${a.name}` : '');
-                        sel.appendChild(opt.cloneNode(true));
-                        schedSel.appendChild(opt);
-                    });
+                    if (sel) {
+                        sel.innerHTML = '<option value="">Selecciona un símbolo…</option>';
+                        d.assets.forEach(a => {
+                            const opt = document.createElement('option');
+                            opt.value = a.symbol;
+                            opt.textContent = a.symbol + (a.name ? ` — ${a.name}` : '');
+                            sel.appendChild(opt);
+                        });
+                    }
                 }
             } catch(e) { console.error('symbols', e); }
+        }
+
+
+        // ─── SYSTEM HEALTH ──────────────────────────────────────
+        async function fetchSystemHealth() {
+            try {
+                const res = await fetch('/api/system/health');
+                const d = await res.json();
+
+                // CPU
+                const cpuEl = document.getElementById('sys-cpu-val');
+                const cpuBar = document.getElementById('sys-cpu-bar');
+                if (cpuEl) {
+                    cpuEl.textContent = d.cpu_pct + '%';
+                    cpuEl.style.color = d.cpu_pct > 85 ? '#ef4444' : d.cpu_pct > 60 ? '#f59e0b' : '#e2e8f0';
+                }
+                if (cpuBar) {
+                    cpuBar.style.width = d.cpu_pct + '%';
+                    cpuBar.style.background = d.cpu_pct > 85 ? '#ef4444' : d.cpu_pct > 60 ? '#f59e0b' : '#3b82f6';
+                }
+
+                // RAM
+                const ramEl = document.getElementById('sys-ram-val');
+                const ramBar = document.getElementById('sys-ram-bar');
+                const ramDetail = document.getElementById('sys-ram-detail');
+                if (ramEl) {
+                    ramEl.textContent = d.ram_pct + '%';
+                    ramEl.style.color = d.ram_pct > 85 ? '#ef4444' : d.ram_pct > 60 ? '#f59e0b' : '#e2e8f0';
+                }
+                if (ramBar) {
+                    ramBar.style.width = d.ram_pct + '%';
+                    ramBar.style.background = d.ram_pct > 85 ? '#ef4444' : d.ram_pct > 60 ? '#f59e0b' : '#8b5cf6';
+                }
+                if (ramDetail) {
+                    ramDetail.textContent = d.ram_used_mb.toLocaleString() + ' MB / ' + d.ram_total_mb.toLocaleString() + ' MB';
+                }
+
+                // Running sims
+                const runEl = document.getElementById('sys-running-val');
+                if (runEl) runEl.textContent = d.running_sims;
+
+                // Max new sims
+                const maxEl = document.getElementById('sys-max-val');
+                const capCard = document.getElementById('sys-capacity-card');
+                if (maxEl) {
+                    maxEl.textContent = d.max_new_sims;
+                    maxEl.style.color = d.max_new_sims === 0 ? '#ef4444' : d.max_new_sims <= 1 ? '#f59e0b' : '#4ade80';
+                }
+                if (capCard) {
+                    if (d.status === 'ok') {
+                        capCard.style.background = 'rgba(16,185,129,0.08)';
+                        capCard.style.borderColor = 'rgba(16,185,129,0.3)';
+                    } else if (d.status === 'warning') {
+                        capCard.style.background = 'rgba(245,158,11,0.08)';
+                        capCard.style.borderColor = 'rgba(245,158,11,0.3)';
+                    } else {
+                        capCard.style.background = 'rgba(239,68,68,0.08)';
+                        capCard.style.borderColor = 'rgba(239,68,68,0.3)';
+                    }
+                }
+
+                // Advice bar
+                const icons = { ok: '✅', warning: '⚠️', critical: '🔴' };
+                const barColors = {
+                    ok: 'rgba(16,185,129,0.08)',
+                    warning: 'rgba(245,158,11,0.08)',
+                    critical: 'rgba(239,68,68,0.08)'
+                };
+                const borderColors = {
+                    ok: 'rgba(16,185,129,0.2)',
+                    warning: 'rgba(245,158,11,0.2)',
+                    critical: 'rgba(239,68,68,0.2)'
+                };
+                const textColors = { ok: '#10b981', warning: '#f59e0b', critical: '#ef4444' };
+
+                const advIcon = document.getElementById('sys-advice-icon');
+                const advText = document.getElementById('sys-advice-text');
+                const advBar  = document.getElementById('sys-advice-bar');
+                const advBadge = document.getElementById('sys-advice-badge');
+
+                if (advIcon) advIcon.textContent = icons[d.status] || 'ℹ️';
+                if (advText) { advText.textContent = d.advice; advText.style.color = textColors[d.status] || '#94a3b8'; }
+                if (advBar) {
+                    advBar.style.background = barColors[d.status] || '';
+                    advBar.style.borderColor = borderColors[d.status] || '';
+                }
+                if (advBadge) {
+                    const labels = { ok: 'Sistema OK', warning: 'Recursos Moderados', critical: 'Sistema Saturado' };
+                    advBadge.textContent = labels[d.status] || '?';
+                    advBadge.style.background = barColors[d.status] || '';
+                    advBadge.style.color = textColors[d.status] || '';
+                    advBadge.style.borderColor = borderColors[d.status] || '';
+                    advBadge.style.border = '1px solid ' + (borderColors[d.status] || '');
+                }
+
+            } catch(e) {
+                const advText = document.getElementById('sys-advice-text');
+                if (advText) advText.textContent = '⚠ No se pudo conectar con el sistema de salud: ' + e.message;
+            }
         }
 
         // ─── AI STATUS TICKER ───────────────────────────────────
@@ -781,15 +926,23 @@
             document.getElementById('ai-status').textContent = msg;
         }
 
+        fetchSystemHealth();
+        setInterval(fetchSystemHealth, 10000);
+
         // Poll cada 5 s (Bots y Banco)
         setInterval(fetchBank, 10000);
         setInterval(fetchBots, 5000);
         
-        // Restaurar última fecha usada
+        // Rehydrating date inputs if used previously
         const lastDate = localStorage.getItem('hapi_last_sim_date');
         if (lastDate) {
             const el = document.getElementById('date-input');
             if (el) el.value = lastDate;
+        }
+        const lastEndDate = localStorage.getItem('hapi_last_sim_end_date');
+        if (lastEndDate) {
+            const elEnd = document.getElementById('date-end-input');
+            if (elEnd) elEnd.value = lastEndDate;
         }
     </script>
 </body>
