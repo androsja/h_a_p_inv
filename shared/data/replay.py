@@ -33,12 +33,22 @@ class MarketReplay:
     El MockBroker usa esta clase para simular el mercado intraday.
     """
 
-    def __init__(self, symbol: Optional[str] = None, start_date: Optional[str] = None):
+    def __init__(self, symbol: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
         """
         Args:
             symbol:     Ticker a simular. Si es None, elige uno al azar de assets.json.
             start_date: Formato "YYYY-MM-DD". Filtra el inicio de la simulación.
+            end_date:   Formato "YYYY-MM-DD". Filtra el fin de la simulación.
         """
+        # ── Normalizar fechas: string vacío → None ─────────────────────────
+        # Evita que end_date="" (cadena vacía desde env var) bypass el filtro
+        if not start_date or not start_date.strip():
+            start_date = None
+        if not end_date or not end_date.strip():
+            end_date = None
+
+        log.info(f"replay | {symbol or 'AUTO'} | Fechas recibidas → inicio: {start_date or 'no definida'} | fin: {end_date or 'no definida'}")
+
         if symbol is None:
             symbols = get_symbols()
             symbol = random.choice(symbols)
@@ -57,16 +67,44 @@ class MarketReplay:
                 if len(df_filtered) < min_bars:
                     last_available = self.df.index[-1].strftime("%Y-%m-%d") if len(self.df) > 0 else "N/A"
                     log.warning(
-                        f"replay | {symbol} | Fecha {start_date} fuera de rango "
+                        f"replay | {symbol} | Fecha inicio {start_date} fuera de rango "
                         f"(último dato: {last_available}). Usando todos los datos disponibles."
                     )
                 else:
                     self.df = df_filtered
-                    log.info(f"replay | {symbol} | Filtro de fecha aplicado: desde {start_date}")
+                    log.info(f"replay | {symbol} | ✅ Filtro de INICIO aplicado: desde {start_date}")
             except Exception as e:
-                log.error(f"replay | {symbol} | Error al aplicar filtro de fecha {start_date}: {e}")
+                log.error(f"replay | {symbol} | Error al aplicar filtro de fecha inicio {start_date}: {e}")
+
+        # ── Filtro de fecha de fin ─────────────────────────────────────────
+        if end_date:
+            try:
+                # Fin de día para incluir toda la jornada del end_date
+                end_dt_str = end_date if ' ' in end_date else end_date + " 23:59:59"
+                end_dt = pd.to_datetime(end_dt_str).tz_localize(ET).tz_convert("UTC")
+                df_filtered = self.df[self.df.index <= end_dt].copy()
+                if len(df_filtered) < min_bars:
+                    log.warning(
+                        f"replay | {symbol} | ⚠️ Fecha fin {end_date} deja solo {len(df_filtered)} velas "
+                        f"(mínimo {min_bars}). Ignorando filtro fin para evitar crash."
+                    )
+                else:
+                    self.df = df_filtered
+                    log.info(f"replay | {symbol} | ✅ Filtro de FIN aplicado: hasta {end_date} ({len(df_filtered)} velas)")
+            except Exception as e:
+                log.error(f"replay | {symbol} | Error al aplicar filtro de fecha fin {end_date}: {e}")
+        else:
+            log.info(f"replay | {symbol} | ℹ️  Sin fecha de fin definida → simulará hasta la última vela disponible ({self.df.index[-1].strftime('%Y-%m-%d') if len(self.df) > 0 else 'N/A'})")
 
         self._index: int = 0
+
+        # ── Log confirmación del rango real que se va a simular ────────────
+        if len(self.df) > 0:
+            log.info(
+                f"replay | {symbol} | 🗓️  RANGO EFECTIVO DE SIMULACIÓN: "
+                f"{self.df.index[0].strftime('%Y-%m-%d')} → {self.df.index[-1].strftime('%Y-%m-%d')} "
+                f"({len(self.df)} velas)"
+            )
 
         if len(self.df) < min_bars:
             raise ValueError(
