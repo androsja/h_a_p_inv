@@ -891,29 +891,21 @@
                                 <thead
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
                                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted); font-size: 11px; text-transform: uppercase;">
-                                        <th style="padding:10px;">Símbolo</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="period">📅 Período Simulado</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="duration">⏱️ Duración</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="price">Precio</th>
-                                        <th style="padding:10px;">Sesión #</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="trades">Trades</th>
-                                        <th style="padding:10px;" title="Trades ganadores W vs perdedores L">✅ W / ❌ L</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="winrate">Win Rate</th>
+                                        <th style="padding:10px 10px 10px 14px; min-width:90px;">Símbolo</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="period">📅 Período</th>
+                                        <th style="padding:10px;">Ses.</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="trades">Trades · W/L · Win%</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="gross">Gross PnL ⓘ</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="fees">Fees ⓘ</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="slippage">Slippage ⓘ</th>
                                         <th id="th-netpnl" class="metric-th" data-metric="net" onclick="toggleNetPnlSort()"
                                             style="padding:10px; cursor:pointer; user-select:none; white-space:nowrap; transition:color 0.2s;"
-                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL"> Net PnL ⓘ <span id="netpnl-sort-icon">&#x21D5;</span></th>
+                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL">Net PnL ⓘ <span id="netpnl-sort-icon">&#x21D5;</span></th>
                                         <th style="padding:10px;" class="metric-th" data-metric="balance">Saldo Final ⓘ</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="drawdown">Drawdown ⓘ</th>
-                                        <th style="padding:10px;">🛡️ Filtros Activos</th>
-                                        <th style="padding:10px; text-align:left;" title="Veredicto final combinando Madurez de IA y Rendimiento Financiero">🏁 Veredicto Final IA</th>
+                                        <th style="padding:10px; text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="results-table-body">
                                     <tr>
-                                        <td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">
+                                        <td colspan="8" style="padding:20px; text-align:center; color:var(--muted);">
                                             Sin sesiones finalizadas todavía.</td>
                                     </tr>
                                 </tbody>
@@ -1522,7 +1514,7 @@
                     if (lastResultCount !== 0) {
                         lastResultCount = 0;
                         totalNetValue = 0;
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="15" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
 
                         // Reset Summary Cards explicitly
                         const ids = ['summary-gross-wins', 'summary-gross-losses', 'summary-total-fees', 'summary-total-slippage', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
@@ -2407,7 +2399,7 @@
                 
                 // Si el WS está conectado, el bot está arrancando; si no, es que no hay datos
                 const wsActive = window._wsConnected;
-                tbody.innerHTML = `<tr><td colspan="15" style="padding:30px; text-align:center; color:var(--muted);">
+                tbody.innerHTML = `<tr><td colspan="8" style="padding:30px; text-align:center; color:var(--muted);">
                     ${wsActive
                         ? '<span style="font-size:18px;">⏳</span><br><span style="font-size:13px;">Bot arrancando... espera la primera vela</span>'
                         : '<span style="font-size:13px;">Sin sesiones todavía. Conectando al bot...</span>'
@@ -2506,44 +2498,63 @@
                 const sec = parseFloat(row.sim_duration || 0);
                 const durStr = sec >= 60 ? Math.floor(sec / 60) + "m " + (sec % 60).toFixed(0) + "s" : sec.toFixed(1) + "s";
 
+                // ── ROW A: Primary (most important data) ──────────────────────────
+                const winners = Math.round((row.win_rate / 100) * (row.total_trades || 0));
+                const losers  = (row.total_trades || 0) - winners;
                 tr.innerHTML = `
-                    <td style="padding:10px; font-weight:bold; display:flex; align-items:center; gap:8px;">
-                        ${row.isActive ? '<span style="color:var(--accent); font-size:10px; animation:pulse-text 1.5s infinite;">🔄</span> ' : ''}${row.symbol}
-                        <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer;">📅</button>
+                    <td style="padding:10px 10px 10px 14px; font-weight:bold; white-space:nowrap;">
+                        ${row.isActive ? '<span style="color:var(--accent); font-size:9px; animation:pulse-text 1.5s infinite;">🔄 </span>' : ''}
+                        <span style="font-size:14px;">${row.symbol}</span>
+                        <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer; font-size:11px; opacity:0.5;">📅</button>
                     </td>
-                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight: 500;">
-                        ${(row.sim_start && row.sim_start !== '─') ? row.sim_start.split(' ')[0] + ' a ' + (row.sim_end ? row.sim_end.split(' ')[0] : '...') : 'Calculando fechas...'}
+                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:11px;">
+                        ${(row.sim_start && row.sim_start !== '─') ? row.sim_start.split(' ')[0] + ' → ' + (row.sim_end ? row.sim_end.split(' ')[0] : '…') : 'Calculando…'}
                     </td>
-                    <td style="padding:10px; color:var(--muted); font-size:11px;">${durStr}</td>
-                    <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
-                    <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
-                    <td style="padding:10px;">${row.total_trades}</td>
+                    <td style="padding:10px; color:var(--muted); font-size:11px;">#${row.session_num}</td>
                     <td style="padding:10px; white-space:nowrap;">
-                        ${(function(){
-                            const w=Math.round((row.win_rate/100)*(row.total_trades||0));
-                            const l=(row.total_trades||0)-w;
-                            return '<span style="color:var(--green);font-weight:bold;">'+w+'W</span>'
-                                 + '<span style="color:rgba(255,255,255,0.2);"> / </span>'
-                                 + '<span style="color:var(--red);">'+l+'L</span>';
-                        })()}
+                        <span style="font-size:12px;">${row.total_trades}</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
+                        <span style="color:var(--green); font-weight:bold; font-size:11px;">${winners}W</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:10px;">/</span>
+                        <span style="color:var(--red); font-size:11px;">${losers}L</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
+                        <span style="color:var(--muted); font-size:11px;">${parseFloat(row.win_rate).toFixed(1)}%</span>
                     </td>
-                    <td style="padding:10px;">${parseFloat(row.win_rate).toFixed(2)}%</td>
-                    <td style="padding:10px; color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</td>
-                    <td style="padding:10px; color:#ff9800;">-$${fees.toFixed(2)}</td>
-                    <td style="padding:10px; color:#ff5722;">-$${slip.toFixed(2)}</td>
-                    <td style="padding:10px; color:${pnlColor}; font-weight:bold;">${prefix}$${netPnl.toFixed(2)}</td>
-                    <td style="padding:10px; font-weight:bold;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
-                    <td style="padding:10px;">${parseFloat(row.drawdown || 0).toFixed(2)}%</td>
-                    <td style="padding:10px;">
-                        <div style="display:flex; flex-wrap:wrap; gap:4px; font-size:9px;">
-                            ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.total_ghosts, row.symbol)}
-                        </div>
-                    </td>
-                    <td style="padding:10px; text-align:left;">
+                    <td style="padding:10px; color:${grossColor}; font-size:12px;">${grossPfx}$${grossPnl.toFixed(2)}</td>
+                    <td style="padding:10px; color:${pnlColor}; font-weight:900; font-size:15px;">${prefix}$${netPnl.toFixed(2)}</td>
+                    <td style="padding:10px; font-weight:bold; font-size:12px;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
+                    <td style="padding:10px; text-align:center;">
                         ${buildUnifiedVerdictBadge(row)}
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                // ── ROW B: Secondary (details, subtle) ────────────────────────────
+                const trB = document.createElement('tr');
+                trB.style.cssText = 'background:rgba(0,0,0,0.15); border-bottom:1px solid rgba(255,255,255,0.05);';
+                trB.innerHTML = `
+                    <td style="padding:2px 10px 8px 14px;">
+                        <span style="font-size:9px; color:rgba(255,255,255,0.25); font-family:'JetBrains Mono',monospace;">${durStr} · $${parseFloat(row.last_price || 0).toFixed(2)}</span>
+                    </td>
+                    <td colspan="2" style="padding:2px 10px 8px;">
+                        <span style="font-size:9px; color:rgba(255,150,50,0.5); font-family:'JetBrains Mono',monospace;">
+                            DD: ${parseFloat(row.drawdown || 0).toFixed(2)}%
+                        </span>
+                    </td>
+                    <td style="padding:2px 10px 8px;">
+                        <span style="font-size:9px; color:rgba(255,255,255,0.25); font-family:'JetBrains Mono',monospace; white-space:nowrap;">
+                            Gross <span style="color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</span>
+                            → Fees <span style="color:#ff9800;">-$${fees.toFixed(2)}</span>
+                            → Slip <span style="color:#ff5722;">-$${slip.toFixed(2)}</span>
+                        </span>
+                    </td>
+                    <td colspan="4" style="padding:2px 10px 8px;">
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.total_ghosts, row.symbol)}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(trB);
             });
 
             // ─── RESUMEN FINAL (BOTÓN DE PESOS RE-ACTIVADO) ───
@@ -2556,26 +2567,25 @@
             const sumRow = document.createElement('tr');
             sumRow.style.background = "rgba(255,255,255,0.02)";
             sumRow.innerHTML = `
-                <td colspan="6" style="padding:15px; text-align:right; font-weight:bold; color:var(--muted);">ACUMULADO ESTRATEGIA:</td>
+                <td colspan="4" style="padding:15px; text-align:right; font-weight:bold; color:var(--muted); font-size:11px;">ACUMULADO ESTRATEGIA:</td>
                 <td style="padding:10px; font-weight:bold; color:${totalGross >= 0 ? 'var(--green)' : 'var(--red)'};">${totalGross >= 0 ? '+' : ''}$${totalGross.toFixed(2)}</td>
-                <td style="padding:10px; color:#ff9800; font-weight:bold;">-$${totalFees.toFixed(2)}</td>
-                <td style="padding:10px; color:#ff5722; font-weight:bold;">-$${totalSlip.toFixed(2)}</td>
                 <td style="padding:10px; font-weight:bold; color:${totalNet >= 0 ? 'var(--green)' : 'var(--red)'}; font-size:1.1em;">${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}</td>
                 <td style="padding:10px; font-weight:bold;">$${(initCash + totalNet).toFixed(2)}</td>
-                <td colspan="4"></td>
+                <td></td>
             `;
             tbody.appendChild(sumRow);
 
             const cashoutRow = document.createElement('tr');
             cashoutRow.style.background = "rgba(0,199,129,0.05)";
             cashoutRow.innerHTML = `
-                <td colspan="5" style="padding:15px; text-align:right; font-weight:bold; color:white;">💰 DISPONIBLE PARA RETIRO AL BANCO:</td>
-                <td></td><td></td><td></td>
+                <td colspan="3" style="padding:15px; text-align:right; font-weight:bold; color:white; font-size:11px;">💰 DISPONIBLE PARA RETIRO AL BANCO:</td>
+                <td></td>
+                <td></td>
                 <td style="padding:10px; font-weight:bold; color:${finalProfit >= 0 ? 'var(--green)' : 'var(--red)'}; font-size:1.2em;">${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}</td>
                 <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.2em;">$${netToBank.toFixed(2)}</td>
-                <td colspan="4" style="padding:10px;">
+                <td style="padding:10px;">
                     <button onclick="openWithdrawalBreakdown(${totalNet}, ${netToBank})" 
-                        style="background:var(--accent); color:black; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 15px rgba(0,255,213,0.3);">
+                        style="background:var(--accent); color:black; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:800; display:flex; align-items:center; gap:10px; box-shadow: 0 4px 15px rgba(0,255,213,0.3); white-space:nowrap;">
                         🇨🇴 Ver en Pesos y Desglose de Impuestos
                     </button>
                 </td>
