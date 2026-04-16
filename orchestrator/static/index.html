@@ -649,13 +649,35 @@
                     
                     // Lógica de Correlación (Sectores)
                     const sectors = {
+                        // Tecnología
                         'AAPL': 'TECH', 'NVDA': 'TECH', 'MSFT': 'TECH', 'TSLA': 'TECH/AUTO',
-                        'AMD': 'TECH', 'INTC': 'TECH', 'AMZN': 'RETAIL/TECH', 'GOOGL': 'TECH',
-                        'META': 'TECH', 'NFLX': 'TECH', 'SPY': 'INDEX', 'QQQ': 'INDEX'
+                        'AMD': 'TECH', 'INTC': 'TECH', 'GOOGL': 'TECH', 'META': 'TECH',
+                        'NFLX': 'TECH', 'CRM': 'TECH', 'ADBE': 'TECH', 'ORCL': 'TECH',
+                        'SHOP': 'TECH', 'UBER': 'TECH', 'LYFT': 'TECH', 'SNAP': 'TECH',
+                        'TWLO': 'TECH', 'ZM': 'TECH', 'PLTR': 'TECH', 'COIN': 'TECH',
+                        // Retail / E-commerce
+                        'AMZN': 'RETAIL/TECH', 'WMT': 'RETAIL', 'TGT': 'RETAIL', 'COST': 'RETAIL',
+                        // Índices / ETFs
+                        'SPY': 'INDEX', 'QQQ': 'INDEX', 'IWM': 'INDEX', 'DIA': 'INDEX',
+                        'VTI': 'INDEX', 'VOO': 'INDEX', 'ARKK': 'INDEX', 'XLK': 'INDEX',
+                        // Finanzas
+                        'JPM': 'FINANCE', 'BAC': 'FINANCE', 'GS': 'FINANCE', 'MS': 'FINANCE',
+                        'WFC': 'FINANCE', 'C': 'FINANCE', 'BRK.B': 'FINANCE', 'V': 'FINANCE', 'MA': 'FINANCE',
+                        // Salud
+                        'JNJ': 'HEALTH', 'UNH': 'HEALTH', 'PFE': 'HEALTH', 'MRNA': 'HEALTH',
+                        'ABBV': 'HEALTH', 'LLY': 'HEALTH', 'CVS': 'HEALTH',
+                        // Energía
+                        'XOM': 'ENERGY', 'CVX': 'ENERGY', 'COP': 'ENERGY', 'SLB': 'ENERGY',
+                        // Consumo
+                        'MCD': 'CONSUMER', 'SBUX': 'CONSUMER', 'NKE': 'CONSUMER', 'PG': 'CONSUMER',
+                        'KO': 'CONSUMER', 'PEP': 'CONSUMER', 'DIS': 'CONSUMER',
                     };
                     
-                    const activeSectors = activeSymbols.map(s => sectors[s] || 'OTHER');
-                    const sectorCounts = activeSectors.reduce((acc, s) => { acc[s] = (acc[s] || 0) + 1; return acc; }, {});
+                    const activeSectors = activeSymbols.map(s => sectors[s] || null);
+                    // Solo consideramos sectores conocidos para la alerta de concentración
+                    // (two 'OTHER'/unknown symbols don't imply correlation)
+                    const knownSectors = activeSectors.filter(s => s !== null);
+                    const sectorCounts = knownSectors.reduce((acc, s) => { acc[s] = (acc[s] || 0) + 1; return acc; }, {});
                     const overloadedSectors = Object.keys(sectorCounts).filter(s => sectorCounts[s] > 1);
 
                     if (overloadedSectors.length > 0) {
