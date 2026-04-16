@@ -1373,11 +1373,11 @@
             return `
                 <div style="display:flex; flex-direction:column; gap:4px; font-size:9px;">
                     <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                        ${neuralActivations > 0 ? `<span title="NeuralFilter: señales analizadas" style="background:rgba(0,255,163,0.1); color:#00ffa3; padding:2px 6px; border-radius:6px; border:1px solid rgba(0,255,163,0.2); font-weight:700;">🧠 ${neuralActivations.toLocaleString()}</span>` : ''}
-                        ${mlCount > 0 ? `<span title="RandomForest bloqueó ${mlCount} trades" style="background:rgba(187,134,252,0.1); color:#bb86fc; padding:2px 6px; border-radius:6px; border:1px solid rgba(187,134,252,0.2); font-weight:700;">🌲 ${mlCount.toLocaleString()}</span>` : ''}
-                        ${ghostCount > 0 ? `<span title="Ghost Trades (Risk Manager): ${ghostCount} ops evitadas" style="background:rgba(255,152,0,0.1); color:#ff9800; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,152,0,0.2); font-weight:700;">👻 ${ghostCount.toLocaleString()}</span>` : ''}
+                        ${neuralActivations > 0 ? `<span title="NeuralFilter: señales analizadas" style="background:rgba(0,255,163,0.1); color:#00ffa3; padding:3px 8px; border-radius:6px; border:1px solid rgba(0,255,163,0.2); font-weight:700; font-size:11px;">🧠 ${neuralActivations.toLocaleString()}</span>` : ''}
+                        ${mlCount > 0 ? `<span title="RandomForest bloqueó ${mlCount} trades" style="background:rgba(187,134,252,0.1); color:#bb86fc; padding:3px 8px; border-radius:6px; border:1px solid rgba(187,134,252,0.2); font-weight:700; font-size:11px;">🌲 ${mlCount.toLocaleString()}</span>` : ''}
+                        ${ghostCount > 0 ? `<span title="Ghost Trades (Risk Manager): ${ghostCount} ops evitadas" style="background:rgba(255,152,0,0.1); color:#ff9800; padding:3px 8px; border-radius:6px; border:1px solid rgba(255,152,0,0.2); font-weight:700; font-size:11px;">👻 ${ghostCount.toLocaleString()}</span>` : ''}
                     </div>
-                    ${totalBlocked > 0 ? `<div style="color:rgba(255,255,255,0.3); font-size:8px;">${totalBlocked.toLocaleString()} ops bloqueadas en total <button onclick="showBlockingDetails('${dataStr}')" style="background:none; border:none; color:#00bcd4; font-size:8px; cursor:pointer; padding:0; text-decoration:underline;">ver</button></div>` : ''}
+                    ${totalBlocked > 0 ? `<div style="color:rgba(255,255,255,0.4); font-size:11px;">${totalBlocked.toLocaleString()} ops bloqueadas en total <button onclick="showBlockingDetails('${dataStr}')" style="background:none; border:none; color:#00bcd4; font-size:8px; cursor:pointer; padding:0; text-decoration:underline;">ver</button></div>` : ''}
                 </div>
             `;
         }
@@ -2504,25 +2504,25 @@
                 tr.innerHTML = `
                     <td style="padding:10px 10px 10px 14px; font-weight:bold; white-space:nowrap;">
                         ${row.isActive ? '<span style="color:var(--accent); font-size:9px; animation:pulse-text 1.5s infinite;">🔄 </span>' : ''}
-                        <span style="font-size:14px;">${row.symbol}</span>
+                        <span style="font-size:16px; letter-spacing:0.3px;">${row.symbol}</span>
                         <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer; font-size:11px; opacity:0.5;">📅</button>
                     </td>
-                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:11px;">
+                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:13px;">
                         ${(row.sim_start && row.sim_start !== '─') ? row.sim_start.split(' ')[0] + ' → ' + (row.sim_end ? row.sim_end.split(' ')[0] : '…') : 'Calculando…'}
                     </td>
-                    <td style="padding:10px; color:var(--muted); font-size:11px;">#${row.session_num}</td>
+                    <td style="padding:10px; color:var(--muted); font-size:13px;">#${row.session_num}</td>
                     <td style="padding:10px; white-space:nowrap;">
-                        <span style="font-size:12px;">${row.total_trades}</span>
+                        <span style="font-size:14px; font-weight:600;">${row.total_trades}</span>
                         <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
-                        <span style="color:var(--green); font-weight:bold; font-size:11px;">${winners}W</span>
+                        <span style="color:var(--green); font-weight:bold; font-size:13px;">${winners}W</span>
                         <span style="color:rgba(255,255,255,0.2); font-size:10px;">/</span>
-                        <span style="color:var(--red); font-size:11px;">${losers}L</span>
+                        <span style="color:var(--red); font-size:13px;">${losers}L</span>
                         <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
-                        <span style="color:var(--muted); font-size:11px;">${parseFloat(row.win_rate).toFixed(1)}%</span>
+                        <span style="color:var(--muted); font-size:13px;">${parseFloat(row.win_rate).toFixed(1)}%</span>
                     </td>
-                    <td style="padding:10px; color:${grossColor}; font-size:12px;">${grossPfx}$${grossPnl.toFixed(2)}</td>
-                    <td style="padding:10px; color:${pnlColor}; font-weight:900; font-size:15px;">${prefix}$${netPnl.toFixed(2)}</td>
-                    <td style="padding:10px; font-weight:bold; font-size:12px;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
+                    <td style="padding:10px; color:${grossColor}; font-size:14px; font-weight:600;">${grossPfx}$${grossPnl.toFixed(2)}</td>
+                    <td style="padding:10px; color:${pnlColor}; font-weight:900; font-size:20px;">${prefix}$${netPnl.toFixed(2)}</td>
+                    <td style="padding:10px; font-weight:bold; font-size:14px;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
                     <td style="padding:10px; text-align:center;">
                         ${buildUnifiedVerdictBadge(row)}
                     </td>
@@ -2533,22 +2533,22 @@
                 const trB = document.createElement('tr');
                 trB.style.cssText = 'background:rgba(0,0,0,0.15); border-bottom:1px solid rgba(255,255,255,0.05);';
                 trB.innerHTML = `
-                    <td style="padding:2px 10px 8px 14px;">
-                        <span style="font-size:9px; color:rgba(255,255,255,0.25); font-family:'JetBrains Mono',monospace;">${durStr} · $${parseFloat(row.last_price || 0).toFixed(2)}</span>
+                    <td style="padding:4px 10px 10px 14px;">
+                        <span style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'JetBrains Mono',monospace;">${durStr} · $${parseFloat(row.last_price || 0).toFixed(2)}</span>
                     </td>
-                    <td colspan="2" style="padding:2px 10px 8px;">
-                        <span style="font-size:9px; color:rgba(255,150,50,0.5); font-family:'JetBrains Mono',monospace;">
+                    <td colspan="2" style="padding:4px 10px 10px;">
+                        <span style="font-size:12px; color:rgba(255,150,50,0.65); font-family:'JetBrains Mono',monospace; font-weight:600;">
                             DD: ${parseFloat(row.drawdown || 0).toFixed(2)}%
                         </span>
                     </td>
-                    <td style="padding:2px 10px 8px;">
-                        <span style="font-size:9px; color:rgba(255,255,255,0.25); font-family:'JetBrains Mono',monospace; white-space:nowrap;">
-                            Gross <span style="color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</span>
-                            → Fees <span style="color:#ff9800;">-$${fees.toFixed(2)}</span>
-                            → Slip <span style="color:#ff5722;">-$${slip.toFixed(2)}</span>
+                    <td style="padding:4px 10px 10px;">
+                        <span style="font-size:12px; color:rgba(255,255,255,0.4); font-family:'JetBrains Mono',monospace; white-space:nowrap;">
+                            Gross <span style="color:${grossColor}; font-weight:600;">${grossPfx}$${grossPnl.toFixed(2)}</span>
+                            <span style="color:rgba(255,255,255,0.2);"> → </span>Fees <span style="color:#ff9800; font-weight:600;">-$${fees.toFixed(2)}</span>
+                            <span style="color:rgba(255,255,255,0.2);"> → </span>Slip <span style="color:#ff5722; font-weight:600;">-$${slip.toFixed(2)}</span>
                         </span>
                     </td>
-                    <td colspan="4" style="padding:2px 10px 8px;">
+                    <td colspan="4" style="padding:4px 10px 10px;">
                         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                             ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.total_ghosts, row.symbol)}
                         </div>
