@@ -890,29 +890,24 @@
                                 style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; font-family:'Inter', sans-serif; white-space: nowrap;">
                                 <thead
                                     style="position: sticky; top: 0; background: var(--panel); z-index: 10; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.5);">
-                                    <tr
-                                        style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted); font-size: 11px; text-transform: uppercase;">
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--muted); font-size: 11px; text-transform: uppercase;">
                                         <th style="padding:10px;">Símbolo</th>
-                                        <th style="padding:10px;">📅 Período Simulado</th>
-                                        <th style="padding:10px;">⏱️ Duración</th>
-                                        <th style="padding:10px;">Precio</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="period">📅 Período Simulado</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="duration">⏱️ Duración</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="price">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
-                                        <th style="padding:10px;">Trades</th>
-                                        <th style="padding:10px;">Win Rate</th>
-                                        <th style="padding:10px;">Gross PnL</th>
-                                        <th style="padding:10px;">Fees</th>
-                                        <th style="padding:10px;">Slippage</th>
-                                        <th id="th-netpnl" onclick="toggleNetPnlSort()"
+                                        <th style="padding:10px;" class="metric-th" data-metric="trades">Trades</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="winrate">Win Rate</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="gross">Gross PnL ⓘ</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="fees">Fees ⓘ</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="slippage">Slippage ⓘ</th>
+                                        <th id="th-netpnl" class="metric-th" data-metric="net" onclick="toggleNetPnlSort()"
                                             style="padding:10px; cursor:pointer; user-select:none; white-space:nowrap; transition:color 0.2s;"
-                                            onmouseover="this.style.color='var(--accent)'"
-                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL"> Net PnL <span
-                                                id="netpnl-sort-icon">&#x21D5;</span></th>
-                                        <th style="padding:10px;">Saldo Final</th>
-                                        <th style="padding:10px;">Drawdown</th>
+                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL"> Net PnL ⓘ <span id="netpnl-sort-icon">&#x21D5;</span></th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="balance">Saldo Final ⓘ</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="drawdown">Drawdown ⓘ</th>
                                         <th style="padding:10px;">🛡️ Filtros Activos</th>
-                                        <th style="padding:10px; text-align:left;"
-                                            title="Veredicto final combinando Madurez de IA y Rendimiento Financiero">🏁
-                                            Veredicto Final IA</th>
+                                        <th style="padding:10px; text-align:left;" title="Veredicto final combinando Madurez de IA y Rendimiento Financiero">🏁 Veredicto Final IA</th>
                                     </tr>
                                 </thead>
                                 <tbody id="results-table-body">
@@ -5884,5 +5879,85 @@
             document.body.style.overflow = 'hidden';
         }
     </script>
+
+    <!-- SISTEMA DIDACTICO DE METRICAS -->
+    <div id="metric-tooltip-panel" style="display:none;position:fixed;z-index:99999;width:320px;background:rgba(13,17,23,0.97);border:1px solid rgba(0,212,170,0.35);border-radius:16px;padding:0;box-shadow:0 20px 60px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.05);backdrop-filter:blur(20px);pointer-events:none;transition:opacity 0.15s ease;font-family:'Inter',sans-serif;overflow:hidden;">
+        <div style="padding:14px 18px 12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;">
+            <div id="mtp-icon" style="font-size:20px;"></div>
+            <div>
+                <div id="mtp-title" style="font-size:12px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:1px;"></div>
+                <div id="mtp-subtitle" style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;"></div>
+            </div>
+        </div>
+        <div style="padding:14px 18px;">
+            <div style="font-size:9px;color:rgba(0,212,170,0.7);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;font-weight:700;">&#9881;&#65039; Formula</div>
+            <div id="mtp-formula" style="background:rgba(0,0,0,0.4);border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;border:1px solid rgba(255,255,255,0.06);"></div>
+            <div style="font-size:9px;color:rgba(255,200,0,0.7);text-transform:uppercase;letter-spacing:1.5px;margin:12px 0 8px;font-weight:700;">&#128204; Ejemplo Real</div>
+            <div id="mtp-example" style="background:rgba(255,200,0,0.04);border-radius:8px;padding:10px 12px;font-size:11px;line-height:1.8;border:1px solid rgba(255,200,0,0.1);color:rgba(255,255,255,0.8);"></div>
+            <div style="font-size:9px;color:rgba(187,134,252,0.7);text-transform:uppercase;letter-spacing:1.5px;margin:12px 0 8px;font-weight:700;">&#128161; Que significa?</div>
+            <div id="mtp-meaning" style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.6;"></div>
+        </div>
+        <div style="padding:10px 18px 14px;border-top:1px solid rgba(255,255,255,0.04);">
+            <div id="mtp-tip" style="font-size:10px;color:rgba(0,212,170,0.5);font-style:italic;"></div>
+        </div>
+    </div>
+    <style>
+        .metric-th{position:relative;cursor:help;transition:color 0.2s}
+        .metric-th:hover{color:#00d4aa!important}
+        .metric-th::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00d4aa,transparent);transform:scaleX(0);transition:transform 0.25s ease}
+        .metric-th:hover::after{transform:scaleX(1)}
+    </style>
+    <script>
+    (function(){
+        var M={
+          period:{i:"&#128197;",t:"Periodo Simulado",s:"Rango de fechas de los datos historicos",f:'<span style="color:#00d4aa">Inicio</span> &rarr; <span style="color:#ffd700">Fin</span><br><span style="color:rgba(255,255,255,0.4)">Primera y ultima vela procesada</span>',e:'<b>2020-07-27</b> &rarr; <b>2025-06-02</b><br>&asymp; <span style="color:#00d4aa">4.8 anos de datos</span>',m:"El bot procesa cada vela de 5m de este rango. Mas largo = mas aprende la IA.",tp:"&#128161; Alpaca IEX (gratis) tiene datos desde Jul 2020"},
+          duration:{i:"&#9201;",t:"Duracion Real",s:"Tiempo de computo de la simulacion en CPU",f:'<span style="color:#ffd700">t_final</span> &minus; <span style="color:#ff6b6b">t_inicio</span><br><span style="color:rgba(255,255,255,0.4)">Segundos reales de procesamiento</span>',e:'<span style="color:#ffd700">35m 9s</span> para <span style="color:#00d4aa">4.8 anos</span> de velas de 5m',m:"Cuanto tardo el procesador. El bot corre al maximo — anos de datos en minutos.",tp:"&#128161; La velocidad depende del numero de activos"},
+          price:{i:"&#128178;",t:"Precio de Cierre",s:"Precio de la ultima orden ejecutada en la simulacion",f:'<span style="color:#00d4aa">fill_price</span> del ultimo trade cerrado',e:'AMZN ultimo trade cerrado a <span style="color:#ffd700">$205.91</span>',m:"Referencia del rango de precios donde opero el bot. No es el precio actual de mercado.",tp:"&#128161; No confundir con el precio real actual del activo"},
+          trades:{i:"&#128260;",t:"Trades Ejecutados",s:"Numero de operaciones completas (BUY+SELL)",f:'<span style="color:#00d4aa">BUY&rarr;SELL</span> = 1 Trade completo<br><span style="color:rgba(255,255,255,0.4)">Posiciones abiertas NO cuentan</span>',e:'<span style="color:#00d4aa">28 trades</span> en 4.8 anos &asymp; <span style="color:#ffd700">0.5/mes</span>',m:"Cuantas operaciones COMPLETAS hizo el bot. Pocos trades indican filtros muy exigentes — espera las condiciones ideales.",tp:"&#128161; Pocos trades de calidad > muchos trades malos"},
+          winrate:{i:"&#127919;",t:"Win Rate",s:"Porcentaje de trades con ganancia bruta positiva",f:'<span style="color:#00d4aa">Ganadores</span> &divide; <span style="color:white">Total</span> &times; 100<br><span style="color:rgba(255,255,255,0.4)">Ganador = Gross PnL &gt; $0</span>',e:'15 ganadores &divide; 28 = <span style="color:#00d4aa">53.57%</span><br><span style="color:rgba(255,255,255,0.4)">Con R/R 1:2, minimo rentable = 34%</span>',m:"Indica si el bot acierta mas de lo que falla. Con buen R/R incluso 40% puede ser rentable.",tp:"&#11088; Win Rate x R/R promedio = expectativa del sistema"},
+          gross:{i:"&#128202;",t:"Gross PnL (Ganancia Bruta)",s:"Resultado puro del precio, sin contar costos",f:'<span style="color:#00d4aa">GROSS</span> = <span style="color:#ffd700">Net</span> + <span style="color:#ff9800">Fees</span> + <span style="color:#ff5722">Slip</span><br><span style="color:rgba(255,255,255,0.4)">(precio_venta &minus; precio_compra) &times; cantidad</span>',e:'<span style="color:#ffd700">$59.10</span> + <span style="color:#ff9800">$20.16</span> + <span style="color:#ff5722">$2.80</span><br>= <span style="color:#00d4aa">$82.06</span> &#10003;',m:"Lo que ganaba el bot si operar fuera GRATIS. Evalua si la estrategia capta buenos movimientos antes de costos.",tp:"&#128161; Si Gross >>> Net, las comisiones comen demasiada ganancia"},
+          fees:{i:"&#127970;",t:"Fees (Comisiones)",s:"Costo total pagado al broker por cada ejecucion",f:'<span style="color:#ff9800">~$0.72/trade</span> (entrada $0.30 + salida $0.30 + regulatorio)<br><span style="color:rgba(255,255,255,0.4)">Calculado por el broker Hapi Mock (Apex)</span>',e:'28 trades &times; <span style="color:#ff9800">$0.72</span> &asymp; <span style="color:#ff9800">$20.16</span> total',m:"El costo de hacer trading. Se cobra al comprar Y al vender. Si tus trades no superan las fees, nunca seras rentable.",tp:"&#9888; Las fees son el obstaculo mas subestimado del trading"},
+          slippage:{i:"&#128201;",t:"Slippage",s:"Perdida estimada por imperfeccion en la ejecucion",f:'<span style="color:#ff5722">$0.10 &times; N&ordm; Trades</span><br><span style="color:rgba(255,255,255,0.4)">Estimacion conservadora del deslizamiento</span>',e:'28 trades &times; <span style="color:#ff5722">$0.10</span> = <span style="color:#ff5722">$2.80</span><br><span style="color:rgba(255,255,255,0.4)">En acciones liquidas suele ser &lt;$0.05/trade</span>',m:"En el mundo real nunca ejecutas al precio exacto que ves. El mercado se mueve en milisegundos. Esta penalizacion simula ese costo.",tp:"&#128161; El slippage real en AAPL/AMZN es mucho menor que $0.10"},
+          net:{i:"&#128176;",t:"Net PnL (Ganancia Neta)",s:"Lo que realmente ganaste despues de todos los costos",f:'<span style="color:#00d4aa">NET</span> = <span style="color:#4fc3f7">Gross</span> &minus; <span style="color:#ff9800">Fees</span> &minus; <span style="color:#ff5722">Slippage</span>',e:'<span style="color:#4fc3f7">$82.06</span> &minus; <span style="color:#ff9800">$20.16</span> &minus; <span style="color:#ff5722">$2.80</span><br>= <b style="color:#00d4aa">+$59.10</b> &larr; tu dinero real',m:"El numero MAS HONESTO e importante. Si es negativo, el bot pierde dinero real. Siempre maximizar este numero.",tp:"&#11088; Este es el unico numero que determina si el bot es rentable"},
+          balance:{i:"&#127970;",t:"Saldo Final Estimado",s:"Capital total al cerrar la simulacion",f:'<span style="color:#03a9f4">Saldo Final</span> = <span style="color:rgba(255,255,255,0.6)">Capital Inicial</span> + <span style="color:#00d4aa">Net PnL</span>',e:'<span style="color:rgba(255,255,255,0.6)">$10,000</span> + <span style="color:#00d4aa">$59.10</span> = <span style="color:#03a9f4">$10,059.10</span>',m:"Tu cuenta empezo con $10,000. Si Net PnL es positivo, crecio. Si es negativo, bajo.",tp:"&#128161; Capital inicial configurado en .env INITIAL_CASH_LIVE"},
+          drawdown:{i:"&#128201;",t:"Drawdown Maximo",s:"La mayor caida de capital desde un pico hasta un valle",f:'<span style="color:#ff6b6b">DD%</span> = (Pico &minus; Valle) &divide; Pico &times; 100<br><span style="color:rgba(255,255,255,0.4)">Calculado sobre el saldo de la cuenta</span>',e:'<span style="color:#00d4aa">0.00%</span> = el saldo nunca cayo por debajo<br>del capital inicial &#10003;',m:"El riesgo de ruina temporal. DD 20% = perdiste hasta 20% del capital en algun momento. Menor = mas estable.",tp:"&#9888; Drawdown mayor al 30% es senal de alarma"}
+        };
+        var panel=document.getElementById("metric-tooltip-panel");
+        var timer=null;
+        function show(el,k){
+            var m=M[k]; if(!m||!panel) return;
+            clearTimeout(timer);
+            document.getElementById("mtp-icon").innerHTML=m.i;
+            document.getElementById("mtp-title").textContent=m.t;
+            document.getElementById("mtp-subtitle").textContent=m.s;
+            document.getElementById("mtp-formula").innerHTML=m.f;
+            document.getElementById("mtp-example").innerHTML=m.e;
+            document.getElementById("mtp-meaning").innerHTML=m.m;
+            document.getElementById("mtp-tip").innerHTML=m.tp;
+            panel.style.display="block"; panel.style.opacity="0";
+            requestAnimationFrame(function(){
+                var pw=320,r=el.getBoundingClientRect();
+                var left=r.left+r.width/2-pw/2;
+                var top=r.bottom+12;
+                if(left+pw>window.innerWidth-10) left=window.innerWidth-pw-10;
+                if(left<10) left=10;
+                var ph=panel.offsetHeight||400;
+                if(top+ph>window.innerHeight-10) top=r.top-ph-12;
+                panel.style.left=left+"px"; panel.style.top=top+"px"; panel.style.opacity="1";
+            });
+        }
+        function hide(){ clearTimeout(timer); timer=setTimeout(function(){ if(panel) panel.style.display="none"; },120); }
+        function attach(){
+            document.querySelectorAll(".metric-th[data-metric]").forEach(function(th){
+                if(th._mta) return; th._mta=true;
+                th.addEventListener("mouseenter",function(){ show(th,th.dataset.metric); });
+                th.addEventListener("mouseleave",hide);
+            });
+        }
+        if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded",attach); } else { attach(); }
+        new MutationObserver(attach).observe(document.body,{childList:true,subtree:true});
+    })();
+    </script>
+
 </body>
 </html>

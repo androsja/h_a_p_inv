@@ -417,7 +417,7 @@ class SimulationRunner:
                 "accuracy": accuracy_ia,
                 "total_samples": total_samples,
                 "pnl": round(pnl_val, 2),
-                "gross_pnl": round(pnl_val + total_fees, 2),
+                "gross_pnl": round(pnl_val + total_fees + round(trades_val * 0.10, 2), 2),  # NET + FEES + SLIPPAGE = GROSS
                 "total_fees": total_fees,
                 "slippage_est": round(trades_val * 0.10, 2),
                 "gross_profit": round(getattr(stats, 'gross_profit', 0.0), 2),
