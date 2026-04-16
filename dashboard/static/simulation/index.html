@@ -912,7 +912,7 @@
                                 </thead>
                                 <tbody id="results-table-body">
                                     <tr>
-                                        <td colspan="12" style="padding:20px; text-align:center; color:var(--muted);">
+                                        <td colspan="13" style="padding:20px; text-align:center; color:var(--muted);">
                                             Sin sesiones finalizadas todavía.</td>
                                     </tr>
                                 </tbody>
@@ -1366,20 +1366,25 @@
         }
 
         function renderBlockingSummary(summary, mlCount, ghostCount, symbol = '─') {
-            if ((!summary || Object.keys(summary).length === 0) && !mlCount && !ghostCount) return '<span style="color:var(--muted)">Sin filtros</span>';
-            const count = (summary ? Object.keys(summary).length : 0) + (mlCount > 0 ? 1 : 0) + (ghostCount > 0 ? 1 : 0);
+            const hasData = (summary && Object.keys(summary).length > 0) || mlCount > 0 || ghostCount > 0;
+            if (!hasData) return '<span style="color:var(--muted); font-size:10px;">Sin datos</span>';
+
+            // Calcular total de operaciones bloqueadas
+            const neuralActivations = summary ? Object.values(summary).reduce((a, b) => a + b, 0) : 0;
+            const totalBlocked = (mlCount || 0) + (ghostCount || 0);
 
             // Unicode-aware base64 encoding
             const jsonStr = JSON.stringify({ s: summary, m: mlCount, g: ghostCount, sym: symbol });
             const dataStr = btoa(unescape(encodeURIComponent(jsonStr)));
 
             return `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="background:rgba(0,188,212,0.2); color:#00bcd4; padding:2px 8px; border-radius:10px; font-weight:bold; font-size:10px; border:1px solid rgba(0,188,212,0.3);">${count} filtros</span>
-                    <button onclick="showBlockingDetails('${dataStr}')" 
-                            style="background:#2b2f3a; color:#00bcd4; border:1px solid #3c404b; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer; font-weight:bold;">
-                        Ver detalles
-                    </button>
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:9px;">
+                    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                        ${neuralActivations > 0 ? `<span title="NeuralFilter: señales analizadas" style="background:rgba(0,255,163,0.1); color:#00ffa3; padding:2px 6px; border-radius:6px; border:1px solid rgba(0,255,163,0.2); font-weight:700;">🧠 ${neuralActivations.toLocaleString()}</span>` : ''}
+                        ${mlCount > 0 ? `<span title="RandomForest bloqueó ${mlCount} trades" style="background:rgba(187,134,252,0.1); color:#bb86fc; padding:2px 6px; border-radius:6px; border:1px solid rgba(187,134,252,0.2); font-weight:700;">🌲 ${mlCount.toLocaleString()}</span>` : ''}
+                        ${ghostCount > 0 ? `<span title="Ghost Trades (Risk Manager): ${ghostCount} ops evitadas" style="background:rgba(255,152,0,0.1); color:#ff9800; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,152,0,0.2); font-weight:700;">👻 ${ghostCount.toLocaleString()}</span>` : ''}
+                    </div>
+                    ${totalBlocked > 0 ? `<div style="color:rgba(255,255,255,0.3); font-size:8px;">${totalBlocked.toLocaleString()} ops bloqueadas en total <button onclick="showBlockingDetails('${dataStr}')" style="background:none; border:none; color:#00bcd4; font-size:8px; cursor:pointer; padding:0; text-decoration:underline;">ver</button></div>` : ''}
                 </div>
             `;
         }
@@ -1516,7 +1521,7 @@
                     if (lastResultCount !== 0) {
                         lastResultCount = 0;
                         totalNetValue = 0;
-                        if (tbody) tbody.innerHTML = '<tr><td colspan="14" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
+                        if (tbody) tbody.innerHTML = '<tr><td colspan="15" style="padding:20px; text-align:center; color:var(--muted);">Sin sesiones finalizadas todavía.</td></tr>';
 
                         // Reset Summary Cards explicitly
                         const ids = ['summary-gross-wins', 'summary-gross-losses', 'summary-total-fees', 'summary-total-slippage', 'summary-net-pnl', 'summary-final-balance', 'summary-real-profit'];
@@ -2401,7 +2406,7 @@
                 
                 // Si el WS está conectado, el bot está arrancando; si no, es que no hay datos
                 const wsActive = window._wsConnected;
-                tbody.innerHTML = `<tr><td colspan="14" style="padding:30px; text-align:center; color:var(--muted);">
+                tbody.innerHTML = `<tr><td colspan="15" style="padding:30px; text-align:center; color:var(--muted);">
                     ${wsActive
                         ? '<span style="font-size:18px;">⏳</span><br><span style="font-size:13px;">Bot arrancando... espera la primera vela</span>'
                         : '<span style="font-size:13px;">Sin sesiones todavía. Conectando al bot...</span>'
@@ -2541,7 +2546,7 @@
             const sumRow = document.createElement('tr');
             sumRow.style.background = "rgba(255,255,255,0.02)";
             sumRow.innerHTML = `
-                <td colspan="5" style="padding:15px; text-align:right; font-weight:bold; color:var(--muted);">ACUMULADO ESTRATEGIA:</td>
+                <td colspan="6" style="padding:15px; text-align:right; font-weight:bold; color:var(--muted);">ACUMULADO ESTRATEGIA:</td>
                 <td style="padding:10px; font-weight:bold; color:${totalGross >= 0 ? 'var(--green)' : 'var(--red)'};">${totalGross >= 0 ? '+' : ''}$${totalGross.toFixed(2)}</td>
                 <td style="padding:10px; color:#ff9800; font-weight:bold;">-$${totalFees.toFixed(2)}</td>
                 <td style="padding:10px; color:#ff5722; font-weight:bold;">-$${totalSlip.toFixed(2)}</td>
@@ -2554,7 +2559,7 @@
             const cashoutRow = document.createElement('tr');
             cashoutRow.style.background = "rgba(0,199,129,0.05)";
             cashoutRow.innerHTML = `
-                <td colspan="4" style="padding:15px; text-align:right; font-weight:bold; color:white;">💰 DISPONIBLE PARA RETIRO AL BANCO:</td>
+                <td colspan="5" style="padding:15px; text-align:right; font-weight:bold; color:white;">💰 DISPONIBLE PARA RETIRO AL BANCO:</td>
                 <td></td><td></td><td></td>
                 <td style="padding:10px; font-weight:bold; color:${finalProfit >= 0 ? 'var(--green)' : 'var(--red)'}; font-size:1.2em;">${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}</td>
                 <td style="padding:10px; font-weight:bold; color:#03a9f4; font-size:1.2em;">$${netToBank.toFixed(2)}</td>
