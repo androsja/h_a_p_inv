@@ -698,12 +698,36 @@
         }
 
         // ─── ACTIONS ────────────────────────────────────────────
+        function isValidDate(str) {
+            if (!str) return true; // vacío = sin filtro, válido
+            const d = new Date(str);
+            // new Date("2021-02-31") NO lanza error, crea March 3.
+            // Para detectarlo, re-formateamos y comparamos.
+            if (isNaN(d.getTime())) return false;
+            const [y, m, day] = str.split('-').map(Number);
+            return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === day;
+        }
+
         async function launchBot() {
             const sym = document.getElementById('sym-input').value;
             const startDate = document.getElementById('date-input').value; // puede ser vacío
             const endDate = document.getElementById('date-end-input').value; // puede ser vacío
             if (!sym) { alert('Selecciona un símbolo primero'); return; }
-            
+
+            // ── Validar fechas antes de enviar ────────────────────────────
+            if (!isValidDate(startDate)) {
+                alert(`❌ Fecha de INICIO inválida: "${startDate}"\nEjemplo correcto: 2021-01-31\n(Recuerda que Febrero tiene máx. 28 o 29 días)`);
+                return;
+            }
+            if (!isValidDate(endDate)) {
+                alert(`❌ Fecha de FIN inválida: "${endDate}"\nEjemplo correcto: 2021-02-28\n(Recuerda que Febrero tiene máx. 28 o 29 días)`);
+                return;
+            }
+            if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+                alert(`❌ La fecha de FIN debe ser posterior a la de INICIO.\nInicio: ${startDate}\nFin:    ${endDate}`);
+                return;
+            }
+
             // Persistir la fecha para la próxima vez
             if (startDate) {
                 localStorage.setItem('hapi_last_sim_date', startDate);
