@@ -897,6 +897,7 @@
                                         <th style="padding:10px;" class="metric-th" data-metric="price">Precio</th>
                                         <th style="padding:10px;">Sesión #</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="trades">Trades</th>
+                                        <th style="padding:10px;" title="Trades ganadores W vs perdedores L">✅ W / ❌ L</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="winrate">Win Rate</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="gross">Gross PnL ⓘ</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="fees">Fees ⓘ</th>
@@ -2517,6 +2518,15 @@
                     <td style="padding:10px; color:var(--green)">$${parseFloat(row.last_price || 0).toFixed(2)}</td>
                     <td style="padding:10px; color:var(--muted)">#${row.session_num}</td>
                     <td style="padding:10px;">${row.total_trades}</td>
+                    <td style="padding:10px; white-space:nowrap;">
+                        ${(function(){
+                            const w=Math.round((row.win_rate/100)*(row.total_trades||0));
+                            const l=(row.total_trades||0)-w;
+                            return '<span style="color:var(--green);font-weight:bold;">'+w+'W</span>'
+                                 + '<span style="color:rgba(255,255,255,0.2);"> / </span>'
+                                 + '<span style="color:var(--red);">'+l+'L</span>';
+                        })()}
+                    </td>
                     <td style="padding:10px;">${parseFloat(row.win_rate).toFixed(2)}%</td>
                     <td style="padding:10px; color:${grossColor};">${grossPfx}$${grossPnl.toFixed(2)}</td>
                     <td style="padding:10px; color:#ff9800;">-$${fees.toFixed(2)}</td>
