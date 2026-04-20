@@ -15,6 +15,7 @@ class SignalResult:
     macd_hist:     float
     vwap_value:    float
     atr_value:     float
+    chop_value:    float
     close:         float
     timestamp:     any
     confirmations: list[str] = field(default_factory=list)

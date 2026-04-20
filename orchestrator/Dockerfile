@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONPATH=/app
-RUN pip install --no-cache-dir fastapi uvicorn[standard] aiofiles pydantic docker python-dotenv joblib scikit-learn numpy psutil
+RUN pip install --no-cache-dir fastapi uvicorn[standard] aiofiles pydantic docker python-dotenv joblib scikit-learn numpy psutil google-genai jinja2 python-multipart
 COPY orchestrator/ ./orchestrator/
 COPY shared/ ./shared/
 RUN mkdir -p /app/data /app/logs

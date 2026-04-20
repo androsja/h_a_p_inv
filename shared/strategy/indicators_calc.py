@@ -121,3 +121,31 @@ def super_smoother(series: pd.Series, period: int = 10) -> pd.Series:
     r = pd.Series(ss, index=series.index)
     r[:2] = np.nan
     return r
+
+def choppiness_index(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    Choppiness Index (CHOP).
+    Valores > 61.8 indican mercado lateral/rango.
+    Valores < 38.2 indican fuerte tendencia.
+    """
+    high = df['High'].astype(float)
+    low = df['Low'].astype(float)
+    close = df['Close'].astype(float)
+    
+    # 1. True Range
+    tr1 = high - low
+    tr2 = (high - close.shift(1)).abs()
+    tr3 = (low - close.shift(1)).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    
+    # 2. Suma de TR en el periodo
+    tr_sum = tr.rolling(period).sum()
+    
+    # 3. Rango (Máximo High - Mínimo Low)
+    highest_h = high.rolling(period).max()
+    lowest_l = low.rolling(period).min()
+    price_range = highest_h - lowest_l
+    
+    # 4. Cálculo final
+    chop = 100 * (np.log10(tr_sum / price_range.replace(0, np.nan)) / np.log10(period))
+    return chop

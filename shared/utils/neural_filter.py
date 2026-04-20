@@ -248,11 +248,21 @@ class NeuralTradeFilter:
             self._save()
 
     def get_stats(self) -> dict:
-        """Estadísticas del modelo para el dashboard."""
+        """Estadísticas detalladas del modelo para el dashboard."""
         with self._lock:
             n = len(self._y)
             wins = sum(self._y)
             acc = 0.0
+            
+            # Cálculo de tamaño de archivo (Peso del Cerebro)
+            file_size_kb = 0.0
+            try:
+                path = _model_path_for(self._symbol)
+                if path.exists():
+                    file_size_kb = round(os.path.getsize(path) / 1024, 1)
+            except:
+                pass
+
             if n >= MIN_SAMPLES and self._model is not None:
                 try:
                     X_arr = np.array(self._X)
@@ -269,6 +279,10 @@ class NeuralTradeFilter:
                 "model_accuracy":  round(acc * 100, 1),
                 "ai_mode":         "MLP" if (n >= MIN_SAMPLES and self._model) else "cold-start",
                 "threshold":       CONFIDENCE_THRESHOLD,
+                "architecture":    "MLP (32, 16, 8)" if n >= MIN_SAMPLES else "Heurístico (Lineal)",
+                "memory_usage_kb": file_size_kb,
+                "is_frozen":       self._frozen,
+                "features_count":  13
             }
 
     # ── Heurísticas Cold-Start ────────────────────────────────────────────────

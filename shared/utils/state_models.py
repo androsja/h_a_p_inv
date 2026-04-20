@@ -14,7 +14,11 @@ class TradeRecord:
     side:  str
     price: float
     qty:   float
-    pnl:   float
+    pnl:   float # Principal display (Gross as per plan)
+    gross_pnl: float = 0.0
+    net_pnl:   float = 0.0
+    slippage:  float = 0.0
+    fees:      float = 0.0
     time:  str = ""
     reason: str = ""
     confirmations: list = field(default_factory=list)
@@ -23,7 +27,6 @@ class TradeRecord:
     entry_reason: str = ""
     entry_price: float = 0.0
     date: str = ""
-    fees: float = 0.0
     xai_metrics: dict = field(default_factory=dict)
 
 @dataclass
@@ -74,6 +77,8 @@ class BotState:
     total_sim_slippage: float = 0.0
     total_sim_gross_profit: float = 0.0
     total_sim_gross_loss:   float = 0.0
+    total_sim_gross_pnl:    float = 0.0
+    sim_progress_pct:       float = 0.0
     
     # 👻 Fantasmas (Activo)
     total_ghosts:       int = 0

@@ -109,6 +109,8 @@ async def wipe_total(req: ResetRequest = None):
         ("checkpoint.db",         CHECKPOINT_DB),
         ("training_history.csv",  config.TRAINING_LOG_FILE),
         ("sim_history.json",      config.DATA_CACHE_DIR / "sim_history.json"),
+        ("completed_simulations.json", config.DATA_DIR / "completed_simulations.json"),
+        ("active_sessions.json",  config.DATA_DIR / "active_sessions.json"),
     ]
 
     for name, path in files_to_delete:
@@ -137,6 +139,11 @@ async def wipe_total(req: ResetRequest = None):
             deleted.append("neural_models_dir")
     except Exception as e:
         errors.append(f"neural_models_dir: {e}")
+
+    try:
+        from shared.utils import state_writer
+        state_writer.clear_state()
+    except: pass
 
     try:
         if LOG_FILE.exists():

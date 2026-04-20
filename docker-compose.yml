@@ -21,10 +21,10 @@ services:
       - ./assets.json:/app/assets.json # <--- Para exponer los símbolos al UI
       - /Users/jflorezgaleano/.docker/run/docker.sock:/var/run/docker.sock # <--- Acceso para crear contenedores (Directo en MacOS)
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/api/bank/balance')" ]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   # ─── Bot simulado ────────────────────────────────────────────────────────────
   trading-bot-sim:

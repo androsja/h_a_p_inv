@@ -19,7 +19,7 @@ from shared.utils.logger import log
 
 # ── Importar módulos especializados ───────────────────────────────────────────
 from shared.strategy.indicators_calc import (
-    ema, rsi, adx, macd, atr, vwap, zscore_vwap, bollinger_bands, kama, super_smoother
+    ema, rsi, adx, macd, atr, vwap, zscore_vwap, bollinger_bands, kama, super_smoother, choppiness_index
 )
 from shared.strategy.patterns import volume_spike, detect_hammer, detect_engulfing
 from shared.strategy.regimes  import detect_regime, REGIMEN_LABELS
@@ -57,7 +57,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         return SignalResult(
             signal=SIGNAL_HOLD,
             ema_fast=0.0, ema_slow=0.0, ema_200=0.0, rsi_value=50.0, macd_hist=0.0,
-            vwap_value=0.0, atr_value=0.0,
+            vwap_value=0.0, atr_value=0.0, chop_value=50.0,
             close=float(df["Close"].iloc[-1]) if len(df) > 0 else 0.0,
             timestamp=df.index[-1] if len(df) > 0 else None,
             blocks=[f"⏳ Cargando datos ({len(df)}/{MIN_BARS})"],
@@ -76,6 +76,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     vwap_vals   = vwap(df)
     zscore_vals = zscore_vwap(df)
     adx_vals    = adx(df, config.ADX_PERIOD)
+    chop_vals   = choppiness_index(df, config.CHOP_PERIOD)
     
     # 2. Patrones y Filtros
     is_vol_spike = bool(volume_spike(df).iloc[-1])
@@ -95,6 +96,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     vwap_now    = float(vwap_vals.iloc[-1])
     zscore_now  = float(zscore_vals.iloc[-1]) if not pd.isna(zscore_vals.iloc[-1]) else 0.0
     adx_now     = float(adx_vals.iloc[-1]) if not pd.isna(adx_vals.iloc[-1]) else 0.0
+    chop_now    = float(chop_vals.iloc[-1]) if not pd.isna(chop_vals.iloc[-1]) else 50.0
     
     # 4. Régimen de Mercado
     vol_avg   = float(df["Volume"].rolling(config.VOLUME_ROLLING_WIN).mean().iloc[-1])
@@ -167,6 +169,26 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         signal = SIGNAL_SELL
         confirmations.append("🛡️ Venta forzada: pérdida de estructura")
 
+    # [BLOQUEO TOTAL] Filtros de Calidad Académicos (Anti-Whipsaw)
+    is_quality_blocked = False
+    
+    # 1. Bloqueo por falta de fuerza (ADX)
+    if adx_now < config.QUALITY_ADX_THRESHOLD:
+        is_quality_blocked = True
+        blocks.append(f"🛑 Fuerza insuficiente (ADX={adx_now:.1f} < {config.QUALITY_ADX_THRESHOLD})")
+    
+    # 2. Bloqueo por lateralidad (Choppiness)
+    if chop_now > config.QUALITY_CHOP_THRESHOLD:
+        is_quality_blocked = True
+        blocks.append(f"🛑 Mercado lateral (CHOP={chop_now:.1f} > {config.QUALITY_CHOP_THRESHOLD})")
+
+    # 3. Filtro de tendencia mayor (Daily/Hourly structure)
+    if close_now < ema_200_now and not is_inverted:
+        # Solo bloqueamos señales de compra si estamos bajo la tendencia de fondo
+        if signal == SIGNAL_BUY:
+            is_quality_blocked = True
+            blocks.append(f"🛑 Bajo EMA 200 (Tendencia Bajista)")
+
     # ML Features
     _vwap_dist = (close_now - vwap_now) / vwap_now * 100 if vwap_now > 0 else 0.0
     _hour_ny = float(df.index[-1].hour) if hasattr(df.index[-1], 'hour') else 10.0
@@ -176,7 +198,8 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'vwap_dist_pct': _vwap_dist,
         'rsi': rsi_now, 'macd_hist': macd_now, 
         'ema_diff_pct': (ema_f_now - ema_s_now) / close_now * 100,
-        'atr_pct': atr_pct, 'adx': adx_now, 'regime': current_regime,
+        'atr_pct': atr_pct, 'adx': adx_now, 'chop': chop_now,
+        'regime': current_regime,
         'vol_ratio': vol_ratio, 'zscore_vwap': zscore_now,
         'num_confirmations': len(confirmations),
         'has_pattern': is_hammer or is_engulf or is_bb_rev,
@@ -185,17 +208,21 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         'total_samples': ml_predictor.get_sample_count()
     }
 
-    # AI Check (Random Forest dinámico)
+    # Reset signal if blocked
+    if is_quality_blocked:
+        signal = SIGNAL_HOLD
+
+    # AI Check (Solo si pasó los filtros de calidad)
     is_ml_blocked = False
     prob_win = 0.5
     if signal == SIGNAL_BUY:
+        # 1. Random Forest Predictor
         is_win_pred, prob_win = ml_predictor.predict_win(ml_features)
         if not is_win_pred:
             is_ml_blocked = True
-            # NO seteamos signal = SIGNAL_HOLD para permitir paso a Ghost Trades
             blocks.append(f"🤖 RandomForest bloqueó: P(win)={prob_win*100:.1f}%")
 
-        # Neural Filter
+        # 2. Neural Filter (Complementario)
         try:
             from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter(symbol)
@@ -218,24 +245,9 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
             proba, reason = nf.predict(nf_features)
             if proba < config.CONFIDENCE_THRESHOLD:
                 is_ml_blocked = True
-                # NO seteamos signal = SIGNAL_HOLD para permitir paso a Ghost Trades
                 blocks.append(f"🧠 NeuralFilter: Probabilidad baja ({proba*100:.1f}%)")
         except Exception as e:
             log.error(f"Error crítico en Neural Filter: {e}")
-
-    # Filtros de Calidad
-    if signal == SIGNAL_BUY:
-        # Solo bloqueamos si el mercado es NEUTRAL y el RSI está en la "zona muerta" (indecisión)
-        # O si el ADX es muy bajo y no es un "crash" (zscore bajo)
-        in_dead_zone = config.QUALITY_RSI_MIN < rsi_now < config.QUALITY_RSI_MAX
-        low_volatility = adx_now < config.QUALITY_ADX_THRESHOLD
-        no_clear_trend = current_regime == "NEUTRAL"
-        is_crash = zscore_now <= config.QUALITY_ZSCORE_MIN
-        
-        if (in_dead_zone and low_volatility) and no_clear_trend and not is_crash:
-            log.warning(f"{sym_prefix}🛑 Bloqueo Calidad: RSI={rsi_now:.1f}, ADX={adx_now:.1f}, Regime={current_regime}")
-            is_quality_blocked = True
-            blocks.append(f"Calidad (RSI+ADX en {current_regime})")
 
     # Log de depuración final (solo en modo DEBUG para no frenar la simulación)
     # Generar Recomendación Verbal Didáctica
@@ -254,6 +266,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     return SignalResult(
         signal=signal, ema_fast=ema_f_now, ema_slow=ema_s_now, ema_200=ema_200_now,
         rsi_value=rsi_now, macd_hist=macd_now, vwap_value=vwap_now, atr_value=atr_now,
+        chop_value=chop_now,
         close=close_now, timestamp=df.index[-1], confirmations=confirmations, blocks=blocks,
         ml_features=ml_features, regime=current_regime, is_quality_blocked=is_quality_blocked,
         is_ml_blocked=is_ml_blocked, ai_win_prob=round(prob_win if signal == SIGNAL_BUY else 0.5, 2),

@@ -171,6 +171,7 @@ def clear_symbol_states() -> None:
 def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float, 
                  timestamp: Optional[str] = None, reason: str = "", metadata: Optional[dict] = None) -> None:
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_fees, _global_sim_slippage
+    global _global_sim_gross_profit, _global_sim_gross_loss
     with _state_lock:
         # Usar timestamp proporcionado o el actual (formato HH:MM:SS para el historial rápido)
         t_str = timestamp.split('T')[1][:8] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%H:%M:%S")
@@ -194,31 +195,43 @@ def record_trade(symbol: str, side: str, price: float, qty: float, pnl: float,
             fees = 0.0
             xai_metrics = {}
 
-        if side == "BUY" and not entry_reason:
-            entry_reason = reason
-        
         if side == "BUY" and entry_price == 0:
             entry_price = price
-
+ 
         # Fecha completa
         d_str = timestamp.split('T')[0] if (timestamp and 'T' in timestamp) else datetime.now().strftime("%Y-%m-%d")
+ 
+        # ─── CONTABILIDAD TRANSPARENTE (GROSS vs NET) ───
+        slippage = metadata.get("slippage", 0.0) if metadata else 0.0
+        # pnl recibido de hapi_mock ya es nominal (Gross) como per plan
+        gross_pnl = pnl
+        net_pnl   = round(gross_pnl - fees - slippage, 2)
 
         _trades.append(TradeRecord(
-            symbol=symbol, side=side, price=price, qty=qty, pnl=pnl, 
+            symbol=symbol, side=side, price=price, qty=qty, 
+            pnl=gross_pnl, # Priorizamos Gross en PnL principal para la paridad de suma manual
+            gross_pnl=gross_pnl,
+            net_pnl=net_pnl,
+            slippage=slippage,
+            fees=fees,
             time=t_str, date=d_str, reason=reason, confirmations=confirmations, 
             ml_prob=ml_prob, conf_mult=conf_mult, entry_reason=entry_reason,
-            entry_price=entry_price, fees=fees, xai_metrics=xai_metrics
+            entry_price=entry_price, xai_metrics=xai_metrics
         ))
         if len(_trades) > 100: # Aumentado a 100 para simulaciones largas
             _trades.pop(0)
         
         # Actualizar acumulados globales
         _global_sim_trades += 1
-        if pnl > 0:
+        if gross_pnl >= 0:
             _global_sim_wins += 1
-        _global_sim_pnl += pnl
+            _global_sim_gross_profit += gross_pnl
+        else:
+            _global_sim_gross_loss += gross_pnl # Es negativo
+            
+        _global_sim_pnl += net_pnl # El PnL total acumulado sigue siendo Neto
         _global_sim_fees += fees
-        _global_sim_slippage += metadata.get("slippage", 0.0) if metadata else 0.0
+        _global_sim_slippage += slippage
 
 def update_state(
     symbol: str,
@@ -236,6 +249,7 @@ def update_state(
     vwap: float = 0.0,
     atr: float = 0.0,
     confirmations: list = None,
+    sim_progress_pct: float = 0.0,
     initial_cash: float = 10000.0,
     available_cash: float = 10000.0,
     settlement: float = 0.0,
@@ -313,28 +327,38 @@ def update_state(
     
     final_mode = mode if mode is not None else current_mode
 
-    # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada + Símbolos en memoria) ───
-    # Estos valores son los que el Dashboard muestra en la franja superior
-    ts_trades  = _global_sim_trades  + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_wins    = _global_sim_wins    + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol)
-    ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_gross_loss   = round(_global_sim_gross_loss   + sum(s.gross_loss for s in _symbol_states.values() if s.symbol != symbol), 2)
-    ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol)
-
-    # Añadir los datos del símbolo actual (que se está enviando en esta iteración)
-    ts_trades += total_trades
-    ts_wins += winning_trades
-    ts_fees += total_fees
-    ts_slippage += total_slippage
-    ts_gross_profit += gross_profit
-    ts_gross_loss += gross_loss
-    ts_ghosts += total_ghosts
+    # ─── CÁLCULO DE TOTALES VISUALES (Base Acumulada o Inyectada del Runner) ───
+    # Si el motor ya provee los totales acumulados (total_sim_*), usamos esos directamente.
+    # Si son None (caso Live o Cold Start), recalculamos sumando la base del diario + memoria.
     
+    use_manual_sum = (total_sim_pnl is None)
+
+    if not use_manual_sum:
+        # El Runner ya nos mandó los totales absolutos, ya guardados en las variables _global_sim_*
+        ts_trades       = _global_sim_trades
+        ts_wins         = _global_sim_wins
+        ts_fees         = round(_global_sim_fees, 2)
+        ts_slippage     = round(_global_sim_slippage, 2)
+        # 🏆 VOLVEMOS A BRUTO: Para que la suma manual de trades coincida con la tarjeta, 
+        # y luego se resten los costos (Fees/Slip) en sus propias tarjetas.
+        ts_gross_profit = round(kwargs.get("total_sim_gross_profit", _global_sim_gross_profit), 2)
+        ts_gross_loss   = round(kwargs.get("total_sim_gross_loss", _global_sim_gross_loss), 2)
+        ts_ghosts       = _global_sim_ghosts
+    else:
+        # Caso Fallback (Live): Sumamos en Bruto para transparencia (Neto se calcula al final)
+        ts_trades  = _global_sim_trades  + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol) + total_trades
+        ts_wins    = _global_sim_wins    + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol) + winning_trades
+        ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol) + total_fees, 2)
+        ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol) + total_slippage, 2)
+        
+        ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol) + gross_profit, 2)
+        ts_gross_loss   = round(_global_sim_gross_loss   - sum(abs(s.gross_loss) for s in _symbol_states.values() if s.symbol != symbol) - abs(gross_loss), 2)
+        ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol) + total_ghosts
+
     # ─── CÁLCULO DE PNL NETO TOTAL ───
     # ts_pnl = (Beneficio Bruto - Pérdida Bruta) - Fees - Slippage
-    ts_pnl = round(ts_gross_profit - abs(ts_gross_loss) - ts_fees - ts_slippage, 2)
+    ts_gross_pnl = round(ts_gross_profit - abs(ts_gross_loss), 2)
+    ts_pnl = round(ts_gross_pnl - ts_fees - ts_slippage, 2)
 
     new_s = BotState(
         mode=final_mode,
@@ -372,6 +396,8 @@ def update_state(
         total_sim_slippage=ts_slippage,
         total_sim_gross_profit=ts_gross_profit,
         total_sim_gross_loss=ts_gross_loss,
+        total_sim_gross_pnl=ts_gross_pnl,
+        sim_progress_pct=sim_progress_pct,
         total_ghosts=total_ghosts,
         ghost_trades_count=ghost_trades_count,
         position=position,

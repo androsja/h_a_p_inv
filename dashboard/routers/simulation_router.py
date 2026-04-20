@@ -11,6 +11,7 @@ Responsabilidades:
 
 import json
 import time
+import shutil
 from pathlib import Path
 from typing import Optional, Union, Dict, List
 
@@ -100,16 +101,66 @@ async def reset_all(req: ResetRequest = None):
             json.dump(data, f)
 
         try:
+            from shared.utils import state_writer
+            state_writer.clear_state()
+        except: pass
+
+        try:
+            # Archivos de resultados y bitácora
             if RESULTS_FILE.exists(): RESULTS_FILE.unlink()
             if config.TRADE_JOURNAL_FILE.exists(): config.TRADE_JOURNAL_FILE.unlink()
-        except: pass
+            if ML_DATASET_FILE.exists(): ML_DATASET_FILE.unlink()
+            
+            # Archivos del orquestador e historial
+            if CHECKPOINT_DB.exists(): CHECKPOINT_DB.unlink()
+            
+            comp_sims = config.DATA_DIR / "completed_simulations.json"
+            if comp_sims.exists(): comp_sims.unlink()
+            
+            act_sess = config.DATA_DIR / "active_sessions.json"
+            if act_sess.exists(): act_sess.unlink()
+            
+            bt_res = config.DATA_DIR / "backtest_results.json"
+            if bt_res.exists(): bt_res.unlink()
+            
+            sim_hist = config.DATA_DIR / "sim_history.json"
+            if sim_hist.exists(): sim_hist.unlink()
+            
+            train_hist = config.DATA_DIR / "training_history.csv"
+            if train_hist.exists(): train_hist.unlink()
+
+            # ─── PURGA NUCLEAR DE MODELOS Y CACHÉ ───
+            # 1. Modelos Neurales (El "Cerebro")
+            neural_dir = config.DATA_DIR / "neural_models"
+            if neural_dir.exists():
+                for f in neural_dir.glob("*"):
+                    if f.is_file(): f.unlink()
+            
+            # 2. Backups de ML Datasets
+            brain_bkp_dir = config.DATA_DIR / "brain_backups"
+            if brain_bkp_dir.exists():
+                for f in brain_bkp_dir.glob("*"):
+                    if f.is_file(): f.unlink()
+
+            # 3. Cache de Mercado (Parquets)
+            cache_dir = config.DATA_DIR / "cache"
+            if cache_dir.exists():
+                for f in cache_dir.glob("*.parquet"):
+                    f.unlink()
+
+            # Estados de sesión
+            if config.STATE_FILE_SIM.exists(): config.STATE_FILE_SIM.unlink()
+            if config.STATE_FILE_LIVE.exists(): config.STATE_FILE_LIVE.unlink()
+
+        except Exception as e:
+            print(f"Error unlinking during reset: {e}")
 
         try:
             if LOG_FILE.exists():
                 LOG_FILE.write_text("")
         except: pass
 
-        return {"status": "success", "message": "Reseteando bot y limpiando datos..."}
+        return {"status": "success", "message": "Reseteo TOTAL completado. Orquestador y Maestría en cero."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

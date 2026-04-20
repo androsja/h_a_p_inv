@@ -67,12 +67,13 @@ class RiskManager:
         symbol:    str,
         ask_price: float,
         atr_value: float = 0.0,
+        swing_low: float = 0.0,
         confidence_multiplier: float = 1.0,
     ) -> OrderPlan:
         """
-        Calcula parámetros de BUY con SL dinámico basado en ATR.
+        Calcula parámetros de BUY con SL dinámico avanzado.
 
-        Stop Loss = max(SL_fijo%, 1.5 × ATR)
+        Stop Loss = max(SL_fijo%, 1.5 × ATR, Swing_Low - buffer)
         Take Profit siempre = 2 × Stop Loss (ratio 1:2 garantizado)
         """
         limit_price = round(ask_price + config.LATENCY_OFFSET_CENTS, 4)
@@ -85,10 +86,16 @@ class RiskManager:
                 is_viable=False, block_reason="Precio inválido",
             )
 
-        # ── Stop Loss dinámico (ATR-based) ─────────────────────────────────
+        # ── Stop Loss dinámico (ATR + Swing Low based) ──────────────────────
         sl_fixed = limit_price * config.STOP_LOSS_PCT
         sl_atr   = (atr_value * 1.5) if atr_value > 0 else sl_fixed
-        sl_distance = max(sl_fixed, sl_atr)
+        
+        # Swing Low: Usamos el mínimo reciente con un pequeño respiro (buffer)
+        # El buffer evita que el SL esté "pegado" al mínimo exacto
+        buffer = atr_value * 0.2 if atr_value > 0 else (limit_price * 0.001)
+        sl_swing = (limit_price - (swing_low - buffer)) if swing_low > 0 else 0
+        
+        sl_distance = max(sl_fixed, sl_atr, sl_swing)
         stop_loss   = round(limit_price - sl_distance, 4)
 
         # ── Tamaño de posición basado en RIESGO (Kelly Fraccionado) ────────

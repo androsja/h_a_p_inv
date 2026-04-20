@@ -7,8 +7,8 @@ from datetime import datetime
 import csv
 from shared import config
 
-COMPLETED_LOG = Path("/app/data/completed_simulations.json")
-ACTIVE_SESSIONS_LOG = Path("/app/data/active_sessions.json")
+COMPLETED_LOG = config.DATA_DIR / "completed_simulations.json"
+ACTIVE_SESSIONS_LOG = config.DATA_DIR / "active_sessions.json"
 
 class DockerManager:
     def __init__(self):
@@ -16,14 +16,26 @@ class DockerManager:
         self.client = None
         self._connect_docker()
         self.journal_path = config.TRADE_JOURNAL_FILE
+        
+        # --- Configuración Realista (Medido: ~250MB/bot) ---
+        self._RAM_PER_SIM_MB  = 300
+        self._CPU_PER_SIM_PCT = 15
+        self._MIN_FREE_RAM_MB = config.MIN_FREE_RAM_MB
 
         # Registro persistente de bots completados (cargado desde disco)
-        # Estructura: List of dicts, cronológicamente ordenado
         self.completed_bots: List[Dict] = self._load_completed()
 
-        # Metadatos de lanzamientos activos (Persistido en disco para sobrevivir reinicios)
-        # Estructura: {symbol: {"sim_start_date": str, "launched_at": str}}
+        # Metadatos de lanzamientos activos (Persistido en disco)
         self._launch_meta: Dict[str, Dict] = self._load_active_sessions()
+        
+    def clear_memory(self):
+        """Limpia el registro de bots en memoria y sesiones activas."""
+        self.completed_bots = []
+        self._launch_meta = {}
+        # También guardar en disco para que el archivo quede vacío
+        self._save_completed()
+        self._save_active_sessions()
+        print("🧹 [DockerManager] Memoria de bots y sesiones limpiada.")
 
     def _connect_docker(self):
         """Intenta (re)conectar con el daemon de Docker con timeout."""
@@ -67,10 +79,32 @@ class DockerManager:
             print(f"[DockerManager] No se pudo guardar completed log: {e}")
 
     def _load_active_sessions(self) -> Dict:
-        """Carga los metadatos de sesiones activas desde disco."""
+        """Carga los metadatos de sesiones activas desde disco y limpia fantasmas."""
         try:
             if ACTIVE_SESSIONS_LOG.exists():
-                return json.loads(ACTIVE_SESSIONS_LOG.read_text(encoding="utf-8"))
+                data = json.loads(ACTIVE_SESSIONS_LOG.read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    return {}
+                # 🧹 Limpiar sesiones fantasma: verificar que cada símbolo tenga un contenedor real
+                if self.is_connected and self.client:
+                    try:
+                        running = {c.name for c in self.client.containers.list()}
+                        clean = {}
+                        for sym, meta in data.items():
+                            mode = meta.get("mode", "SIMULATED").lower()
+                            expected_name = f"hapi_worker_{mode}_{sym.upper()}"
+                            if expected_name in running:
+                                clean[sym] = meta
+                            else:
+                                print(f"🧹 [DockerManager] Sesión fantasma eliminada: {sym} (contenedor '{expected_name}' no existe)")
+                        if len(clean) < len(data):
+                            # Persistir la versión limpia
+                            self._launch_meta = clean
+                            self._save_active_sessions()
+                        return clean
+                    except Exception as e:
+                        print(f"[DockerManager] No se pudo verificar contenedores al cargar sesiones: {e}")
+                return data
         except Exception as e:
             print(f"[DockerManager] No se pudo cargar active sessions: {e}")
         return {}
@@ -112,13 +146,16 @@ class DockerManager:
         except Exception as e:
             print(f"❌ [DockerManager] Error limpiando historial: {e}")
 
-    def launch_bot(self, symbol: str, mode: str = "SIMULATED", start_date: str = None) -> tuple:
+    def launch_bot(self, symbol: str, mode: str = "SIMULATED", start_date: str = None, end_date: str = None, freeze_learning: bool = False, stage: str = "TRAINING") -> tuple:
         container_name = f"hapi_worker_{mode.lower()}_{symbol.upper()}"
 
         # Guardar metadatos del lanzamiento INMEDIATAMENTE para el registro persistente
         self._launch_meta[symbol.upper()] = {
             "sim_start_date": start_date or "",
+            "sim_end_date": end_date or "",
             "launched_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "stage": stage,               # 🏷️ Etapa del curriculum (TRAINING, VALIDATING, etc.)
+            "freeze_learning": freeze_learning,  # 🔒 Si el aprendizaje está congelado
         }
         self._save_active_sessions()
 
@@ -156,8 +193,13 @@ class DockerManager:
                     "TRADING_MODE": mode,
                     "HAPI_IS_TEST_MODE": "true" if mode == "SIMULATED" else "false",
                     "HAPI_SIM_START_DATE": start_date or "",
+                    "HAPI_SIM_END_DATE": end_date or "",
                     "ORCHESTRATOR_URL": "http://hapi_orchestrator:9000",
-                    "TZ": "America/Bogota"
+                    "TZ": "America/Bogota",
+                    # 🔒 PVC: Congelar aprendizaje en fases de evaluación para evitar Data Leakage
+                    "FREEZE_LEARNING": "true" if freeze_learning else "false",
+                    # 🏷️ Etapa del curriculum para el histórico
+                    "SIM_STAGE": stage or "TRAINING",
                 },
                 network="trading_bot_default",
                 volumes={
@@ -188,9 +230,11 @@ class DockerManager:
             "run_id": run_id,
             "symbol": symbol_up,
             "sim_start_date": meta.get("sim_start_date", ""),
+            "sim_end_date": meta.get("sim_end_date", ""),
             "launched_at": meta.get("launched_at", ""),
             "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "pnl": snapshot.get("total_sim_pnl", 0.0),
+            "pnl_gross": snapshot.get("total_sim_gross_profit", 0.0),
             "trades": snapshot.get("total_sim_trades", 0),
             "win_rate": snapshot.get("win_rate", 0.0),
             "mode": snapshot.get("mode", "SIMULATED"),
@@ -205,12 +249,16 @@ class DockerManager:
             "expectancy": snapshot.get("expectancy", 0.0),
             "efficiency": snapshot.get("efficiency", 0.0),
             "stability_score": snapshot.get("stability_score", 0.0),
-            "equity_history": snapshot.get("equity_history", [])
+            "equity_history": snapshot.get("equity_history", []),
+            "trade_log": snapshot.get("trade_log", []),
+            # 🏷️ PVC: Etapa del curriculum y modo de aprendizaje
+            "stage": meta.get("stage", "TRAINING"),
+            "freeze_learning": meta.get("freeze_learning", False),
         }
         
         self.completed_bots.insert(0, entry)
-        if len(self.completed_bots) > 50:
-            self.completed_bots = self.completed_bots[:50]
+        if len(self.completed_bots) > 500:
+            self.completed_bots = self.completed_bots[:500]
             
         self._save_completed()
 
@@ -245,7 +293,30 @@ class DockerManager:
             except Exception as e:
                 return False, str(e)
 
-        return False, f"No running container found for {symbol}"
+    def kill_all_bots(self) -> List[str]:
+        """Stops and removes all hapi_worker_* containers aggressively."""
+        killed = []
+        if not self.is_connected or not self.client:
+            return killed
+            
+        try:
+            # Filtramos todos los contenedores relacionados con el bot
+            containers = self.client.containers.list(all=True, filters={"name": "hapi_worker_"})
+            for c in containers:
+                try:
+                    # Usamos kill en lugar de stop para que sea instantáneo en el Wipe
+                    c.kill()
+                    c.remove(force=True)
+                    killed.append(c.name)
+                except Exception:
+                    # Si ya estaba muerto o borrándose, lo ignoramos
+                    try:
+                        c.remove(force=True)
+                    except: pass
+        except Exception as e:
+            print(f"⚠️ [DockerManager] Error en kill_all_bots masivo: {e}")
+
+        return killed
 
     def list_active_bots(self) -> List[Dict]:
         """Retorna SOLO los contenedores actualmente vivos en Docker."""
@@ -270,8 +341,11 @@ class DockerManager:
                         "symbol": sym,
                         "mode": mode,
                         "status": "running",
-                        "sim_start_date": meta.get("sim_start_date", "—"),
-                        "launched_at": meta.get("launched_at", "—")
+                        "sim_start_date": meta.get("sim_start_date", ""),
+                        "sim_end_date": meta.get("sim_end_date", ""),
+                        "launched_at": meta.get("launched_at", "—"),
+                        "stage": meta.get("stage", "TRAINING"),
+                        "freeze_learning": meta.get("freeze_learning", False)
                     })
             return results
         except Exception:
@@ -280,3 +354,65 @@ class DockerManager:
     def list_completed_bots(self) -> List[Dict]:
         """Retorna los bots que ya finalizaron su simulación en orden cronológico inverso."""
         return self.completed_bots
+
+    # ─── System Health & Resource Governance ───────────────────────────────────
+
+    def get_resource_health(self) -> Dict:
+        """Calculates real-time CPU and RAM health metrics."""
+        import psutil
+        
+        # 1. RAM
+        mem = psutil.virtual_memory()
+        total_ram_mb = mem.total // (1024 * 1024)
+        used_ram_mb  = mem.used // (1024 * 1024)
+        avail_ram_mb = mem.available // (1024 * 1024)
+        ram_pct      = mem.percent
+
+        # 2. CPU (quick sample pero más estable)
+        # Un intervalo muy corto (0.1) causa que psutil reporte picos falsos de 70%+
+        # debido a procesos de fondo de la Mac (Chrome, VirtualMachine base).
+        cpu_pct = psutil.cpu_percent(interval=0.5)
+
+        # 3. Decision Status
+        if ram_pct < 65 and cpu_pct < 60:
+            status = "ok"
+            advice = "Sistema saludable"
+        elif ram_pct < 85 and cpu_pct < 80:
+            status = "warning"
+            advice = "Recursos moderados"
+        else:
+            status = "critical"
+            advice = "SISTEMA SATURADO"
+
+        return {
+            "status": status,
+            "cpu_pct": cpu_pct,
+            "ram_pct": ram_pct,
+            "ram_used_mb": used_ram_mb,
+            "ram_avail_mb": avail_ram_mb,
+            "ram_total_mb": total_ram_mb,
+            "advice": advice
+        }
+
+    def get_available_slots(self, base_limit: int = 4) -> int:
+        """Determines how many new simulations can be launched SAFELY."""
+        health = self.get_resource_health()
+        
+        if health["status"] == "critical":
+            return 0
+            
+        # RAM Slots
+        free_ram_for_sims = max(0, health["ram_avail_mb"] - self._MIN_FREE_RAM_MB)
+        ram_slots = int(free_ram_for_sims // self._RAM_PER_SIM_MB)
+        
+        # CPU Slots
+        free_cpu = max(0, 95 - health["cpu_pct"]) # Leave 5% breathing room
+        cpu_slots = int(free_cpu // self._CPU_PER_SIM_PCT)
+        
+        max_safe = min(ram_slots, cpu_slots)
+        
+        # En TURBO, dejamos que el hardware sea el límite real ignorando el base_limit si es saludable
+        # (Pero mantenemos un tope máximo de 15 para evitar saturación de E/S de disco)
+        effective_limit = 15 if base_limit > 10 else base_limit
+        
+        return min(effective_limit, max_safe)

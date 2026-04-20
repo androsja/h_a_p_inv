@@ -114,8 +114,10 @@ EMA_CROSS_RSI_MAX    = 70
 # Filtros de Calidad
 QUALITY_RSI_MIN      = 43
 QUALITY_RSI_MAX      = 47
-QUALITY_ADX_THRESHOLD = 5
+QUALITY_ADX_THRESHOLD = 20  # Bloqueo total si ADX < 20
+QUALITY_CHOP_THRESHOLD = 60 # Bloqueo total si Choppiness > 60
 QUALITY_ZSCORE_MIN   = -2.3
+CHOP_PERIOD          = 14
 
 # ─── Heurísticas de IA (Cold-Start) ──────────────────────────────────────────
 # Parámetros para neural_filter.py cuando hay < 8 muestras
@@ -142,3 +144,10 @@ HEURISTIC_BOOST_TREND     = 0.15
 
 # ─── Settlement T+1 ─────────────────────────────────────────────────────────
 SETTLEMENT_DAYS = 1
+
+# ─── Orquestador y Auto-Trainer ──────────────────────────────────────────────
+# Límite máximo de bots que el Auto-Trainer puede lanzar en paralelo (Safety Cap: 10)
+MAX_AUTOTRAINER_BOTS = min(10, int(os.getenv("MAX_AUTOTRAINER_BOTS", "4")))
+# Buffer de seguridad de RAM que siempre debe quedar libre en el sistema (MB)
+# Reducido a 512MB para ser realista con el uso de memoria en Mac
+MIN_FREE_RAM_MB = int(os.getenv("MIN_FREE_RAM_MB", "512"))

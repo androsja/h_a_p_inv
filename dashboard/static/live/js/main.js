@@ -60,6 +60,14 @@ let currentSymbol = null; // Símbolo para estadísticas MLP
 let fullState = null;     // Guardar el último estado completo del bot
 let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
+// 🧠 HAPI: Auto-enfocado por URL
+const urlParams = new URLSearchParams(window.location.search);
+const urlSym = urlParams.get('symbol');
+if (urlSym) {
+    focusSymbol = urlSym.toUpperCase();
+    console.log("🎯 [HAPI] Auto-enfocando símbolo (LIVE) desde URL:", focusSymbol);
+}
+
 function toggleSymbolModal() {
     const modal = document.getElementById('symbol-selection-modal');
     const overlay = document.getElementById('symbol-modal-overlay');

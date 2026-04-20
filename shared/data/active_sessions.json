@@ -1,22 +1,65 @@
 {
-  "DIA": {
-    "sim_start_date": "2026-04-06",
-    "launched_at": "2026-04-13 20:29"
+  "NKE": {
+    "sim_start_date": "2026-04-05",
+    "sim_end_date": "",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "STRESS-TEST",
+    "freeze_learning": true
   },
-  "SPY": {
-    "sim_start_date": "2026-04-06",
-    "launched_at": "2026-04-14 01:35"
+  "HSY": {
+    "sim_start_date": "2026-03-21",
+    "sim_end_date": "",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "VALIDATING",
+    "freeze_learning": true
   },
-  "ADBE": {
-    "sim_start_date": "2026-04-06",
-    "launched_at": "2026-04-14 01:42"
+  "SQ": {
+    "sim_start_date": "2025-03-20",
+    "sim_end_date": "2026-03-20",
+    "launched_at": "2026-04-20 06:10",
+    "stage": "TRAINING",
+    "freeze_learning": false
   },
-  "ABNB": {
-    "sim_start_date": "2024-12-30",
-    "launched_at": "2026-04-14 03:50"
+  "PFE": {
+    "sim_start_date": "2025-03-20",
+    "sim_end_date": "2026-03-20",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "TRAINING",
+    "freeze_learning": false
   },
-  "AAPL": {
-    "sim_start_date": "2024-12-30",
-    "launched_at": "2026-04-14 03:55"
+  "PLTR": {
+    "sim_start_date": "2025-03-20",
+    "sim_end_date": "2026-03-20",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "TRAINING",
+    "freeze_learning": false
+  },
+  "COP": {
+    "sim_start_date": "2025-03-20",
+    "sim_end_date": "2026-03-20",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "TRAINING",
+    "freeze_learning": false
+  },
+  "BTI": {
+    "sim_start_date": "2026-04-05",
+    "sim_end_date": "",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "STRESS-TEST",
+    "freeze_learning": true
+  },
+  "SHOP": {
+    "sim_start_date": "2026-04-05",
+    "sim_end_date": "",
+    "launched_at": "2026-04-20 05:53",
+    "stage": "STRESS-TEST",
+    "freeze_learning": true
+  },
+  "CVX": {
+    "sim_start_date": "2025-03-20",
+    "sim_end_date": "2026-03-20",
+    "launched_at": "2026-04-20 05:54",
+    "stage": "TRAINING",
+    "freeze_learning": false
   }
 }

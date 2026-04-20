@@ -1,6 +1,9 @@
 import asyncio
 import json
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -15,7 +18,9 @@ from orchestrator.docker_manager import DockerManager
 from orchestrator.state_manager import StateManager
 from orchestrator.scheduler import ScheduleManager
 from orchestrator.auto_trainer import AutoTrainerManager
+from orchestrator.mastery_manager import MasteryManager
 from shared.utils.neural_filter import get_neural_filter
+from orchestrator.ai_analyst import hapi_ai
 
 app = FastAPI(title="Hapi Orchestrator")
 
@@ -40,14 +45,23 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 bank = BankManager(initial_cash=10000.0)
 docker_mgr = DockerManager()
 state_mgr = StateManager()
+mastery_mgr = MasteryManager()
+
+# Inyección de dependencias
+bank.mastery_mgr = mastery_mgr
 scheduler_mgr = ScheduleManager(docker_mgr)
 auto_trainer_mgr = AutoTrainerManager(docker_mgr)
+auto_trainer_mgr.mastery_mgr = mastery_mgr
 
 # --- Bank API ---
 class TransactionRequest(BaseModel):
     symbol: str
     amount: float
     type: str # 'buy' or 'sell' (or 'profit')
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok"}
 
 @app.get("/api/bank/balance")
 async def get_balance():
@@ -98,16 +112,37 @@ class PredictRequest(BaseModel):
 async def ai_predict(req: PredictRequest):
     nf = get_neural_filter("GLOBAL")
     proba, reason = nf.predict(req.features)
-    return {"status": "success", "proba": proba, "reason": reason}
+    return {"proba": proba, "reason": reason}
+
+# --- Mastery Hub API ---
+@app.get("/api/mastery/rankings")
+async def get_mastery_rankings():
+    res = mastery_mgr.get_rankings()
+    return {
+        "status": "success",
+        "rankings": res["rankings"],
+        "summary": res["summary"],
+        "recommendations": mastery_mgr.get_elite_recommendations(limit=5)
+    }
+
+@app.get("/api/mastery/exposure")
+async def get_exposure():
+    return {
+        "status": "success",
+        "exposure": bank.get_sector_exposure()
+    }
 
 class TrainRequest(BaseModel):
     features: List[float]
     won: bool
 
+from fastapi import BackgroundTasks
+
 @app.post("/api/ai/train")
-async def ai_train(req: TrainRequest):
+async def ai_train(req: TrainRequest, background_tasks: BackgroundTasks):
     nf = get_neural_filter("GLOBAL")
-    nf.fit(req.features, req.won)
+    # Mover el entrenamiento y el guardado a segundo plano para no bloquear al worker
+    background_tasks.add_task(nf.fit, req.features, req.won)
     return {"status": "success"}
 
 @app.get("/api/docker/status")
@@ -115,6 +150,54 @@ async def get_docker_status():
     containers = docker_mgr.list_active_bots()
     completed = docker_mgr.list_completed_bots()
     
+    # ─── ENRIQUECER CONTENEDORES ACTIVOS CON MÉTRICAS EN TIEMPO REAL ───
+    # Buscamos en el global_state el símbolo correspondiente a cada contenedor.
+    for c in containers:
+        sym = c.get("symbol", "").upper()
+        # El StateManager guarda snapshots enviadas por los runners.
+        live_data = state_mgr.global_state.get(sym, {})
+        if live_data:
+            c["pnl_net"]   = live_data.get("total_sim_pnl", 0.0)
+            c["pnl_gross"] = live_data.get("total_sim_gross_pnl", 0.0)
+            c["trades"]    = live_data.get("total_sim_trades", 0)
+            
+            # --- NUEVAS MÉTRICAS DE SESIÓN (Para paridad con Dashboard Individual) ---
+            c["session_trades"] = live_data.get("total_trades", 0)
+            s_gp = live_data.get("gross_profit", 0.0)
+            s_gl = abs(live_data.get("gross_loss", 0.0))
+            s_fees = live_data.get("total_fees", 0.0)
+            s_slip = live_data.get("total_slippage", 0.0)
+            c["session_pnl_net"] = round((s_gp - s_gl) - s_fees - s_slip, 2)
+            
+            c["win_rate"]  = live_data.get("win_rate", 0.0)
+            c["progress"]  = live_data.get("sim_progress_pct", 0.0)
+            c["score"]     = live_data.get("mastery_score", 0.0)
+            
+            # Calcular ETA si el progreso es válido y tenemos la fecha de lanzamiento
+            c["eta_str"] = ""
+            progress = c["progress"]
+            launched_str = c.get("launched_at", "—")
+            if 0 < progress < 100 and launched_str != "—":
+                from datetime import datetime
+                try:
+                    start_dt = datetime.strptime(launched_str, "%Y-%m-%d %H:%M")
+                    elapsed = (datetime.now() - start_dt).total_seconds()
+                    if elapsed > 10:
+                        rem = (elapsed / (progress / 100.0)) - elapsed
+                        if rem > 0:
+                            h, m, s = int(rem // 3600), int((rem % 3600) // 60), int(rem % 60)
+                            c["eta_str"] = f" - ETA: {h}h {m}m {s}s" if h > 0 else f" - ETA: {m}m {s}s"
+                except Exception:
+                    pass
+        else:
+            c["pnl_net"]   = 0.0
+            c["pnl_gross"] = 0.0
+            c["trades"]    = 0
+            c["win_rate"]  = 0.0
+            c["progress"]  = 0.0
+            c["eta_str"]   = ""
+            c["score"]     = 0.0
+
     # Agregar métricas de la IA Central
     nf = get_neural_filter("GLOBAL")
     ai_stats = nf.get_stats()
@@ -177,10 +260,89 @@ async def run_scheduler_job_now(job_id: str):
 async def get_auto_trainer_status():
     return {"status": "success", "data": auto_trainer_mgr.get_status()}
 
+class AutoTrainerSettingsRequest(BaseModel):
+    max_bots: int
+
+@app.post("/api/auto-trainer/settings")
+async def update_auto_settings(req: Dict):
+    max_bots = req.get("max_bots", 4)
+    auto_trainer_mgr.update_settings(max_bots=max_bots)
+    return {"status": "success"}
+
+@app.post("/api/auto-trainer/profile")
+async def update_auto_profile(req: Dict):
+    profile = req.get("profile", "turbo")
+    auto_trainer_mgr.update_performance_profile(profile)
+    return {"status": "success"}
+
 @app.post("/api/auto-trainer/toggle")
 async def toggle_auto_trainer():
     is_running = auto_trainer_mgr.toggle()
     return {"status": "success", "is_running": is_running}
+
+# --- AI Analyst API ---
+@app.get("/api/ai/analyze/global")
+async def analyze_global_operation():
+    """
+    Realiza una auditoría completa de todo el sistema (Banco, Bots, IA).
+    """
+    # 1. Datos del banco
+    bank_data = {
+        "available_cash": bank.available_cash,
+        "initial_cash": bank.initial_cash,
+        "total_pnl": bank.available_cash - bank.initial_cash
+    }
+    
+    # 2. Bots activos y métricas
+    status = await get_docker_status()
+    containers = status.get("containers", [])
+    completed = status.get("completed", [])
+    
+    # 3. IA Central
+    nf = get_neural_filter("GLOBAL")
+    ai_stats = nf.get_stats()
+    
+    # 4. Auditoría
+    audit_text = await hapi_ai.analyze_global(containers, completed, bank_data, ai_stats)
+    
+    if audit_text.startswith("ERROR"):
+        status_code = 429 if "429" in audit_text else 500
+        return JSONResponse(status_code=status_code, content={"status": "error", "message": audit_text})
+
+    return {
+        "status": "success",
+        "audit": audit_text
+    }
+
+@app.get("/api/ai/analyze/{symbol}")
+async def analyze_bot_performance(symbol: str):
+    sym = symbol.upper()
+    
+    # 1. Obtener datos de estado vivo
+    live_data = state_mgr.global_state.get(sym, {})
+    if not live_data:
+        # Intentar obtener de contenedores si no hay estado vivo aún
+        containers = docker_mgr.list_active_bots()
+        bot = next((c for c in containers if c["symbol"] == sym), None)
+        if not bot:
+             return JSONResponse(status_code=404, content={"status": "error", "message": f"No se encontró proceso activo para {sym}"})
+        live_data = bot
+    
+    # 2. Obtener métricas de maestría
+    mastery_data = mastery_mgr.get_symbol_status(sym)
+    
+    # 3. Solicitar auditoría a Gemini
+    audit_text = await hapi_ai.analyze_simulation(sym, live_data, mastery_data)
+    
+    if audit_text.startswith("ERROR"):
+        status_code = 429 if "429" in audit_text else 500
+        return JSONResponse(status_code=status_code, content={"status": "error", "message": audit_text})
+
+    return {
+        "status": "success",
+        "symbol": sym,
+        "audit": audit_text
+    }
 
 # --- State Sync (Dashboard / UI) API ---
 class StateUpdateRequest(BaseModel):
@@ -189,15 +351,14 @@ class StateUpdateRequest(BaseModel):
 
 @app.post("/api/state/update")
 async def update_sim_state(req: StateUpdateRequest):
-    await state_mgr.update_state(req.symbol, req.data)
+    # Usar una tarea separada para la actualización para liberar el hilo rápido
+    asyncio.create_task(state_mgr.update_state(req.symbol, req.data))
     
     # Detectar si el bot acabó.
-    # Caso 1: payload plano (el runner envía {status: "completed", total_sim_pnl: ...})
     flat_status = str(req.data.get("status", "")).lower()
     if flat_status == "completed":
         docker_mgr.mark_completed(req.symbol, req.data)
     else:
-        # Caso 2: payload anidado {symbol_key: {status: "COMPLETED", ...}}
         for _key, obj in req.data.items():
             if isinstance(obj, dict) and str(obj.get("status", "")).lower() == "completed":
                 docker_mgr.mark_completed(req.symbol, obj)
@@ -239,52 +400,83 @@ _MIN_FREE_RAM_MB = 512  # always keep 512MB free as buffer
 @app.get("/api/system/health")
 async def get_system_health():
     """Returns real-time CPU, RAM and Docker container stats + recommended sim capacity."""
-    # ── RAM ──────────────────────────────────────────────────────────────
-    mem = psutil.virtual_memory()
-    total_ram_mb  = mem.total  // (1024 * 1024)
-    used_ram_mb   = mem.used   // (1024 * 1024)
-    avail_ram_mb  = mem.available // (1024 * 1024)
-    ram_pct       = mem.percent
-
-    # ── CPU (1-second sample to avoid blocking) ───────────────────────
-    try:
-        cpu_pct = psutil.cpu_percent(interval=0.5)
-    except Exception:
-        cpu_pct = 0.0
-
-    # ── Active containers ─────────────────────────────────────────────
+    health = docker_mgr.get_resource_health()
     active_containers = docker_mgr.list_active_bots()
     running_count = len(active_containers)
-
-    # ── Capacity calculation ──────────────────────────────────────────
-    free_ram_for_sims = max(0, avail_ram_mb - _MIN_FREE_RAM_MB)
-    ram_slots   = int(free_ram_for_sims // _RAM_PER_SIM_MB)
-    free_cpu    = max(0, 100 - cpu_pct)
-    cpu_slots   = int(free_cpu // _CPU_PER_SIM_PCT)
-    max_new     = max(0, min(ram_slots, cpu_slots))
-
-    # ── Traffic-light status ──────────────────────────────────────────
-    if ram_pct < 60 and cpu_pct < 60:
-        status = "ok"
-        advice = f"Sistema saludable — puedes lanzar hasta {max_new} simulación(es) más"
-    elif ram_pct < 85 and cpu_pct < 85:
-        status = "warning"
-        advice = f"Recursos moderados — máximo {max_new} simulación(es) adicional(es) recomendada(s)"
-    else:
-        status = "critical"
-        advice = "Sistema saturado — espera a que termine una simulación antes de lanzar más"
-        max_new = 0
+    max_new = docker_mgr.get_available_slots(base_limit=8)
 
     return {
-        "status": status,
-        "cpu_pct": round(cpu_pct, 1),
-        "ram_pct": round(ram_pct, 1),
-        "ram_used_mb": used_ram_mb,
-        "ram_total_mb": total_ram_mb,
-        "ram_avail_mb": avail_ram_mb,
+        "status": health["status"],
+        "cpu_pct": health["cpu_pct"],
+        "ram_pct": health["ram_pct"],
+        "ram_used_mb": health["ram_used_mb"],
+        "ram_avail_mb": health["ram_avail_mb"],
+        "ram_total_mb": health["ram_total_mb"],
         "running_sims": running_count,
         "max_new_sims": max_new,
-        "advice": advice,
+        "advice": health["advice"],
+    }
+
+@app.post("/api/system/wipe")
+async def system_wipe():
+    """Borra absolutamente TODO el historial, detiene procesos y reinicia el banco central (No bloqueante)."""
+    import shutil
+    import asyncio
+    from shared.utils.neural_filter import reset_neural_filter
+    
+    def perform_cleanup():
+        try:
+            # 1. Detener todos los bots de forma agresiva
+            docker_mgr.kill_all_bots()
+            
+            # 2. Reiniciar estados en memoria
+            bank.reset()
+            # state_mgr.clear() es async, lo manejaremos fuera o por separado
+            docker_mgr.clear_memory()
+            mastery_mgr.reset()
+            reset_neural_filter()
+            
+            # 3. Borrado físico de archivos
+            files_to_delete = [
+                config.DATA_DIR / "checkpoint.db",
+                config.DATA_DIR / "mastery_hub.json",
+                config.DATA_DIR / "completed_simulations.json",
+                config.DATA_DIR / "active_sessions.json",
+                config.DATA_DIR / "trade_journal.csv",
+                config.DATA_DIR / "backtest_results.json",
+                config.DATA_DIR / "state_sim.json",
+                config.DATA_DIR / "state_live.json",
+                config.DATA_DIR / "ml_dataset.csv",
+                config.DATA_DIR / "neural_model.joblib",
+                config.DATA_DIR / "ai_model.joblib",
+            ]
+            for f in files_to_delete:
+                try:
+                    if f.exists(): f.unlink()
+                except: pass
+                
+            for d in [config.DATA_DIR / "neural_models", config.DATA_DIR / "snapshots", config.MODEL_SNAPSHOTS_DIR]:
+                try:
+                    if d.exists(): shutil.rmtree(d, ignore_errors=True)
+                except: pass
+
+            if config.LOG_FILE.exists():
+                config.LOG_FILE.write_text("")
+                
+            return True
+        except Exception as e:
+            print(f"❌ Error en Limpieza Profunda: {e}")
+            return False
+
+    # Ejecutar la limpieza pesada en un hilo separado para no bloquear FastAPI
+    asyncio.create_task(asyncio.to_thread(perform_cleanup()))
+    
+    # También limpiamos el estado async
+    await state_mgr.clear()
+
+    return {
+        "status": "success", 
+        "message": "SISTEMA PURGADO (Iniciado en segundo plano). El panel se refrescará en segundos."
     }
 
 # UI Route

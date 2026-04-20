@@ -17,7 +17,7 @@
         },
         {
             "symbol": "AAPL",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ABBV",
@@ -361,7 +361,7 @@
         },
         {
             "symbol": "NVDA",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "O",
@@ -496,7 +496,7 @@
         },
         {
             "symbol": "TSLA",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "TTD",

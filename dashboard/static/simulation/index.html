@@ -19,6 +19,54 @@
 
         console.log("================= DASHBOARD VFINAL: SISTEMA ANTI CACHE ===================");
 
+        function showToast(msg, type = 'error') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+                document.body.appendChild(container);
+
+                if (!document.getElementById('toast-style')) {
+                    const s = document.createElement('style');
+                    s.id = 'toast-style';
+                    s.textContent = '@keyframes toastIn { from { opacity:0; transform:translateX(40px) scale(0.9); } to { opacity:1; transform:translateX(0) scale(1); } } @keyframes toastOut { to { opacity:0; transform:translateX(40px) scale(0.9); } }';
+                    document.head.appendChild(s);
+                }
+            }
+            const colors = {
+                error:   { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.4)',  icon: '❌', accent: '#f87171' },
+                warn:    { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', icon: '⚠️', accent: '#fbbf24' },
+                success: { bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.4)',  icon: '✅', accent: '#4ade80' },
+                info:    { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.4)', icon: 'ℹ️', accent: '#60a5fa' },
+            };
+            const c = colors[type] || colors.error;
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${c.bg}; border: 1px solid ${c.border};
+                backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                border-radius: 12px; padding: 14px 18px;
+                display: flex; align-items: flex-start; gap: 12px;
+                min-width: 280px; max-width: 380px; pointer-events: all;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+                animation: toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+                font-family: "Inter", sans-serif;
+            `;
+            toast.innerHTML = `
+                <span style="font-size:18px; flex-shrink:0;">${c.icon}</span>
+                <div style="flex:1;">
+                    <div style="color:${c.accent}; font-size:12px; font-weight:700; margin-bottom:2px;">${type.toUpperCase()}</div>
+                    <div style="color:rgba(255,255,255,0.85); font-size:12px; line-height:1.4;">${msg}</div>
+                </div>
+                <button onclick="this.parentElement.remove()" style="background:none; border:none; color:rgba(255,255,255,0.3); cursor:pointer; font-size:18px; line-height:1;">&times;</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'toastOut 0.25s ease forwards';
+                setTimeout(() => toast.remove(), 260);
+            }, 6000);
+        }
+
         function showFinishSplash(state) {
             const finishSplash = document.getElementById('bot-finish-splash');
             if (!finishSplash || finishSplash.style.display === 'flex') return;
@@ -338,8 +386,8 @@
                         🔄 REINICIAR
                     </button>
                     <button
-                        onclick="if(confirm('¿ESTÁS SEGURO? Esto borrará TODO el aprendizaje de la IA y el historial de trades.')) resetAllData()"
-                        class="hdr-btn btn-danger" title="Borrar TODOS los datos y memoria neuronal (Wipe)">
+                         onclick="if(confirm('¿ESTÁS SEGURO? Esto borrará TODO: Aprendizaje IA, Historial del Orquestador, Trades y Maestría.')) resetAllData()"
+                        class="hdr-btn btn-danger" title="Borrar TODOS los datos, memoria neuronal y progreso del orquestador (Wipe)">
                         <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -844,40 +892,40 @@
                                 gap: 20px;
                             ">
                                 <!-- Fila 1: Métricas Operativas (Cargas y Rozamiento) -->
-                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.05);">
-                                    <div style="text-align:center;">
-                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Ganancias (Wins)</div>
-                                        <div style="font-size:16px; font-weight:bold; color:var(--green); font-family:'JetBrains Mono',monospace;" id="summary-gross-wins">─</div>
+                                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.05);">
+                                    <div style="text-align:center; position:relative;">
+                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;" title="Suma total de ganancias brutas (Mercado). Sin descontar comisiones ni slippage.">💹 Ganancias (Gross Wins) ⓘ</div>
+                                        <div style="font-size:18px; font-weight:800; color:var(--green); font-family:'JetBrains Mono',monospace;" id="summary-gross-wins">─</div>
                                     </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Pérdidas (Losses)</div>
-                                        <div style="font-size:16px; font-weight:bold; color:var(--red); font-family:'JetBrains Mono',monospace;" id="summary-gross-losses">─</div>
+                                    <div style="text-align:center; position:relative;">
+                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;" title="Suma total de p\u00e9rdidas brutas (Mercado). Sin descontar comisiones ni slippage.">📉 P\u00e9rdidas (Gross Losses) ⓘ</div>
+                                        <div style="font-size:18px; font-weight:800; color:var(--red); font-family:'JetBrains Mono',monospace;" id="summary-gross-losses">─</div>
                                     </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Comisiones (Fees)</div>
-                                        <div style="font-size:16px; font-weight:bold; color:#ff9800; font-family:'JetBrains Mono',monospace;" id="summary-total-fees">─</div>
+                                    <div style="text-align:center; position:relative;">
+                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;">💸 Comisiones (Fees)</div>
+                                        <div style="font-size:18px; font-weight:800; color:#ff9800; font-family:'JetBrains Mono',monospace;" id="summary-total-fees">─</div>
                                     </div>
-                                    <div style="text-align:center;">
-                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Slippage (Deslize)</div>
-                                        <div style="font-size:16px; font-weight:bold; color:#ff5722; font-family:'JetBrains Mono',monospace;" id="summary-total-slippage">─</div>
+                                    <div style="text-align:center; position:relative;">
+                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:8px;">⚡ Slip (Deslize)</div>
+                                        <div style="font-size:18px; font-weight:800; color:#ff5722; font-family:'JetBrains Mono',monospace;" id="summary-total-slippage">─</div>
                                     </div>
                                 </div>
 
                                 <!-- Fila 2: Resultados Finales y AI -->
-                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 20px; align-items: center;">
-                                    <div style="text-align:center;">
-                                        <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Rendimiento Neto Total</div>
-                                        <div style="font-size:20px; font-weight:900; font-family:'JetBrains Mono',monospace;" id="summary-net-pnl">─</div>
+                                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.5fr; gap: 20px; align-items: center;">
+                                    <div style="text-align:center; background: linear-gradient(135deg, rgba(0,212,170,0.1) 0%, rgba(0,212,170,0.05) 100%); border: 1px solid rgba(0,212,170,0.3); padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,212,170,0.1);">
+                                        <div style="font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; font-weight:700;">💰 RENDIMIENTO NETO TOTAL</div>
+                                        <div style="font-size:24px; font-weight:900; font-family:'JetBrains Mono',monospace; text-shadow: 0 0 10px rgba(0,212,170,0.3);" id="summary-net-pnl">─</div>
                                     </div>
                                     <div style="text-align:center;">
                                         <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Saldo Final Estimado</div>
-                                        <div style="font-size:16px; font-weight:bold; color:#03a9f4; font-family:'JetBrains Mono',monospace;" id="summary-final-balance">─</div>
+                                        <div style="font-size:18px; font-weight:800; color:#03a9f4; font-family:'JetBrains Mono',monospace;" id="summary-final-balance">─</div>
                                     </div>
                                     <div style="text-align:center;">
                                         <div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Ganancia Retirable</div>
-                                        <div style="font-size:16px; font-weight:bold; color:var(--green); font-family:'JetBrains Mono',monospace;" id="summary-real-profit">─</div>
+                                        <div style="font-size:18px; font-weight:800; color:var(--green); font-family:'JetBrains Mono',monospace;" id="summary-real-profit">─</div>
                                     </div>
-                                    <div style="text-align:center; background: linear-gradient(135deg, rgba(187,134,252,0.1) 0%, rgba(187,134,252,0.05) 100%); border: 1px solid rgba(187,134,252,0.3); padding: 8px; border-radius: 8px;">
+                                    <div style="text-align:center; background: linear-gradient(135deg, rgba(187,134,252,0.1) 0%, rgba(187,134,252,0.05) 100%); border: 1px solid rgba(187,134,252,0.3); padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(187,134,252,0.05);">
                                         <div style="font-size:9px; color:#bb86fc; margin-bottom:4px; font-weight: 900; letter-spacing:1px;">🧠 INTELIGENCIA GLOBAL</div>
                                         <div style="font-size:12px; font-weight:bold; color:#fff;" id="summary-ai-stats">Muestras: N/A | Precisión: N/A</div>
                                     </div>
@@ -895,11 +943,11 @@
                                         <th style="padding:10px;" class="metric-th" data-metric="period">📅 Período</th>
                                         <th style="padding:10px;">Ses.</th>
                                         <th style="padding:10px;" class="metric-th" data-metric="trades">Trades · W/L · Win%</th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="gross">Gross PnL ⓘ</th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="gross" title="PnL Bruto de Mercado (Diferencia de Precio \u00d7 Cantidad). Suma exacta del calendario.">Gross PnL \u24d8</th>
                                         <th id="th-netpnl" class="metric-th" data-metric="net" onclick="toggleNetPnlSort()"
                                             style="padding:10px; cursor:pointer; user-select:none; white-space:nowrap; transition:color 0.2s;"
-                                            onmouseout="this.style.color=''" title="Ordenar por Net PnL">Net PnL ⓘ <span id="netpnl-sort-icon">&#x21D5;</span></th>
-                                        <th style="padding:10px;" class="metric-th" data-metric="balance">Saldo Final ⓘ</th>
+                                            onmouseout="this.style.color=''" title="PnL Real Final (Gross - Fees - Slip)">Net PnL \u24d8 <span id="netpnl-sort-icon">&#x21D5;</span></th>
+                                        <th style="padding:10px;" class="metric-th" data-metric="balance" title="Capital final proyectado tras todas las operaciones y comisiones.">Saldo Final \u24d8</th>
                                         <th style="padding:10px; text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
@@ -1079,6 +1127,14 @@
         window.currentSymbol = null;
         let manualFocus = false; // Si el usuario cambió de pestaña manualmente
 
+        // 🧠 HAPI: Auto-enfocado por URL (para venir desde el Orquestador)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSym = urlParams.get('symbol');
+        if (urlSym) {
+            window.focusSymbol = urlSym.toUpperCase();
+            console.log("🎯 [HAPI] Auto-enfocando símbolo desde URL:", window.focusSymbol);
+        }
+
         function toggleSymbolModal() {
             const modal = document.getElementById('symbol-selection-modal');
             const overlay = document.getElementById('symbol-modal-overlay');
@@ -1244,7 +1300,7 @@
         // ═══════════════════════════════════════════════════════
         // operativas...
 
-        function showToast(trade) {
+        function showTradeToast(trade) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             const isBuy = trade.side === 'BUY';
@@ -1585,11 +1641,11 @@
                         </div>`;
                     document.body.insertAdjacentHTML('beforeend', modalHtml);
                 } else {
-                    alert("Error ejecutando IA: " + data.message);
+                    showToast("Error ejecutando IA: " + data.message);
                 }
             } catch (e) {
                 console.error("Error AI endpoint:", e);
-                alert("Error de conexión al ejecutar IA.");
+                showToast("Error de conexión al ejecutar IA.");
                 if (btn) {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
@@ -1649,7 +1705,7 @@
 
         async function startLiveWithRecommended() {
             const results = window._lastFullState.results || [];
-            if (results.length === 0) return alert("Simulación no iniciada aún.");
+            if (results.length === 0) return showToast("Simulación no iniciada aún.", "warn");
 
             const recommended = results.filter(row => {
                 const grossPnl = row.gross_pnl || 0;
@@ -1691,7 +1747,7 @@
                             setTimeout(() => { window.location.href = '/live'; }, 1000);
                         } else {
                             _hideLoadingOverlay();
-                            alert("Error: " + data.message);
+                            showToast("Error: " + data.message);
                         }
                     } catch (e) {
                         _hideLoadingOverlay();
@@ -1703,7 +1759,7 @@
 
         async function startPaperTrade() {
             // Obtener los símbolos activos directamente del Gestor Principal
-            if (!window.configAssets) return alert("Cargando activos... intenta de nuevo.");
+            if (!window.configAssets) return showToast("Cargando activos... intenta de nuevo.", "info");
 
             const activeAssets = window.configAssets.assets.filter(a => a.enabled).map(a => a.symbol);
 
@@ -1741,7 +1797,7 @@
                             }, 1000);
                         } else {
                             _hideLoadingOverlay();
-                            alert("Error: " + data.message);
+                            showToast("Error: " + data.message);
                         }
                     } catch (e) {
                         document.getElementById('global-loader').style.display = 'none';
@@ -1772,7 +1828,7 @@
                             setTimeout(() => location.reload(), 800);
                         } else {
                             document.getElementById('global-loader').style.display = 'none';
-                            alert("Error: " + data.message);
+                            showToast("Error: " + data.message);
                         }
                     } catch (e) {
                         document.getElementById('global-loader').style.display = 'none';
@@ -1814,17 +1870,17 @@
 
         async function handleBank(action) {
             const amt = parseFloat(document.getElementById('bank-amount').value);
-            if (!amt || amt <= 0) return alert("Monto inválido"); try {
+            if (!amt || amt <= 0) return showToast("Monto inválido", "warn"); try {
                 const res = await fetch(`/api/bank/${action}`, {
                     method: 'POST', body: JSON.stringify({ amount: amt }), headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await res.json(); if (data.status === 'success') {
-                    alert(data.message);
+                    showToast(data.message);
                     document.getElementById('bank-modal-overlay').remove();
                 } else {
-                    alert("Error: " + data.message);
+                    showToast("Error: " + data.message);
                 }
-            } catch (e) { alert(" Error connecting to Bank API"); }
+            } catch (e) { showToast("Error connecting to Bank API"); }
         }
 
         // Llamada inicial 
@@ -1852,7 +1908,7 @@
             } else if (trades.length > lastTradeCount && lastTradeCount !== 0) {
                 // Detectamos nuevas operaciones
                 const newTrades = trades.slice(lastTradeCount);
-                newTrades.forEach(t => showToast(t));
+                newTrades.forEach(t => showTradeToast(t));
                 lastTradeCount = trades.length;
                 shouldRenderHTML = true;
             }
@@ -2437,7 +2493,7 @@
                     if (!window._simCompletionNotified) {
                         window._simCompletionNotified = true;
                         if (typeof showToast === 'function') {
-                            showToast({ side: 'Toda la Simulación finalizada', symbol: '✅ ÉXITO', price: 0, pnl: 0 });
+                            showTradeToast({ side: 'Toda la Simulación finalizada', symbol: '✅ ÉXITO', price: 0, pnl: 0 });
                         }
                     }
 
@@ -2462,11 +2518,39 @@
 
             tbody.innerHTML = '';
 
+            tbody.innerHTML = '';
+
+            // ─── DEDUPLICACIÓN CONTABLE (EVITAR GHOST TRADES) ───
             let totalWins = 0;
             let totalLosses = 0;
-            let totalGross = 0;
             let totalFees = 0;
             let totalSlip = 0;
+
+            // Al cargar resultados, confiamos en lo que diga el Main State del bot si existe
+            // de lo contrario, sumamos lo acumulado en las sesiones.
+            const mainState = window._lastFullState && window._lastFullState._main ? window._lastFullState._main : null;
+
+            if (mainState && mainState.total_sim_gross_profit !== undefined) {
+                totalWins = mainState.total_sim_gross_profit || 0;
+                totalLosses = Math.abs(mainState.total_sim_gross_loss || 0);
+                totalFees = mainState.total_sim_fees || 0;
+                totalSlip = mainState.total_sim_slippage || 0;
+            } else {
+                // FALLBACK: Sumatoria manual de sesiones únicas si no hay estado global (ej: carga inicial)
+                const uniqueSessions = new Set();
+                rowsToRender.forEach(row => {
+                    const sKey = `${row.symbol}_${row.sim_start}_${row.sim_end}_${row.total_trades}_${row.session_num}`;
+                    if (!uniqueSessions.has(sKey)) {
+                        uniqueSessions.add(sKey);
+                        totalWins += (row.gross_profit || 0);
+                        totalLosses += Math.abs(row.gross_loss || 0);
+                        totalFees += (row.total_fees || 0);
+                        totalSlip += (row.slippage_est || row.total_slippage || 0);
+                    }
+                });
+            }
+
+            const totalGross = totalWins - totalLosses;
 
             rowsToRender.forEach(row => {
                 const tr = document.createElement('tr');
@@ -2482,13 +2566,6 @@
                 const slip = row.slippage_est || 0;
                 const netPnl = grossPnl - fees - slip;
 
-                if (grossPnl >= 0) totalWins += grossPnl;
-                else totalLosses += grossPnl;
-
-                totalGross += grossPnl;
-                totalFees += fees;
-                totalSlip += slip;
-
                 const isWin = netPnl >= 0;
                 const pnlColor = isWin ? 'var(--green)' : 'var(--red)';
                 const prefix = isWin ? '+' : '';
@@ -2502,28 +2579,28 @@
                 const winners = Math.round((row.win_rate / 100) * (row.total_trades || 0));
                 const losers  = (row.total_trades || 0) - winners;
                 tr.innerHTML = `
-                    <td style="padding:10px 10px 10px 14px; font-weight:bold; white-space:nowrap;">
-                        ${row.isActive ? '<span style="color:var(--accent); font-size:9px; animation:pulse-text 1.5s infinite;">🔄 </span>' : ''}
-                        <span style="font-size:16px; letter-spacing:0.3px;">${row.symbol}</span>
-                        <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer; font-size:11px; opacity:0.5;">📅</button>
+                    <td style="padding:12px 10px 12px 16px; font-weight:bold; white-space:nowrap;">
+                        ${row.isActive ? '<span style="color:var(--accent); font-size:10px; animation:pulse-text 1.5s infinite;">🔄 </span>' : ''}
+                        <span style="font-size:18px; letter-spacing:0.3px;">${row.symbol}</span>
+                        <button onclick="openCalendarModal('${row.symbol}')" style="background:none; border:none; cursor:pointer; font-size:12px; opacity:0.5;">📅</button>
                     </td>
-                    <td style="padding:10px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:13px;">
+                    <td style="padding:12px; color:var(--accent2); font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500;">
                         ${(row.sim_start && row.sim_start !== '─') ? row.sim_start.split(' ')[0] + ' → ' + (row.sim_end ? row.sim_end.split(' ')[0] : '…') : 'Calculando…'}
                     </td>
-                    <td style="padding:10px; color:var(--muted); font-size:13px;">#${row.session_num}</td>
-                    <td style="padding:10px; white-space:nowrap;">
-                        <span style="font-size:14px; font-weight:600;">${row.total_trades}</span>
-                        <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
-                        <span style="color:var(--green); font-weight:bold; font-size:13px;">${winners}W</span>
-                        <span style="color:rgba(255,255,255,0.2); font-size:10px;">/</span>
-                        <span style="color:var(--red); font-size:13px;">${losers}L</span>
-                        <span style="color:rgba(255,255,255,0.2); font-size:10px;"> · </span>
-                        <span style="color:var(--muted); font-size:13px;">${parseFloat(row.win_rate).toFixed(1)}%</span>
+                    <td style="padding:12px; color:var(--muted); font-size:14px;">#${row.session_num}</td>
+                    <td style="padding:12px; white-space:nowrap;">
+                        <span style="font-size:15px; font-weight:700;">${row.total_trades}</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:12px;"> · </span>
+                        <span style="color:var(--green); font-weight:bold; font-size:14px;">${winners}W</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:12px;">/</span>
+                        <span style="color:var(--red); font-size:14px;">${losers}L</span>
+                        <span style="color:rgba(255,255,255,0.2); font-size:12px;"> · </span>
+                        <span style="color:var(--muted); font-size:14px;">${parseFloat(row.win_rate).toFixed(1)}%</span>
                     </td>
-                    <td style="padding:10px; color:${grossColor}; font-size:14px; font-weight:600;">${grossPfx}$${grossPnl.toFixed(2)}</td>
-                    <td style="padding:10px; color:${pnlColor}; font-weight:900; font-size:20px;">${prefix}$${netPnl.toFixed(2)}</td>
-                    <td style="padding:10px; font-weight:bold; font-size:14px;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
-                    <td style="padding:10px; text-align:center;">
+                    <td style="padding:12px; color:${grossColor}; font-size:15px; font-weight:600;">${grossPfx}$${grossPnl.toFixed(2)}</td>
+                    <td style="padding:12px; color:${pnlColor}; font-weight:900; font-size:22px;">${prefix}$${netPnl.toFixed(2)}</td>
+                    <td style="padding:12px; font-weight:bold; font-size:15px;">$${((window.INITIAL_CAPITAL || 10000) + netPnl).toFixed(2)}</td>
+                    <td style="padding:12px; text-align:center;">
                         ${buildUnifiedVerdictBadge(row)}
                     </td>
                 `;
@@ -2533,23 +2610,23 @@
                 const trB = document.createElement('tr');
                 trB.style.cssText = 'background:rgba(0,0,0,0.15); border-bottom:1px solid rgba(255,255,255,0.05);';
                 trB.innerHTML = `
-                    <td style="padding:4px 10px 10px 14px;">
-                        <span style="font-size:12px; color:rgba(255,255,255,0.35); font-family:'JetBrains Mono',monospace;">${durStr} · $${parseFloat(row.last_price || 0).toFixed(2)}</span>
+                    <td style="padding:6px 10px 12px 16px;">
+                        <span style="font-size:14px; color:rgba(255,255,255,0.45); font-family:'JetBrains Mono',monospace;">${durStr} · $${parseFloat(row.last_price || 0).toFixed(2)}</span>
                     </td>
-                    <td colspan="2" style="padding:4px 10px 10px;">
-                        <span style="font-size:12px; color:rgba(255,150,50,0.65); font-family:'JetBrains Mono',monospace; font-weight:600;">
+                    <td colspan="2" style="padding:6px 10px 12px;">
+                        <span style="font-size:14px; color:rgba(255,150,50,0.8); font-family:'JetBrains Mono',monospace; font-weight:600;">
                             DD: ${parseFloat(row.drawdown || 0).toFixed(2)}%
                         </span>
                     </td>
-                    <td style="padding:4px 10px 10px;">
-                        <span style="font-size:12px; color:rgba(255,255,255,0.4); font-family:'JetBrains Mono',monospace; white-space:nowrap;">
+                    <td style="padding:6px 10px 12px;">
+                        <span style="font-size:14px; color:rgba(255,255,255,0.5); font-family:'JetBrains Mono',monospace; white-space:nowrap;">
                             Gross <span style="color:${grossColor}; font-weight:600;">${grossPfx}$${grossPnl.toFixed(2)}</span>
                             <span style="color:rgba(255,255,255,0.2);"> → </span>Fees <span style="color:#ff9800; font-weight:600;">-$${fees.toFixed(2)}</span>
                             <span style="color:rgba(255,255,255,0.2);"> → </span>Slip <span style="color:#ff5722; font-weight:600;">-$${slip.toFixed(2)}</span>
                         </span>
                     </td>
-                    <td colspan="4" style="padding:4px 10px 10px;">
-                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                    <td colspan="4" style="padding:6px 10px 12px;">
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                             ${renderBlockingSummary(row.blocking_summary, row.ml_blocked_count, row.total_ghosts, row.symbol)}
                         </div>
                     </td>
@@ -2955,52 +3032,52 @@
             }
             setT('global-wr-val', `${parseFloat(gWr).toFixed(2)}%`);
 
-            // 🏆 BARRA DE RESUMEN SUPERIOR (Mostrando Datos del Símbolo ACTUAL)
+            // 🏆 BARRA DE RESUMEN SUPERIOR (Mostrando Datos ACUMULADOS de toda la simulación)
             const sWinsEl = document.getElementById('summary-gross-wins');
-            const curGrossProfit = state.gross_profit || 0;
-            const curGrossLoss = state.gross_loss || 0;
-            const curFees = state.total_fees || 0;
-            const curSlip = state.slippage_est || 0;
-            const curNet = curGrossProfit + curGrossLoss - curFees - curSlip;
+            const totalGrossProfit = state.total_sim_gross_profit || 0;
+            const totalGrossLoss = state.total_sim_gross_loss || 0;
+            const totalFees = state.total_sim_fees || 0;
+            const totalSlip = state.total_sim_slippage || 0;
+            const totalNet = state.total_sim_pnl || 0;
 
             if (sWinsEl) {
-                sWinsEl.textContent = `+$${curGrossProfit.toFixed(2)}`;
+                sWinsEl.textContent = `+$${totalGrossProfit.toFixed(2)}`;
                 sWinsEl.style.color = 'var(--green)';
             }
 
             const sLossesEl = document.getElementById('summary-gross-losses');
             if (sLossesEl) {
-                sLossesEl.textContent = `-$${Math.abs(curGrossLoss).toFixed(2)}`;
+                sLossesEl.textContent = `-$${Math.abs(totalGrossLoss).toFixed(2)}`;
                 sLossesEl.style.color = 'var(--red)';
             }
 
             const sFeesEl = document.getElementById('summary-total-fees');
             if (sFeesEl) {
-                sFeesEl.textContent = `-$${curFees.toFixed(2)}`;
+                sFeesEl.textContent = `-$${totalFees.toFixed(2)}`;
                 sFeesEl.style.color = '#ff9800';
             }
 
             const sSlipEl = document.getElementById('summary-total-slippage');
             if (sSlipEl) {
-                sSlipEl.textContent = `-$${curSlip.toFixed(2)}`;
+                sSlipEl.textContent = `-$${totalSlip.toFixed(2)}`;
                 sSlipEl.style.color = '#ff5722';
             }
 
             const sNetEl = document.getElementById('summary-net-pnl');
             if (sNetEl) {
-                sNetEl.textContent = `${curNet >= 0 ? '+' : ''}$${curNet.toFixed(2)}`;
-                sNetEl.style.color = curNet >= 0 ? 'var(--green)' : 'var(--red)';
-                sNetEl.style.fontSize = Math.abs(curNet) >= 1000 ? '20px' : '24px';
+                sNetEl.textContent = `${totalNet >= 0 ? '+' : ''}$${totalNet.toFixed(2)}`;
+                sNetEl.style.color = totalNet >= 0 ? 'var(--green)' : 'var(--red)';
+                sNetEl.style.fontSize = Math.abs(totalNet) >= 1000 ? '20px' : '24px';
             }
 
             const initCash = window.INITIAL_CAPITAL || 10000;
             const sBalEl = document.getElementById('summary-final-balance');
-            if (sBalEl) sBalEl.textContent = `$${(initCash + curNet).toFixed(2)}`;
+            if (sBalEl) sBalEl.textContent = `$${(initCash + totalNet).toFixed(2)}`;
 
             const sProfitEl = document.getElementById('summary-real-profit');
             if (sProfitEl) {
                 const withdrawalFee = 1.99;
-                const netToBank = (initCash + curNet) - withdrawalFee;
+                const netToBank = (initCash + totalNet) - withdrawalFee;
                 const finalProfit = netToBank - initCash;
                 sProfitEl.textContent = `${finalProfit >= 0 ? '+' : ''}$${finalProfit.toFixed(2)}`;
                 sProfitEl.style.color = finalProfit >= 0 ? 'var(--green)' : 'var(--red)';
@@ -3599,14 +3676,14 @@
             modal.style.textAlign = 'center';
 
             modal.innerHTML = `
-                    <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR MEMORIA (WIPE)</h2>
-                    <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar toda la memoria del bot?</p>
+                    <h2 style="color:var(--red); margin-top:0;">⚠️ PURGAR SISTEMA (HARD WIPE)</h2>
+                    <p style="color:var(--text); line-height:1.5;">¿Estás COMPLETAMENTE SEGURO de querer borrar todo el historial, el orquestador y la memoria del bot?</p>
                     <div style="margin: 20px 0; text-align: left; padding: 15px; background: rgba(255,0,0,0.05); border-radius: 8px; border: 1px solid rgba(255,0,0,0.1);">
                         <label style="color:var(--muted); font-size:12px; display:block; margin-bottom:5px;">📅 Nueva Fecha de Inicio (Opcional):</label>
                         <input type="date" id="wipe-start-input" 
                             style="width:100%; background:#0f172a; color:white; border:1px solid #3c404b; padding:10px; border-radius:6px; font-family:'Inter', sans-serif;">
                     </div>
-                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará todo el historial de entrenamiento de IA. No se puede deshacer.</p>
+                    <p style="color:var(--muted); font-size:13px; margin-bottom:25px;">Esto borrará el aprendizaje de IA, el progreso del orquestador y reseteará la maestría a 0%. No se puede deshacer.</p>
                     <div style="display:flex; justify-content:center; gap:15px;">
                         <button id="btn-cancel-wipe" style="background:var(--panel); color:var(--text); border:1px solid var(--border); padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
                         <button id="btn-confirm-wipe" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">SÍ, PURGAR AHORA</button>
@@ -4270,7 +4347,7 @@
         //
         function openNextDayRecommender(data) {
             if (!data || data.length === 0) {
-                alert('No hay datos de simulación todavía. Corre al menos un ciclo completo primero.');
+                showToast('No hay datos de simulación todavía. Corre al menos un ciclo completo primero.', 'info');
                 return;
             }
 
@@ -4698,7 +4775,7 @@
 
         async function applyNDRSelection(symbols) {
             if (!symbols || symbols.length === 0) {
-                alert('No hay empresas seleccionadas para aplicar.');
+                showToast('No hay empresas seleccionadas para aplicar.', 'warn');
                 return;
             }
 
@@ -5066,7 +5143,7 @@
         async function applyRecommendedPreset() {
             const recs = getRecommendedTop();
             if (recs.length === 0) {
-                alert('No hay recomendaciones todavía. Corre una simulación primero.');
+                showToast('No hay recomendaciones todavía. Corre una simulación primero.', 'info');
                 return;
             }
             await applyNDRSelection(recs);
@@ -5293,7 +5370,7 @@
                     closeSymbolManager();
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    alert("Error reiniciando el bot.");
+                    showToast("Error reiniciando el bot.");
                 }
             } catch (e) { console.error(e); }
         }

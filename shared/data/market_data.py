@@ -36,7 +36,7 @@ ET = pytz.timezone("America/New_York")
 # ─── Caché ──────────────────────────────────────────────────────────────────
 CACHE_DIR: Path = config.DATA_CACHE_DIR
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
-CACHE_TTL_SECONDS = 3600   # Refrescar caché cada hora
+CACHE_TTL_SECONDS = 86400   # Refrescar caché cada 24 horas (más eficiente para simulación autónoma)
 
 _assets_path = config.ASSETS_FILE
 
@@ -121,25 +121,37 @@ def download_bars(symbol: str, force_refresh: bool = False) -> pd.DataFrame:
         env_start = os.environ.get("HAPI_SIM_START_DATE")
         sim_start = env_start.strip() if env_start and env_start.strip() else None
         
+        env_end = os.environ.get("HAPI_SIM_END_DATE")
+        sim_end = env_end.strip() if env_end and env_end.strip() else None
+        
         if not sim_start and COMMAND_FILE.exists():
             with open(COMMAND_FILE, "r") as f:
                 cmds = json.load(f)
                 sim_start = cmds.get("sim_start_date")
+                if not sim_end:
+                    sim_end = cmds.get("sim_end_date")
+                    
+        if sim_end:
+            end_time_str = sim_end if ' ' in sim_end else sim_end + " 23:59:59"
+            end_time = pd.to_datetime(end_time_str).tz_localize(ET).tz_convert(pytz.UTC).to_pydatetime()
+            end_time = min(end_time, datetime.now(pytz.UTC)) # No futuro
+        else:
+            end_time = datetime.now(pytz.UTC)
                 
         if sim_start:
             target_dt = pd.to_datetime(sim_start).tz_localize(ET).tz_convert(pytz.UTC)
             required_start_dt = target_dt - timedelta(days=7) # Buffer para indicadores
-            diff = datetime.now(pytz.UTC) - required_start_dt
-            # Si target_dt está en el futuro, no intentes descargar un rango irreal
+            diff = end_time - required_start_dt.to_pydatetime()
+            # Si target_dt está en el futuro respecto a end_time, no intentes descargar un rango irreal
             days_to_fetch = max(7, diff.days + 1) if diff.days > 0 else 180
-            log.info(f"data | {symbol} | Ventana dinámica calculada: {days_to_fetch} días (sim_start: {sim_start})")
+            log.info(f"data | {symbol} | Ventana dinámica calculada: {days_to_fetch} días (sim_start: {sim_start}, sim_end: {sim_end})")
         else:
             days_to_fetch = int(config.DATA_PERIOD.replace('d', ''))
     except Exception as e:
         log.warning(f"data | Error calculando ventana dinámica: {e}")
         days_to_fetch = 180
+        end_time = datetime.now(pytz.UTC)
         
-    end_time = datetime.now(pytz.UTC)
     start_time = end_time - timedelta(days=days_to_fetch)
 
     # 1. Intentar cargar desde Caché
@@ -232,7 +244,8 @@ def get_symbols() -> list[str]:
         with open(path, "r") as f:
             data = json.load(f)
             assets_list = data.get("assets", [])
-            return [a["symbol"] for a in assets_list if a.get("enabled", True)]
+            active = [a["symbol"] for a in assets_list if a.get("enabled", True)]
+            return active if active else ["AAPL"]
     except Exception as exc:
         log.error(f"data | Error leyendo assets: {exc}")
         return ["AAPL"]

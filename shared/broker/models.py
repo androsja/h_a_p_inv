@@ -18,6 +18,7 @@ class PendingOrder:
     side:        str
     limit_price: float
     qty:         float
+    order_type:  str = "LIMIT" # "LIMIT" or "STOP"
     created_at:  datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     reason:      str = ""
     metadata:    dict = field(default_factory=dict)
@@ -30,8 +31,11 @@ class SessionStats:
     winning_trades: int   = 0
     total_pnl:      float = 0.0
     total_fees:     float = 0.0
-    gross_profit:   float = 0.0
-    gross_loss:     float = 0.0
+    gross_profit:   float = 0.0        # Suma de trades con Gross PnL > 0
+    gross_loss:     float = 0.0        # Suma de trades con Gross PnL <= 0
+    total_slippage: float = 0.0        # Costo real acumulado por deslizamiento (slippage)
+    net_profit:     float = 0.0        # Suma de trades con Net PnL > 0
+    net_loss:       float = 0.0        # Suma de trades con Net PnL <= 0
     peak_balance:   float = 10_000.0   # Para calcular Max Drawdown
     max_drawdown:   float = 0.0        # Peor caída desde el máximo (%)
     _pnl_history:   list  = field(default_factory=list)  # PnL por trade
@@ -72,27 +76,39 @@ class SessionStats:
         full_kelly = (rr_ratio * p - q) / rr_ratio
         return max(0.005, min(0.02, full_kelly * 0.25))
 
-    def record_trade(self, pnl: float, current_balance: float, side: str = "SELL", qty: float = 0.0, price: float = 0.0, timestamp: str = "", reason: str = "", metadata: dict = None) -> None:
-        self.total_trades += 1
-        self.total_pnl    += pnl
-        self._pnl_history.append(pnl)
+    def record_trade(self, gross_pnl: float, net_pnl: float, current_balance: float, slippage: float = 0.0, side: str = "SELL", qty: float = 0.0, price: float = 0.0, timestamp: str = "", reason: str = "", metadata: dict = None) -> None:
+        self.total_trades    += 1
+        self.total_pnl       += net_pnl
+        self.total_slippage  += slippage
+        self._pnl_history.append(net_pnl)
         
         # Append to detailed history
         self.trade_history.append({
             "side": side,
             "qty": qty,
             "price": price,
-            "pnl": pnl,
+            "gross_pnl": gross_pnl,
+            "net_pnl": net_pnl,
+            "pnl": net_pnl, # por compatibilidad
             "reason": reason,
             "metadata": metadata or {},
             "timestamp": timestamp or datetime.now(timezone.utc).isoformat()
         })
         
-        if pnl > 0:
+        # Clasificar como Win/Loss basado en PROFIT BRUTO (antes de comisiones)
+        # Esto asegura que el Win Rate refleje la efectividad de la estrategia
+        if gross_pnl > 0:
             self.winning_trades += 1
-            self.gross_profit   += pnl
+            self.gross_profit   += gross_pnl
         else:
-            self.gross_loss += pnl
+            self.gross_loss += gross_pnl
+            
+        # También llevar cuenta del Neto para el balance final
+        if net_pnl > 0:
+            self.net_profit += net_pnl
+        else:
+            self.net_loss += net_pnl
+
         if current_balance > self.peak_balance:
             self.peak_balance = current_balance
         drawdown = (self.peak_balance - current_balance) / self.peak_balance * 100

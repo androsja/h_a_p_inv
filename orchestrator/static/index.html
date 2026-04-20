@@ -63,6 +63,33 @@
 
         /* Launch section */
         .launch-row { display: flex; gap: 0.6rem; align-items: center; }
+        .perf-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .perf-btn:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .perf-btn.active#perf-eco {
+            background: rgba(16,185,129,0.15);
+            border-color: #10b981;
+            color: #10b981;
+            box-shadow: 0 0 15px rgba(16,185,129,0.1);
+        }
+        .perf-btn.active#perf-turbo {
+            background: rgba(59,130,246,0.15);
+            border-color: #3b82f6;
+            color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59,130,246,0.1);
+        }
         select {
             flex: 1;
             padding: 0.6rem 0.8rem;
@@ -105,6 +132,26 @@
         }
         .pill-running { background: #052e16; color: #4ade80; }
         .pill-completed { background: #1e293b; color: #94a3b8; }
+        /* Badges de Fase del Curriculum PVC */
+        .stage-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:0.65rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; }
+        .stage-training   { background: rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); }
+        .stage-scouting   { background: rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); }
+        .stage-validating { background: rgba(234,179,8,0.15);  color:#fbbf24; border:1px solid rgba(234,179,8,0.3); }
+        .stage-stress     { background: rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+        .stage-shadow     { background: rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); }
+
+        /* Instant PVC Tooltip CSS */
+        .pvc-tooltip { position: relative; cursor: help; }
+        .pvc-tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95); color: #f8fafc; padding: 8px 12px; border-radius: 6px;
+            font-size: 0.70rem; font-weight: normal; white-space: normal; width: max-content; max-width: 220px;
+            text-align: center; border: 1px solid rgba(59, 130, 246, 0.5); opacity: 0; pointer-events: none; z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); visibility: hidden; transition: opacity 0.2s, bottom 0.2s;
+            text-transform: none; letter-spacing: normal; backdrop-filter: blur(4px);
+        }
+        .pvc-tooltip:hover::after { opacity: 1; visibility: visible; bottom: 140%; }
 
         /* AI status bar */
         #ai-status {
@@ -125,6 +172,11 @@
         .dot-green { background: #4ade80; animation: pulse 1.5s infinite; }
         .dot-gray { background: #475569; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes pulse-alert {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
 
         /* Toast notifications */
         #toast-container {
@@ -192,64 +244,294 @@
         .btn-delete { background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 6px; cursor:pointer; font-size: 0.75rem; }
         .btn-delete:hover { background:rgba(239, 68, 68, 0.2); }
         .job-tag { padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .btn-console:hover { transform: translateY(-2px); background: #3b82f6; color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .btn-ai { background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #a78bfa; padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .btn-ai:hover { transform: translateY(-2px); background: #8b5cf6; color: white; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4); }
+        .btn-kill { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: 600; font-size: 0.75rem; }
         .auto-btn { background: #8b5cf6; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
         .auto-btn:hover { background: #7c3aed; }
+
+        /* PREMIUM MODAL STYLES */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999; animation: fadeIn 0.3s ease;
+        }
+        .modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 24px; padding: 2.5rem;
+            max-width: 500px; width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 50px rgba(239, 68, 68, 0.1);
+            text-align: center; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .modal-icon {
+            width: 80px; height: 80px; background: rgba(239, 68, 68, 0.1);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem auto; font-size: 2.5rem; color: #ef4444;
+            border: 2px solid rgba(239, 68, 68, 0.2);
+        }
+        .modal-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
+        .modal-text { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+        .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+        .btn-cancel {
+            background: transparent; border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #94a3b8; padding: 0.8rem 1.5rem; border-radius: 12px; cursor: pointer;
+            font-weight: 600; transition: all 0.2s;
+        }
+        .btn-cancel:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+        .btn-confirm-wipe {
+            background: #ef4444; color: white; border: none; padding: 0.8rem 2rem;
+            border-radius: 12px; cursor: pointer; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); transition: all 0.2s;
+        }
+        .btn-confirm-wipe:hover { background: #dc2626; transform: translateY(-2px); }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ─── MODAL DETALLES SIMULACIÓN ─── */
+        #sim-modal .modal-content {
+            background: #0f172a; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; width: 100%; max-width: 1000px; max-height: 90vh;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); text-align: left;
+        }
+        .modal-header {
+            padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-body {
+            padding: 1.5rem; overflow-y: auto; flex: 1;
+        }
+        .modal-close {
+            cursor: pointer; font-size: 1.5rem; color: #94a3b8;
+        }
+        .modal-close:hover { color: white; }
+
+        /* ─── GROUPED HISTORY ─── */
+        .symbol-group {
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 0.75rem;
+            background: rgba(255,255,255,0.01); transition: all 0.2s;
+        }
+        .symbol-header {
+            padding: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+        }
+        .symbol-header:hover { background: rgba(255,255,255,0.03); }
+        .symbol-list {
+            padding: 0 1rem 1rem 1rem; display: none; border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .symbol-group.expanded .symbol-list { display: block; }
+        .symbol-group.expanded { border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.05); }
+
+        .trade-log-table {
+            width: 100%; border-collapse: collapse; font-size: 0.85rem;
+        }
+        .trade-log-table th { text-align: left; color: #64748b; padding: 12px 8px; font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .trade-log-table td { padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        
+        .modal-overlay-sim {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center; z-index: 9998;
+            padding: 2rem;
+        }
+        .modal-overlay-sim.show { display: flex; }
+
+        /* AI Modal Styles */
+        .ai-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .ai-modal { background: linear-gradient(145deg, #1e1b4b, #0f172a); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; width: 100%; max-width: 650px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .ai-modal-header { padding: 20px 25px; background: rgba(139, 92, 246, 0.1); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .ai-modal-body { padding: 25px; overflow-y: auto; color: #e2e8f0; line-height: 1.6; font-size: 0.95rem; }
+        .ai-modal-body h1, .ai-modal-body h2, .ai-modal-body h3 { color: #a78bfa; margin-top: 20px; margin-bottom: 10px; }
+        .ai-modal-body strong { color: #f472b6; }
+        .ai-modal-body blockquote { border-left: 4px solid #8b5cf6; background: rgba(139, 92, 246, 0.1); padding: 10px 15px; margin: 15px 0; border-radius: 4px; }
+
+        @keyframes pulse-brain {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        .brain-loader { font-size: 3rem; animation: pulse-brain 1.5s infinite ease-in-out; margin-bottom: 20px; }
+        /* Loader */
+        #main-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #060d1a; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(59,130,246,0.1);
+            border-top: 4px solid #3b82f6; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+    <div id="main-loader">
+        <div class="spinner"></div>
+        <div style="font-family:'JetBrains Mono', monospace; color:#60a5fa; font-size:0.9rem;">Sincronizando Cerebro...</div>
+        <div style="font-size:0.75rem; color:#475569; margin-top:10px;">(Esto puede tardar 20s en el primer arranque)</div>
+    </div>
     <div id="toast-container"></div>
-    <h1>🧠 Hapi Master Orchestrator</h1>
+    
+    <!-- DASHBOARD CONTAINER -->
+    <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+        
+        <!-- MODAL AUDITORÍA IA -->
+        <div id="ai-modal-overlay" class="ai-modal-overlay" onclick="closeAIModal()">
 
-    <div class="grid">
-
-        <!-- BANCO CENTRAL -->
-        <div class="card">
-            <h2>💰 Central Bank</h2>
-            <div class="stat-row">
-                <span class="stat-label">Disponible</span>
-                <span class="stat-value green" id="av-cash">—</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Capital Inicial</span>
-                <span class="stat-value" id="init-cash" style="color:#94a3b8">—</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">PnL Global</span>
-                <span class="stat-value" id="tot-pnl">—</span>
+        <!-- ══ MODAL AUDITORÍA IA ══ -->
+        <div id="ai-modal-overlay" class="ai-modal-overlay" onclick="closeAIModal()">
+            <div class="ai-modal" onclick="event.stopPropagation()">
+                <div class="ai-modal-header">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span style="font-size:1.5rem;">🧠</span>
+                        <div>
+                            <h3 style="margin:0; color:white;">Auditoría Estratégica IA</h3>
+                            <span id="ai-modal-symbol" style="font-size:0.75rem; color:#a78bfa; font-family:monospace; font-weight:bold;">Símbolo: ---</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <button id="btn-ai-speak" onclick="speakAudit()" class="btn-ai" style="padding:6px 10px; font-size:11px;" title="Escuchar reporte (Audio)">🔊 Escuchar</button>
+                        <button onclick="closeAIModal()" style="background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    </div>
+                </div>
+                <div id="ai-modal-content" class="ai-modal-body">
+                    <!-- Injected AI response -->
+                    <div style="text-align:center; padding:40px;">
+                        <div class="brain-loader">🧠</div>
+                        <div style="color:#a78bfa;">Conectando con Gemini 2.0 Flash...</div>
+                        <div style="font-size:0.8rem; color:#64748b; margin-top:10px;">Analizando métricas de rendimiento y validez estadística.</div>
+                    </div>
+                </div>
+                <div style="padding:15px 25px; border-top:1px solid rgba(255,255,255,0.05); text-align:right; background:rgba(0,0,0,0.2);">
+                    <button onclick="closeAIModal()" class="btn-kill" style="padding:8px 20px;">Entendido</button>
+                </div>
             </div>
         </div>
 
-        <!-- IA CENTRAL -->
-        <div class="card">
-            <h2>🤖 IA Central</h2>
-            <div class="stat-row">
-                <span class="stat-label">Modelo Activo</span>
-                <span class="stat-value green">RandomForest-GLOBAL</span>
+    </div>
+
+    <!-- PREMIUM WIPE MODAL -->
+    <div id="wipe-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-icon">⚠️</div>
+            <div class="modal-title">¿Borrar todo el sistema?</div>
+            <p class="modal-text">
+                Esta acción detendrá todos los procesos, reseteará el banco y purgará la IA central. 
+                <br><br>
+                <strong>Esta acción no se puede deshacer.</strong>
+            </p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeWipeModal()">Cancelar</button>
+                <button class="btn-confirm-wipe" onclick="executeSystemWipe()">Confirmar Borrado</button>
             </div>
-            <div class="stat-row">
-                <span class="stat-label">Instancias usando IA</span>
-                <span class="stat-value" id="ai-instances">—</span>
+        </div>
+    </div>
+
+    <div class="grid">
+
+        <!-- CORE INTELLIGENCE BANNER (Unified Bank + AI) -->
+        <div class="card full-width" style="padding: 0; overflow: hidden; border: 1px solid rgba(139, 92, 246, 0.2); background: #0b1120; display: flex; flex-direction: column;">
+            
+            <!-- Banner Header: Branding & Global Actions -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.4rem;">🧠</span>
+                    <h1 style="margin:0; font-size: 1.1rem; letter-spacing: 1px; color: #fff;">HAPI MASTER ORCHESTRATOR</h1>
+                    <div id="ai-maturity-badge" style="font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; text-transform: uppercase;">—</div>
+                </div>
+                <button class="btn-kill" onclick="openWipeModal()" style="padding: 4px 12px; font-size: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
+                    🛡️ EMERGENCIA: WIPE TOTAL
+                </button>
             </div>
-            <div id="ai-status">Esperando eventos de entrenamiento…</div>
+
+            <!-- Banner Content: Balanced KPIs -->
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; min-height: 160px;">
+                
+                <!-- COLUMN 1: FINANCIALS -->
+                <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">Liquidez Total</div>
+                    <div class="stat-row" style="margin-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: #94a3b8;">Disponible</span>
+                        <span id="av-cash" style="font-size: 1.1rem; font-weight: 800; color: #4ade80;">—</span>
+                    </div>
+                    <div class="stat-row" style="margin-bottom: 8px;">
+                        <span style="font-size: 0.8rem; color: #94a3b8;">PnL Global</span>
+                        <span id="tot-pnl" style="font-size: 1.1rem; font-weight: 800;">—</span>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #475569; margin-top: 5px;">Capital Base: <span id="init-cash">—</span></div>
+                </div>
+
+                <!-- COLUMN 2: ANALYTICAL CORE (Precision Gauge) -->
+                <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.15);">
+                    <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Precisión del Cerebro</div>
+                    <div style="font-size: 3.2rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff; line-height: 1;" id="ai-acc-val">—%</div>
+                    <div style="width: 80%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden;">
+                        <div id="ai-acc-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #a78bfa); transition: width 1.5s cubic-bezier(0.1, 0.5, 0.1, 1);"></div>
+                    </div>
+                    <div style="margin-top: 12px; font-size: 0.65rem; color: #475569; display: flex; align-items: center; gap: 6px;">
+                        <span class="dot dot-green" style="width: 5px; height: 5px;"></span>
+                        RF-GLOBAL/MLP ENGINE ONLINE
+                    </div>
+                </div>
+
+                <!-- COLUMN 3: TECHNICAL SPECS -->
+                <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: center;">
+                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
+                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Arquitectura</span>
+                        <div id="ai-arch" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">—</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
+                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Memoria</span>
+                        <div id="ai-memory" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">—</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
+                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Muestras</span>
+                        <div id="ai-total-samples" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0; font-family: monospace;">—</div>
+                    </div>
+                    <div class="pvc-tooltip" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); cursor: help;" 
+                         data-tooltip="Los 13 'Inputs' son los datos maestros que la IA analiza para cada trade:&#10;1. Hora del día&#10;2. Distancia al VWAP&#10;3. RSI&#10;4. Histograma MACD&#10;5. Volatilidad (ATR%)&#10;6. Ratio de Volumen&#10;7. Spread de EMAs&#10;8. Z-Score (Pivote)&#10;9. Régimen de Mercado&#10;10. Confirmaciones Técnicas&#10;11. ADX (Fuerza)&#10;12. Patrones Visuales&#10;13. Tendencia de Fuerza">
+                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Inputs</span>
+                        <div id="ai-features" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0; font-family: monospace;">13</div>
+                    </div>
+                </div>
+                
+            </div>
         </div>
 
         <!-- CERTIFICACIÓN DE MAESTRÍA (MATURITY HUB) -->
         <div class="card full-width" id="maturity-hub-card" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>🏆 Certificación de Maestría (Maturity Hub)</h2>
-                <div id="ai-global-advisor" style="font-size:0.8rem; font-weight:600; color:#3b82f6; padding:0.4rem 0.8rem; background:rgba(59,130,246,0.1); border-radius:30px; border:1px solid rgba(59,130,246,0.2);">
+                <div>
+                    <h2 style="margin-bottom:4px;">🏆 Certificación de Maestría (Maturity Hub)</h2>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:0.75rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Madurez Global del Fondo:</span>
+                        <div style="width:200px; height:8px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.05);">
+                            <div id="global-maturity-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #8b5cf6); transition:width 1s ease-in-out;"></div>
+                        </div>
+                        <span id="global-maturity-val" style="font-size:0.9rem; font-weight:700; color:#e2e8f0; font-family:'JetBrains Mono', monospace;">0%</span>
+                    </div>
+                </div>
+                <div id="ai-global-advisor" style="font-size:0.85rem; font-weight:600; color:#3b82f6; padding:0.6rem 1rem; background:rgba(59,130,246,0.1); border-radius:12px; border:1px solid rgba(59,130,246,0.2); transition: all 0.3s ease;">
                     🌀 Analizando mejor activo...
                 </div>
             </div>
             <table id="maturity-table">
                 <thead><tr>
                     <th>Símbolo</th>
-                    <th>Tendencia (Equity)</th>
-                    <th>Madurez</th>
+                    <th>Tendencia</th>
+                    <th>Madurez (%)</th>
+                    <th>ETA de Graduación</th>
                     <th>Estatus</th>
-                    <th>Análisis (Expect./Eficiencia)</th>
-                    <th>Estabilidad</th>
-                    <th>Cap. Sugerido</th>
+                    <th>Análisis (WinRate / PF)</th>
+                    <th>Certeza (MC)</th>
+                    <th>Capital Sugerido</th>
                 </tr></thead>
                 <tbody id="maturity-tbody"></tbody>
             </table>
@@ -326,15 +608,34 @@
         <!-- AUTO-PERFECCIONADOR AUTÓNOMO -->
         <div class="card full-width">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>✨ Auto-Perfeccionador Autónomo</h2>
+                <div style="display:flex; align-items:center; gap: 15px;">
+                    <h2>✨ Auto-Perfeccionador Autónomo</h2>
+                    <button onclick="openGlossaryModal()" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; cursor:pointer; padding:6px 12px; border-radius:6px; font-size:0.75rem; font-weight:bold; transition:all 0.2s;">📖 Glosario Fases PVC</button>
+                </div>
                 <button id="btn-toggle-auto" class="auto-btn" onclick="toggleAutoTrainer()">⚡ Iniciar Autónoma</button>
             </div>
             
             <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: flex; justify-content: space-between;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
                         <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Estado del Motor</span>
                         <div id="ai-auto-status" style="font-weight: 700; color: #f59e0b; font-size: 1.1rem;">Apagado</div>
+                    </div>
+                    <div style="flex:1; margin:0 1.5rem; padding:0 1.5rem; border-left:1px solid rgba(255,255,255,0.05); border-right:1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Perfil de Vuelo</span>
+                        <div style="display:flex; gap:8px; margin-top:8px;">
+                            <button id="perf-eco" class="perf-btn" onclick="setPerfProfile('eco')" title="Modo Trabajo: Silencioso y ligero (max 2 bots)">🍃 Eco-Trabajo</button>
+                            <button id="perf-turbo" class="perf-btn active" onclick="setPerfProfile('turbo')" title="Modo Auditoría: Máxima velocidad con Protocolo PVC">🚀 Turbo-Auditoría</button>
+                        </div>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Límite Manual (MAX 10)</span>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                            <input type="number" id="ai-auto-limit" min="1" max="10" value="4" 
+                                style="width: 50px; background: #091524; border: 1px solid #1e3a5f; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;"
+                                onchange="updateAutoLimit()" oninput="previewETA()">
+                        </div>
+                        <div id="ai-auto-eta" style="font-size:0.6rem; color:#60a5fa; margin-top:4px; font-weight:bold;">ETA: Calculando...</div>
                     </div>
                     <div>
                         <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Foco Actual</span>
@@ -343,8 +644,6 @@
                     <div>
                         <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Próxima Acción</span>
                         <div id="ai-auto-action" style="font-size: 0.9rem; color: #e2e8f0; margin-top: 4px;">—</div>
-                    </div>
-                </div>
                 
                 <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
                     <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; display:block;">Cerebro de Operaciones (Logs)</span>
@@ -357,10 +656,49 @@
 
         <!-- BOTS ACTIVOS -->
         <div class="card full-width">
-            <h2>📦 Bots Activos <span id="running-count" style="color:#4ade80;font-size:0.85rem;text-transform:none;font-weight:400;"></span></h2>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:1.2rem; border-radius:8px; margin-bottom:1.5rem; display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+                <div>
+                    <div style="font-weight:600; color:#c084fc; font-size:0.8rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">⚖️ ¿Cómo leer el Puntaje?</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; line-height: 1.4; margin-bottom:0.8rem;">La calificación (0 a 100) que se le otorga al bot por su fase <strong>actual</strong>. Decide si avanza al siguiente paso o se elimina.</div>
+                    <div style="display:flex; flex-direction:column; gap:4px; font-size:0.75rem; color:#94a3b8;">
+                        <div>• <span style="color:#f87171; font-weight:600;">Negativo (&lt; 0):</span> Reprobado. Destruye dinero, por tanto el símbolo es purgado del sistema.</div>
+                        <div>• <span style="color:#60a5fa; font-weight:600;">Entre 0 y 50:</span> Inestable. Aprobando por la mínima, requiere más iteración neuronal.</div>
+                        <div>• <span style="color:#4ade80; font-weight:600;">Mayor a 50 (Verde):</span> Aprobado con Honores. Sólido Win-Rate; promociona de fase.</div>
+                    </div>
+                </div>
+                
+                <div style="border-left: 1px solid rgba(255,255,255,0.05); padding-left:1.5rem;">
+                    <div style="font-weight:600; color:#4ade80; font-size:0.8rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">🛣️ Camino de Promoción (Si el puntaje es Verde)</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; line-height: 1.4; margin-bottom:0.8rem;">Al sacar un puntaje aprobatorio, el contenedor se destruye y el símbolo se inyecta en la siguiente categoría:</div>
+                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.6rem; font-family:'JetBrains Mono', monospace;">
+                        <span style="background:rgba(192,132,252,0.1); color:#c084fc; padding:4px 8px; border-radius:4px; border:1px solid rgba(192,132,252,0.2);">1. SCOUTING</span>
+                        <span style="color:#64748b;">➔</span>
+                        <span style="background:rgba(96,165,250,0.1); color:#60a5fa; padding:4px 8px; border-radius:4px; border:1px solid rgba(96,165,250,0.2);">2. TRAINING</span>
+                        <span style="color:#64748b;">➔</span>
+                        <span style="background:rgba(251,191,36,0.1); color:#fbbf24; padding:4px 8px; border-radius:4px; border:1px solid rgba(251,191,36,0.2);">3. VALIDATING</span>
+                        <span style="color:#64748b;">➔</span>
+                        <span style="background:rgba(248,113,113,0.1); color:#f87171; padding:4px 8px; border-radius:4px; border:1px solid rgba(248,113,113,0.2);">4. STRESS-TEST</span>
+                        <span style="color:#64748b;">➔</span>
+                        <span style="background:rgba(52,211,153,0.1); color:#34d399; padding:4px 8px; border-radius:4px; border:1px solid rgba(52,211,153,0.2);">5. LIVE-SHADOW</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                <h2 style="margin:0;">📦 Bots Activos <span id="running-count" style="color:#4ade80;font-size:0.85rem;text-transform:none;font-weight:400;"></span></h2>
+                <button id="btn-global-audit" onclick="analyzeBot('GLOBAL')" class="btn-ai" style="padding:6px 14px; font-size:0.75rem; border:1px solid rgba(139, 92, 246, 0.4); background:rgba(139, 92, 246, 0.1);">
+                    🧠 Auditoría Global (IA)
+                </button>
+            </div>
             <table id="bot-table">
                 <thead><tr>
-                    <th>Símbolo</th><th>Modo</th><th>Container ID</th><th>Estado</th><th>Acciones</th>
+                    <th>Símbolo</th>
+                    <th>Modo</th>
+                    <th>Trades</th>
+                    <th title="De Bruto (\u00fanico mercado) a Neto (final despu\u00e9s de fees y slip)">PnL (Bruto \u2192 Neto) \u24d8</th>
+                    <th>Puntaje</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                 </tr></thead>
                 <tbody id="running-tbody"></tbody>
             </table>
@@ -368,25 +706,111 @@
 
         <!-- BOTS COMPLETADOS -->
         <div class="card full-width">
-            <h2>✅ Simulaciones Completadas</h2>
-            <table id="done-table">
-                <thead><tr>
-                    <th>Símbolo</th><th>Inicio Sim.</th><th>Finalizado</th><th>Trades</th><th>Win Rate</th><th>PnL</th><th>Evolución IA</th><th>Acción</th>
-                </tr></thead>
-                <tbody id="done-tbody"></tbody>
-            </table>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h2>✅ Historial de Simulaciones</h2>
+                <div style="font-size: 0.75rem; color: #64748b;">Agrupado por activo</div>
+            </div>
+            <div id="history-container">
+                <!-- Se llenará dinámicamente con grupos de símbolos -->
+            </div>
         </div>
 
     </div>
 
+    <!-- MODAL DETALLES SIMULACIÓN -->
+    <div id="sim-modal" class="modal-overlay" onclick="if(event.target==this) closeSimModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modal-title" style="margin:0;">Detalles de Simulación</h2>
+                    <div id="modal-subtitle" style="font-size:0.8rem; color:#64748b; margin-top:4px;">Iniciado el 2024-05-15</div>
+                </div>
+                <div class="modal-close" onclick="closeSimModal()">×</div>
+            </div>
+            <div class="modal-body">
+                <div id="modal-stats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:1rem; margin-bottom:2rem;">
+                    <!-- Stats cards -->
+                </div>
+                
+                <h3 style="font-size:1rem; margin-bottom:1rem; display:flex; align-items:center; gap:10px;">
+                    📈 Curva de Equidad
+                </h3>
+                <div id="modal-chart-container" style="height:150px; background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:2rem; padding:10px;">
+                    <!-- Chart canvas -->
+                </div>
+
+                <h3 style="font-size:1rem; margin-bottom:1rem; display:flex; align-items:center; gap:10px;">
+                    📅 Bitácora de Trades (Calendario)
+                </h3>
+                <div style="background:rgba(255,255,255,0.02); border-radius:12px; border:1px solid rgba(255,255,255,0.05); overflow:hidden;">
+                    <table class="trade-log-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha y Hora</th>
+                                <th>Lado</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                                <th>Resultado (Neto)</th>
+                                <th>Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-trade-log-body">
+                            <!-- Trades row -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOSSARY MODAL -->
+    <div id="pvc-modal" class="modal-overlay" onclick="if(event.target==this) closeGlossaryModal()">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <div>
+                    <h2 style="margin:0; display:flex; align-items:center; gap:10px;">📖 Glosario del Protocolo PVC</h2>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">Las 5 etapas institucionales de graduación algorítmica</div>
+                </div>
+                <div class="modal-close" onclick="closeGlossaryModal()">×</div>
+            </div>
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; border-left:4px solid #c084fc;">
+                    <strong style="color:#c084fc;">🟣 SCOUTING (Exploración)</strong>
+                    <p style="margin:0; font-size:0.85rem; color:#94a3b8; margin-top:4px; line-height:1.4;">El bot corre un primer test superficial para decidir si el símbolo tiene la liquidez y las tendencias mínimas aptas. Si falla aquí, se descarta para no perder tiempo computacional.</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; border-left:4px solid #60a5fa;">
+                    <strong style="color:#60a5fa;">🔵 TRAINING (Aprendizaje) 🧠</strong>
+                    <p style="margin:0; font-size:0.85rem; color:#94a3b8; margin-top:4px; line-height:1.4;">Fase intensiva y pesada. La Red Neuronal se alimenta del mercado pasado, iterando y optimizando sus pesos internos repetidamente para memorizar cuándo es bueno comprar.</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; border-left:4px solid #fbbf24;">
+                    <strong style="color:#fbbf24;">🟡 VALIDATING (Validación Ciega - Out of Sample) 🔒</strong>
+                    <p style="margin:0; font-size:0.85rem; color:#94a3b8; margin-top:4px; line-height:1.4;">El primer examen duro. El cerebro de la IA se congela (deja de modificar sus pesos) y se obliga a operar un periodo de tiempo que nunca había visto. Evita la falsa memorización.</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; border-left:4px solid #f87171;">
+                    <strong style="color:#f87171;">🔴 STRESS-TEST (Prueba de Estrés) 🔒</strong>
+                    <p style="margin:0; font-size:0.85rem; color:#94a3b8; margin-top:4px; line-height:1.4;">Si la validación fue exitosa, la red neuronal (aún congelada) es enviada a un periodo del mercado asquerosamente volátil o en "crash". La auditoría Monte Carlo mide su robustez.</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:8px; border-left:4px solid #34d399;">
+                    <strong style="color:#34d399;">🟢 LIVE-SHADOW (Operativa en Vivo) 🔒 — 🏆 STATUS ELITE</strong>
+                    <p style="margin:0; font-size:0.85rem; color:#94a3b8; margin-top:4px; line-height:1.4;">Superó todos los escollos matemáticos. Ahora opera paper-trading totalmente conectada a mercado en vivo, esperando graduarse a Live Trading real con dinero de fondeo.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // ─── MODALS ─────────────────────────────────────────────
+        function openGlossaryModal() { document.getElementById('pvc-modal').style.display = 'flex'; }
+        function closeGlossaryModal() { document.getElementById('pvc-modal').style.display = 'none'; }
+
         // ─── ANALYST TOOLS ──────────────────────────────────────
-        function drawSparkline(data, colorClass = '') {
+        function drawSparkline(data, size = 'small') {
             if (!data || data.length < 2) return '<span style="color:#475569; font-size:10px;">Sin historial</span>';
             
-            const width = 100;
-            const height = 30;
-            const padding = 2;
+            const isBig = size === 'big';
+            const width = isBig ? 800 : 100;
+            const height = isBig ? 150 : 30;
+            const padding = isBig ? 10 : 2;
             
             const min = Math.min(...data);
             const max = Math.max(...data);
@@ -402,9 +826,9 @@
             const trendColor = trend > 0 ? 'sparkline-path-positive' : (trend < 0 ? 'sparkline-path-negative' : '');
 
             return `
-                <div class="sparkline-container">
-                    <svg class="sparkline-svg" viewBox="0 0 ${width} ${height}">
-                        <polyline class="sparkline-path ${trendColor}" points="${points}" />
+                <div class="sparkline-container" style="width:100%; height:100%;">
+                    <svg class="sparkline-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                        <polyline class="sparkline-path ${trendColor}" points="${points}" style="stroke-width:${isBig ? 3 : 2};" />
                     </svg>
                 </div>
             `;
@@ -424,307 +848,293 @@
             } catch(e) { console.error('bank', e); }
         }
 
-        // ─── DOCKER STATUS ──────────────────────────────────────
+        // ─── DOCKER STATUS & NOTIFICATIONS ─────────────────────
         let lastRunningSymbols = new Set();
         let isFirstLoad = true;
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container') || (() => {
+                const c = document.createElement('div');
+                c.id = 'toast-container';
+                c.style.cssText = 'position:fixed; top:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+                document.body.appendChild(c);
+                return c;
+            })();
+            
+            const colors = {
+                error:   { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.4)',  icon: '❌', accent: '#f87171' },
+                warn:    { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)', icon: '⚠️', accent: '#fbbf24' },
+                success: { bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.4)',  icon: '✅', accent: '#4ade80' },
+                info:    { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.4)', icon: 'ℹ️', accent: '#60a5fa' },
+            };
+            const c = colors[type] || colors.info;
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<span>${message}</span><span class="toast-close" onclick="this.parentElement.remove()">×</span>`;
+            toast.style.cssText = `background:${c.bg}; border:1px solid ${c.border}; border-radius:12px; padding:12px 16px; display:flex; align-items:flex-start; gap:12px; max-width:320px; box-shadow:0 8px 32px rgba(0,0,0,0.3); pointer-events:all; animation: toastIn 0.3s forwards; font-family:sans-serif;`;
+            toast.innerHTML = `<span style="font-size:18px;">${c.icon}</span><div style="flex:1; color:white; font-size:0.85rem; line-height:1.4;">${msg}</div>`;
             container.appendChild(toast);
-            
-            // Trigger animation
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            // Auto hide after 12 seconds so user can read details
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 12000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 8000);
         }
 
         async function fetchBots() {
             try {
                 const res = await fetch('/api/docker/status');
                 const d = await res.json();
+                const containers = d.containers || [];
+                const currentSymbols = new Set(containers.map(c => c.symbol));
 
-                const currentRunning = new Set((d.containers || []).map(c => c.symbol));
-                
-                // Detectar si alguno terminó
+                // Notify finished
                 if (!isFirstLoad) {
                     lastRunningSymbols.forEach(sym => {
-                        if (!currentRunning.has(sym)) {
-                            // Estaba antes, ya no está. Revisar si está en completados
-                            const completedBot = (d.completed || []).find(b => b.symbol === sym);
-                            if (completedBot) {
-                                const pnl = completedBot.pnl || 0;
-                                const trades = completedBot.trades || 0;
-                                const wrRaw = completedBot.win_rate != null ? completedBot.win_rate : null;
-                                const wr = wrRaw != null ? (wrRaw <= 1.0 ? wrRaw * 100 : wrRaw).toFixed(1) + '%' : '—';
-                                const mStatus = completedBot.mastery_status || "APRENDIENDO";
-                                
-                                let readinessMsg = "";
-                                if (mStatus === "LISTO PARA VIVO") {
-                                    readinessMsg = "<br><span style='color:#10b981;font-weight:bold;font-size:0.85rem;'>🟢 IA APROBADA: ¡Símbolo LISTO para LIVE!</span>";
-                                } else if (pnl > 0) {
-                                    readinessMsg = "<br><span style='color:#f59e0b;font-weight:bold;font-size:0.85rem;'>🟡 Gana dinero pero falta madurez. Mas simulaciones sugeridas.</span>";
-                                } else {
-                                    readinessMsg = "<br><span style='color:#ef4444;font-weight:bold;font-size:0.85rem;'>🔴 Sigue perdiendo. Repetir entrenamiento.</span>";
-                                }
-
-                                const details = `<br><span style="font-size:0.8rem;color:#cbd5e1;font-family:'JetBrains Mono',monospace;">Trades: ${trades} | WR: ${wr} | PnL: $${pnl.toFixed(2)}</span>${readinessMsg}`;
-                                const toastType = pnl > 0 ? 'success' : 'info';
-
-                                showToast(`✅ Simulación de <b>${sym}</b> Finalizada${details}`, toastType);
-                            }
+                        if (!currentSymbols.has(sym)) {
+                            const bot = (d.completed || []).find(b => b.symbol === sym);
+                            if (bot) showToast(`✅ Simulación <b>${sym}</b> Finalizada. PnL: $${(bot.pnl||0).toFixed(2)}`, bot.pnl > 0 ? 'success' : 'info');
                         }
                     });
                 }
-                lastRunningSymbols = currentRunning;
+                lastRunningSymbols = currentSymbols;
                 isFirstLoad = false;
 
-                // --- Bots corriendo ---
-                const runningTbody = document.getElementById('running-tbody');
-                const containers = d.containers || [];
-                document.getElementById('running-count').textContent =
-                    containers.length ? `(${containers.length} activo${containers.length > 1 ? 's' : ''})` : '';
-                document.getElementById('ai-instances').textContent = containers.length;
-
-                // --- IA Central Stats ---
-                if (d.ai) {
-                    const statusDiv = document.getElementById('ai-status');
-                    statusDiv.innerHTML = `
-                        <div style="margin-top:10px; display:flex; flex-direction:column; gap:4px;">
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:#64748b;">Muestras de Aprendizaje:</span>
-                                <span style="color:white; font-weight:bold;">${d.ai.total_samples} trades</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:#64748b;">Estatus de IA:</span>
-                                <span style="color:${d.ai.ai_mode === 'MLP' ? '#4ade80' : '#fb923c'}; font-weight:bold;">${d.ai.ai_mode === 'MLP' ? 'ENTRENADO 🧠' : 'COLD-START ❄️'}</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:13px;">
-                                <span style="color:#64748b;">Precisión del Modelo:</span>
-                                <span style="color:${d.ai.model_accuracy >= 50 ? '#00ffd5' : '#ff4f4f'}; font-weight:bold;">${d.ai.model_accuracy}%</span>
-                            </div>
-                        </div>
-                    `;
-                }
+                // Update Table
+                const tbody = document.getElementById('running-tbody');
+                document.getElementById('running-count').textContent = containers.length ? `(${containers.length} activos)` : '';
 
                 if (containers.length === 0) {
-                    runningTbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No hay bots corriendo</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No hay procesos activos</td></tr>';
                 } else {
-                    runningTbody.innerHTML = '';
-                    containers.forEach(c => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td style="font-weight:600;">${c.symbol}</td>
-                            <td>${c.mode}</td>
-                            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">${c.id}</td>
+                    tbody.innerHTML = containers.map(c => {
+                        const pnlNet = c.pnl_net || 0;
+                        const pnlGross = c.pnl_gross || 0;
+                        const pnlColor = pnlNet >= 0 ? '#4ade80' : '#ef4444';
+                        const grossColor = pnlGross >= 0 ? '#4ade80' : '#ef4444';
+                        const pfx = pnlNet >= 0 ? '+' : '';
+                        const gpfx = pnlGross >= 0 ? '+' : '';
+                        const progress = c.progress || 0;
+                        const score = c.score || 0;
+
+                        return `
+                        <tr>
+                            <td>
+                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                    <span style="font-weight:700; font-size:1.1rem; display:flex; align-items:center;">
+                                        ${c.symbol}
+                                        ${(() => {
+                                            if (!c.stage) return '';
+                                            const frozen = c.stage !== 'SCOUTING' && c.stage !== 'TRAINING' ? ' 🔒' : '';
+                                            const cls = c.stage === 'SCOUTING' ? 'stage-scouting'
+                                                        : c.stage === 'TRAINING' ? 'stage-training'
+                                                        : c.stage === 'VALIDATING' ? 'stage-validating'
+                                                        : c.stage === 'STRESS-TEST' ? 'stage-stress'
+                                                        : c.stage === 'LIVE-SHADOW' ? 'stage-shadow'
+                                                        : 'stage-training';
+                                            const stageDesc = c.stage === 'SCOUTING' ? 'Exploración inicial. Filtra si el símbolo es apto.'
+                                                            : c.stage === 'TRAINING' ? 'Aprendizaje profundo. La red absorbe patrones históricos.'
+                                                            : c.stage === 'VALIDATING' ? 'Examen Ciego. Opera sin aprender para evitar la memorización.'
+                                                            : c.stage === 'STRESS-TEST' ? 'Prueba Monte Carlo bajo condiciones extremas y volatilidad.'
+                                                            : c.stage === 'LIVE-SHADOW' ? 'Status Elite. Operando tiempo real en latencia cero.' : '';
+                                            return `<span class="stage-badge pvc-tooltip ${cls}" data-tooltip="${stageDesc}" style="margin-left:8px; font-size:0.6rem; padding:2px 6px;">${c.stage}${frozen}</span>`;
+                                        })()}
+                                    </span>
+                                    <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; position:relative;">
+                                        <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, #3b82f6, #06b6d4); transition: width 0.5s ease; border-radius:10px;"></div>
+                                    </div>
+                                    <span style="font-size:0.65rem; color:#94a3b8; font-family:monospace;">${parseFloat(progress).toFixed(1)}% completado${c.eta_str || ''}</span>
+                                </div>
+                            </td>
+                            <td style="font-size:0.75rem; color:#94a3b8; border-left:1px solid rgba(255,255,255,0.05); padding-left:12px;">
+                                <div style="display:flex; flex-direction:column; gap:4px;">
+                                    <span>${c.mode}</span>
+                                    ${c.sim_start_date && c.sim_end_date ? `<span style="font-family:'JetBrains Mono', monospace; font-size:0.65rem; color:#64748b;">${c.sim_start_date} <br/>→ ${c.sim_end_date}</span>` : ''}
+                                </div>
+                            </td>
+                            <td style="font-weight:600; font-family:'JetBrains Mono', monospace;">
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span>${c.session_trades || 0}</span>
+                                    ${(c.trades > (c.session_trades || 0)) ? `<span style="font-size:0.65rem; color:#64748b; font-weight:normal;" title="Total Acumulado (Historial + Sesión)">Acum: ${c.trades}</span>` : ''}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="color:${(c.session_pnl_net || 0) >= 0 ? '#4ade80' : '#ef4444'}; font-weight:800; font-size:1.1rem; font-family:'JetBrains Mono', monospace;">
+                                        ${(c.session_pnl_net || 0) >= 0 ? '+' : ''}$${(c.session_pnl_net || 0).toFixed(2)}
+                                    </span>
+                                    <span style="font-size:0.7rem; color:#64748b;" title="PnL Neto Total (Banco)">Banco: <span style="color:${pnlColor}">${pfx}$${pnlNet.toFixed(2)}</span></span>
+                                </div>
+                            </td>
+                            <td><span style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:bold; color:${score >= 50 ? '#4ade80' : score > 0 ? '#60a5fa' : '#f87171'};">${score.toFixed(1)}</span></td>
                             <td><span class="pill pill-running"><span class="dot dot-green"></span>running</span></td>
-                            <td style="display:flex;gap:6px;flex-wrap:wrap;">
-                                <button class="btn-kill" onclick="killBot('${c.symbol}')">⛔ Kill</button>
-                                <button class="btn-console" onclick="openConsole('${c.symbol}')">💻 Consola</button>
-                            </td>`;
-                        runningTbody.appendChild(tr);
-                    });
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    <button class="btn-console" onclick="openConsole('${c.symbol}')" title="Abrir Consola Individual">💻</button>
+                                    <button class="btn-kill" onclick="killBot('${c.symbol}')" title="Detener Instancia">🛑 Matar</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('');
                 }
 
-                // --- Bots completados ---
-                const doneTbody = document.getElementById('done-tbody');
-                const maturityTbody = document.getElementById('maturity-tbody');
-                const maturityHub = document.getElementById('maturity-hub-card');
-                const completed = d.completed || [];
-                
-                if (completed.length === 0) {
-                    doneTbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Ninguna simulación finalizada todavía</td></tr>';
-                    maturityHub.style.display = 'none';
-                } else {
-                    doneTbody.innerHTML = '';
-                    maturityTbody.innerHTML = '';
-                    maturityHub.style.display = 'block';
+                renderGroupedHistory(d.completed || []);
+                if (d.ai) updateAIStats(d.ai);
 
-                    let bestSymbol = null;
-                    let maxPF = 0;
+            } catch(e) { console.error('fetchBots error', e); }
+        }
 
-                    const latestPerSymbol = {};
+        function updateAIStats(ai) {
+            // Maturity Badge
+            const badge = document.getElementById('ai-maturity-badge');
+            if (ai.ai_mode === 'MLP') {
+                const frozen = !!ai.is_frozen;
+                badge.textContent = frozen ? 'Optimizado' : 'Aprendiendo';
+                badge.style.background = frozen ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+                badge.style.color = frozen ? '#4ade80' : '#60a5fa';
+                badge.style.borderColor = frozen ? 'rgba(34, 197, 94, 0.2)' : 'rgba(59, 130, 246, 0.2)';
+            } else {
+                badge.textContent = 'Cold-Start';
+                badge.style.background = 'rgba(245, 158, 11, 0.1)';
+                badge.style.color = '#f59e0b';
+                badge.style.borderColor = 'rgba(245, 158, 11, 0.2)';
+            }
 
-                    completed.forEach(b => {
-                        // --- Fila en Tabla de Completados ---
-                        const pnl = b.pnl || 0;
-                        const pnlClass = pnl >= 0 ? 'green' : 'red';
-                        
-                        // Fix for raw win rate values vs pre-multiplied percentages
-                        let wrRaw = b.win_rate != null ? b.win_rate : null;
-                        if (wrRaw != null && wrRaw <= 1.0) wrRaw = wrRaw * 100; // Only multiply if fractional
-                        const wr = wrRaw != null ? wrRaw.toFixed(1) + '%' : '—';
-                        
-                        const tr = document.createElement('tr');
-                        if (new Date() - new Date(b.finished_at) < 15000) tr.className = 'row-new';
+            // Stats update with precision
+            document.getElementById('ai-arch').textContent = ai.architecture || 'DUMMY';
+            document.getElementById('ai-memory').textContent = ai.memory_usage_kb ? `${ai.memory_usage_kb} KB` : '0 KB';
+            document.getElementById('ai-total-samples').textContent = ai.total_samples.toLocaleString();
+            document.getElementById('ai-acc-val').textContent = `${ai.model_accuracy}%`;
+            document.getElementById('ai-acc-bar').style.width = `${ai.model_accuracy}%`;
+            document.getElementById('ai-features').textContent = ai.features_count || 13;
+        }
 
-                        // Calculate Evolution by looking for the chronologically previous simulation of the same symbol
-                        let evolutionHtml = '<span style="color:#64748b;font-size:0.75rem;">Primera vez</span>';
-                        let pastSymRuns = [];
-                        // We use the full completed array and find the next occurrence of this symbol (since array is reverse chronological)
-                        const currentIdx = completed.findIndex(x => x === b);
-                        if (currentIdx !== -1) {
-                            pastSymRuns = completed.slice(currentIdx + 1).filter(past => past.symbol === b.symbol);
-                        }
-                        const prevRun = pastSymRuns.length > 0 ? pastSymRuns[0] : null;
+        // --- Mastery Hub Polling ---
+        async function updateMasteryHub() {
+            try {
+                const [r1, r2] = await Promise.all([
+                    fetch('/api/mastery/rankings'),
+                    fetch('/api/mastery/exposure')
+                ]);
+                const rankings = await r1.json();
+                const exposure = await r2.json();
 
-                        if (prevRun) {
-                            const pnlDiff = pnl - (prevRun.pnl || 0);
-                            const diffColor = pnlDiff > 0 ? '#4ade80' : (pnlDiff < 0 ? '#f87171' : '#cbd5e1');
-                            const diffSign = pnlDiff > 0 ? '▲ +$' : (pnlDiff < 0 ? '▼ -$' : '=$');
-                            evolutionHtml = `<div style="display:flex; align-items:center;">
-                                             <span style="color:${diffColor}; font-weight:700; font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${diffSign}${Math.abs(pnlDiff).toFixed(2)}</span>
-                                             </div>`;
-                        }
-                        
-                        tr.innerHTML = `
-                            <td style="font-weight:600;">${b.symbol}</td>
-                            <td style="color:#4ade80;font-size:0.8rem;font-family:'JetBrains Mono',monospace;">${b.sim_start_date || '—'}</td>
-                            <td style="color:#64748b;font-size:0.8rem;">${b.finished_at || '—'}</td>
-                            <td>${b.trades ?? '—'}</td>
-                            <td>${wr}</td>
-                            <td class="${pnlClass}" style="font-family:'JetBrains Mono',monospace;">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</td>
-                            <td>${evolutionHtml}</td>
-                            <td><button class="btn-dismiss" onclick="dismissBot('${b.run_id || b.symbol}')">🗑 Limpiar</button></td>`;
-                        doneTbody.appendChild(tr);
-
-                        if (!latestPerSymbol[b.symbol]) {
-                            latestPerSymbol[b.symbol] = b;
-                        }
-                    });
-
-                    // --- Filas agrupadas en Maturity Hub ---
-                    Object.values(latestPerSymbol).forEach(b => {
-                        const mScore = b.mastery_score || 0;
-                        const mStatus = b.mastery_status || "APRENDIENDO";
-                        const mPF = b.actual_profit_factor || 0;
-                        const mDD = b.actual_max_drawdown || 0;
-                        const mCash = b.recommended_cash || 500;
-                        const mExpect = b.expectancy || 0;
-                        const mEff = b.efficiency || 0;
-                        const mStab = b.stability_score || 0;
-                        const mHistory = b.equity_history || [];
-                        
-                        if (mPF > maxPF) { maxPF = mPF; bestSymbol = b.symbol; }
-
-                        const tagClass = mStatus === "LISTO PARA VIVO" ? "tag-ready" : 
-                                       mStatus === "VALIDANDO" ? "tag-validating" : "tag-learning";
-
-                        const stabColor = mStab > 70 ? '#10b981' : mStab > 40 ? '#f59e0b' : '#ef4444';
-
-                        const mTr = document.createElement('tr');
-                        mTr.innerHTML = `
-                            <td style="font-weight:700;">${b.symbol}</td>
-                            <td>${drawSparkline(mHistory)}</td>
-                            <td>
-                                <div class="mastery-progress-bg"><div class="mastery-progress-fill" style="width:${mScore}%"></div></div>
-                                <span style="font-size:0.8rem; font-weight:bold;">${mScore.toFixed(0)}%</span>
-                            </td>
-                            <td><span class="${tagClass}">${mStatus}</span></td>
-                            <td>
-                                <span class="metric-pro">Expectancia: <b style="color:${mExpect >= 0 ? '#4ade80' : '#f87171'}">$${mExpect.toFixed(2)}</b></span>
-                                <span class="metric-pro">Eficiencia: <b style="color:${mEff > 80 ? '#4ade80' : '#fb923c'}">${mEff.toFixed(1)}%</b></span>
-                            </td>
-                            <td>
-                                <div style="display:flex; align-items:center;">
-                                    <span class="stability-badge" style="background:${stabColor}"></span>
-                                    <span style="font-family:'JetBrains Mono',monospace; font-weight:700;">${mStab.toFixed(1)}</span>
-                                </div>
-                                <span style="font-size:0.65rem; color:#64748b;">Profit Factor: ${mPF.toFixed(2)}</span>
-                            </td>
-                            <td style="font-weight:600; color:#3b82f6;">$${mCash.toLocaleString()}</td>
-                        `;
-                        maturityTbody.appendChild(mTr);
-                    });
-
-                    // --- Global Advisor & Concentration Check ---
-                    const advisor = document.getElementById('ai-global-advisor');
-                    const activeSymbols = Array.from(lastRunningSymbols);
+                const tbody = document.getElementById('maturity-tbody');
+                if (tbody && rankings.rankings) {
+                    const card = document.getElementById('maturity-hub-card');
+                    if (card) card.style.display = rankings.rankings.length ? 'block' : 'none';
                     
-                    // Lógica de Correlación (Sectores)
-                    const sectors = {
-                        // Tecnología
-                        'AAPL': 'TECH', 'NVDA': 'TECH', 'MSFT': 'TECH', 'TSLA': 'TECH/AUTO',
-                        'AMD': 'TECH', 'INTC': 'TECH', 'GOOGL': 'TECH', 'META': 'TECH',
-                        'NFLX': 'TECH', 'CRM': 'TECH', 'ADBE': 'TECH', 'ORCL': 'TECH',
-                        'SHOP': 'TECH', 'UBER': 'TECH', 'LYFT': 'TECH', 'SNAP': 'TECH',
-                        'TWLO': 'TECH', 'ZM': 'TECH', 'PLTR': 'TECH', 'COIN': 'TECH',
-                        // Retail / E-commerce
-                        'AMZN': 'RETAIL/TECH', 'WMT': 'RETAIL', 'TGT': 'RETAIL', 'COST': 'RETAIL',
-                        // Índices / ETFs
-                        'SPY': 'INDEX', 'QQQ': 'INDEX', 'IWM': 'INDEX', 'DIA': 'INDEX',
-                        'VTI': 'INDEX', 'VOO': 'INDEX', 'ARKK': 'INDEX', 'XLK': 'INDEX',
-                        // Finanzas
-                        'JPM': 'FINANCE', 'BAC': 'FINANCE', 'GS': 'FINANCE', 'MS': 'FINANCE',
-                        'WFC': 'FINANCE', 'C': 'FINANCE', 'BRK.B': 'FINANCE', 'V': 'FINANCE', 'MA': 'FINANCE',
-                        // Salud
-                        'JNJ': 'HEALTH', 'UNH': 'HEALTH', 'PFE': 'HEALTH', 'MRNA': 'HEALTH',
-                        'ABBV': 'HEALTH', 'LLY': 'HEALTH', 'CVS': 'HEALTH',
-                        // Energía
-                        'XOM': 'ENERGY', 'CVX': 'ENERGY', 'COP': 'ENERGY', 'SLB': 'ENERGY',
-                        // Consumo
-                        'MCD': 'CONSUMER', 'SBUX': 'CONSUMER', 'NKE': 'CONSUMER', 'PG': 'CONSUMER',
-                        'KO': 'CONSUMER', 'PEP': 'CONSUMER', 'DIS': 'CONSUMER',
-                    };
+                    // Actualizar Madurez Global
+                    if (rankings.summary) {
+                        const maturity = rankings.summary.global_maturity;
+                        document.getElementById('global-maturity-val').innerText = `${maturity}%`;
+                        document.getElementById('global-maturity-bar').style.width = `${maturity}%`;
+                        
+                        // Guardar datos para el ETA dinámico
+                        window.avg_dur = rankings.summary.avg_sim_duration;
+                        window.avg_trades = rankings.summary.avg_trades_per_sim;
+                        window.pending_trades = rankings.rankings.reduce((acc, r) => acc + Math.max(0, 30 - r.total_trades), 0);
+                        previewETA(); // Actualizar ETA con los nuevos datos
+                    }
                     
-                    const activeSectors = activeSymbols.map(s => sectors[s] || null);
-                    // Solo consideramos sectores conocidos para la alerta de concentración
-                    // (two 'OTHER'/unknown symbols don't imply correlation)
-                    const knownSectors = activeSectors.filter(s => s !== null);
-                    const sectorCounts = knownSectors.reduce((acc, s) => { acc[s] = (acc[s] || 0) + 1; return acc; }, {});
-                    const overloadedSectors = Object.keys(sectorCounts).filter(s => sectorCounts[s] > 1);
+                    tbody.innerHTML = rankings.rankings.slice(0, 10).map(m => {
+                        // Desglose de fórmula para transparencia
+                        const wr_score = (Math.min(m.win_rate, 100) * 0.40).toFixed(1);
+                        const pf_score = (Math.min(m.profit_factor * 50, 100) * 0.40).toFixed(1);
+                        const exp_score = (Math.min(m.total_trades, 100) * 0.20).toFixed(1);
+                        const formulaTooltip = `PVC AUDITOR:\n- Acierto: ${wr_score}\n- Ganancia: ${pf_score}\n- Exp: ${exp_score}\n- Riesgo Ruina: ${m.risk_of_ruin || 0}%\n- Peor DD (MC): ${m.audit_drawdown || 0}%`;
+                        
+                        // Cálculo de ETA individual
+                        const remTrades = Math.max(0, 30 - m.total_trades);
+                        const remSims = remTrades / (window.avg_trades || 10.6);
+                        const remMins = remSims * (window.avg_dur || 6.1);
+                        let etaText = `<span style="color:#10b981; font-weight:700;">GRADUADO 🎓</span>`;
+                        if (remTrades > 0) {
+                            const timeStr = remMins < 60 ? `~${Math.ceil(remMins)}m` : `~${(remMins/60).toFixed(1)}h`;
+                            etaText = `<div style="display:flex; flex-direction:column;">
+                                <span style="color:#60a5fa; font-weight:700;">${timeStr}</span>
+                                <span style="font-size:0.65rem; color:#64748b;">Faltan ${remTrades} trades</span>
+                            </div>`;
+                        }
+                        
+                        const pvcDesc = {
+                            'SCOUTING': 'Exploración inicial de mercado.',
+                            'TRAINING': 'Aprendizaje Activo: La IA está ajustando sus pesos neuronales.',
+                            'VALIDATING': 'Validación Ciega (OOS): Pesos CONGELADOS. Prueba de fuego contra datos desconocidos.'
+                        }[m.pvc_stage] || 'Fase Desconocida';
 
-                    if (overloadedSectors.length > 0) {
-                        advisor.innerHTML = `⚠️ ALERTA: Concentración de Riesgo en sector <b>${overloadedSectors.join(', ')}</b>`;
-                        advisor.style.background = "rgba(239, 68, 68, 0.1)";
-                        advisor.style.color = "#ef4444";
-                        advisor.style.borderColor = "rgba(239, 68, 68, 0.3)";
-                    } else if (bestSymbol && maxPF >= 1) {
-                        advisor.innerHTML = `✨ Recomendado: <b style="color:white;">${bestSymbol}</b> (PF: ${maxPF.toFixed(2)})`;
-                        advisor.style.background = "rgba(16,185,129,0.1)";
-                        advisor.style.color = "#10b981";
-                        advisor.style.borderColor = "rgba(16,185,129,0.3)";
+                        const statusText = m.status === 'LEARNING' ? `LEARNING (${m.total_trades}/30)` : m.status;
+                        const statusTooltip = `Fase PVC: ${m.pvc_stage}\n${pvcDesc}`;
+
+                        return `
+                        <tr>
+                            <td style="font-weight:700;">${m.symbol}</td>
+                            <td><div class="mastery-progress-bg"><div class="mastery-progress-fill" style="width:${m.rank}%"></div></div></td>
+                            <td title="${formulaTooltip}" style="cursor:help;"><b>${m.rank}%</b> ℹ️</td>
+                            <td>${etaText}</td>
+                            <td>
+                                <span class="tag-${m.status.toLowerCase().replace(' ', '-')}" title="${statusTooltip}" style="cursor:help; display:inline-block;">
+                                    ${statusText}
+                                </span>
+                            </td>
+                            <td style="font-size:0.75rem;">WR: <b>${m.win_rate}%</b> | PF: <b>${m.profit_factor}</b></td>
+                            <td style="font-weight:700; color:#10b981;" title="Auditoría Monte Carlo">Certeza: ${m.confidence_score || 0}% <span style="font-size:0.6rem; color:#94a3b8;">(±${m.audit_drawdown || 0}%)</span></td>
+                            <td style="color:#3b82f6; font-weight:700;">$${m.suggested_capital ? m.suggested_capital.toLocaleString() : 0}</td>
+                        </tr>`;
+                    }).join('');
+                }
+
+                const advisor = document.getElementById('ai-global-advisor');
+                if (advisor) {
+                    const exposureData = exposure.exposure || {};
+                    const overloaded = Object.entries(exposureData).filter(([x,c]) => c >= 2);
+                    if (overloaded.length) {
+                        advisor.innerHTML = `⚠️ Riesgo: ${overloaded[0][0]}`;
+                        advisor.style.borderColor = "#ef4444";
                     } else {
-                        advisor.innerHTML = "🌀 IA: Necesito más datos para recomendar.";
+                        advisor.innerHTML = "🌀 IA: Portafolio Estable";
+                        advisor.style.borderColor = "rgba(59,130,246,0.2)";
                     }
                 }
-            } catch(e) { console.error('bots', e); }
+            } catch(e) { console.error('MasteryHub error:', e); }
         }
 
         // ─── ACTIONS ────────────────────────────────────────────
         function isValidDate(str) {
             if (!str) return true; // vacío = sin filtro, válido
-            const d = new Date(str);
-            // new Date("2021-02-31") NO lanza error, crea March 3.
-            // Para detectarlo, re-formateamos y comparamos.
-            if (isNaN(d.getTime())) return false;
-            const [y, m, day] = str.split('-').map(Number);
-            return d.getFullYear() === y && (d.getMonth() + 1) === m && d.getDate() === day;
+            // El input type="date" siempre devuelve YYYY-MM-DD, pero por si acaso aceptamos slashes
+            const separator = str.includes('-') ? '-' : (str.includes('/') ? '/' : null);
+            if (!separator) return false;
+
+            const parts = str.split(separator);
+            if (parts.length !== 3) return false;
+
+            let y, m, day;
+            if (separator === '-') {
+                [y, m, day] = parts.map(Number);
+            } else {
+                // Asumir DD/MM/YYYY si se usa slash
+                [day, m, y] = parts.map(Number);
+            }
+
+            if (!y || !m || !day) return false;
+            if (y < 1000) return false; // Año inválido
+
+            const d = new Date(Date.UTC(y, m - 1, day));
+            return d.getUTCFullYear() === y && (d.getUTCMonth() + 1) === m && d.getUTCDate() === day;
         }
 
         async function launchBot() {
             const sym = document.getElementById('sym-input').value;
-            const startDate = document.getElementById('date-input').value; // puede ser vacío
-            const endDate = document.getElementById('date-end-input').value; // puede ser vacío
-            if (!sym) { alert('Selecciona un símbolo primero'); return; }
+            const startDate = document.getElementById('date-input').value;
+            const endDate = document.getElementById('date-end-input').value;
+            if (!sym) { showToast('Selecciona un símbolo primero', 'warn'); return; }
 
             // ── Validar fechas antes de enviar ────────────────────────────
             if (!isValidDate(startDate)) {
-                alert(`❌ Fecha de INICIO inválida: "${startDate}"\nEjemplo correcto: 2021-01-31\n(Recuerda que Febrero tiene máx. 28 o 29 días)`);
+                showToast(`Fecha de inicio <b>${startDate}</b> no existe.<br>Revisa que el día sea válido para ese mes.`, 'error');
                 return;
             }
             if (!isValidDate(endDate)) {
-                alert(`❌ Fecha de FIN inválida: "${endDate}"\nEjemplo correcto: 2021-02-28\n(Recuerda que Febrero tiene máx. 28 o 29 días)`);
+                showToast(`Fecha de fin <b>${endDate}</b> no existe.<br>Revisa que el día sea válido para ese mes.`, 'error');
                 return;
             }
-            if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
-                alert(`❌ La fecha de FIN debe ser posterior a la de INICIO.\nInicio: ${startDate}\nFin:    ${endDate}`);
+            if (startDate && endDate && endDate <= startDate) {
+                showToast(`La fecha de fin debe ser posterior al inicio.<br><b>${startDate}</b> → <b>${endDate}</b>`, 'error');
                 return;
             }
 
@@ -750,13 +1160,33 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
-                const d = await res.json();
-                if (d.status === 'error') { alert('Error: ' + d.message); return; }
+                
+                let d;
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    d = await res.json();
+                } else {
+                    const text = await res.text();
+                    console.error("Respuesta no-JSON recibida:", text);
+                    showToast(`Error del servidor (${res.status}): Respuesta no es JSON.`, 'error');
+                    return;
+                }
+
+                if (!res.ok || d.status === 'error') {
+                    showToast(d.message || `Fallo en el servidor (${res.status})`, 'error');
+                    return;
+                }
+
                 document.getElementById('sym-input').value = '';
+                showToast(`Worker <b>${sym}</b> lanzado correctamente 🚀`, 'success');
                 logAI(`🚀 Worker ${sym} lanzado → entrenando IA Central…`);
                 fetchBots();
-            } catch(e) { alert('Fallo al lanzar: ' + e.message); }
+            } catch(e) { 
+                console.error("Error en launchBot:", e);
+                showToast('Error de red o de sistema: ' + e.message, 'error'); 
+            }
         }
+
 
         async function killBot(sym) {
             // Optimistic UI update: deshabilitar botones y cambiar texto para feedback visual inmediato
@@ -787,6 +1217,177 @@
             window.open(`http://localhost:8080/?symbol=${sym}`, '_blank');
         }
 
+        // --- AI Analyst ---
+        window.aiAuditCache = {}; // { sym: { time: Date, audit: str } }
+        window.aiAuditCooldown = null; // Cooldown timestamp
+
+        function closeAIModal() {
+            document.getElementById('ai-modal-overlay').style.display = 'none';
+        }
+
+        async function analyzeBot(sym, force = false) {
+            console.log(`[DIAGNOSTIC] analyzeBot called for: ${sym} (force: ${force})`);
+            console.trace("Rastreo de llamada a analyzeBot");
+
+            // Si hay un cooldown activo para el botón global
+            if (sym === 'GLOBAL' && window.aiAuditCooldown && Date.now() < window.aiAuditCooldown) {
+                console.warn("[DIAGNOSTIC] Bloqueado por COOLDOWN activo.");
+                return;
+            }
+
+            const overlay = document.getElementById('ai-modal-overlay');
+            const content = document.getElementById('ai-modal-content');
+            const symLabel = document.getElementById('ai-modal-symbol');
+            const speakBtn = document.getElementById('btn-ai-speak');
+            const globalBtn = document.getElementById('btn-global-audit');
+            
+            // Parar cualquier audio anterior
+            window.speechSynthesis.cancel();
+            speakBtn.style.display = 'none';
+
+            // ── VERIFICAR CACHÉ (Evitar 429 quota exhausted) ──────────
+            const now = Date.now();
+            if (!force && window.aiAuditCache[sym] && (now - window.aiAuditCache[sym].time < 300000)) { // 5 min cache
+                console.log("[DIAGNOSTIC] Cargando desde CACHÉ local.");
+                showAuditResult(sym, window.aiAuditCache[sym].audit, true);
+                return;
+            }
+
+            symLabel.innerText = sym === 'GLOBAL' ? 'Reporte General del Fondo' : `Símbolo: ${sym}`;
+            content.innerHTML = `
+                <div style="text-align:center; padding:40px;">
+                    <div class="brain-loader">🧠</div>
+                    <div style="color:#a78bfa;">${sym === 'GLOBAL' ? 'Generando Auditoría Global...' : 'Conectando con Gemini 2.0 Flash...'}</div>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:10px;">${sym === 'GLOBAL' ? 'Analizando banco, muestras de IA y simulaciones activas.' : `Analizando métricas para <b>${sym}</b>.`}</div>
+                </div>
+            `;
+            overlay.style.display = 'flex';
+            
+            try {
+                const endpoint = sym === 'GLOBAL' ? '/api/ai/analyze/global' : `/api/ai/analyze/${sym}`;
+                console.log(`[DIAGNOSTIC] Fetching endpoint: ${endpoint}`);
+                const res = await fetch(endpoint);
+                const d = await res.json();
+                
+                console.log("[DIAGNOSTIC] Respuesta del servidor:", d);
+
+                if (res.ok && d.status === 'success') {
+                    // Guardar en caché SOLO SI ES ÉXITO
+                    window.aiAuditCache[sym] = { time: Date.now(), audit: d.audit };
+                    showAuditResult(sym, d.audit, false);
+                } else if (res.status === 429 || (d.message && d.message.startsWith("ERROR_429"))) {
+                    // LIMITE DE CUOTA: Activar cooldown
+                    const cooldownSecs = 60;
+                    window.aiAuditCooldown = Date.now() + (cooldownSecs * 1000);
+                    
+                    if (globalBtn) startGlobalBtnCooldown(globalBtn, cooldownSecs);
+                    
+                    const rawError = d.message || "Error 429: Gemini Quota Exhausted";
+                    content.innerHTML = `<div style="color:#ef4444; border:1px solid #ef4444; padding:20px; border-radius:10px; background:rgba(239, 68, 68, 0.1); line-height:1.5;">
+                        <h3 style="color:#ef4444; margin-top:0;">⚠️ Límite de Cuota Alcanzado</h3>
+                        Google Gemini detectó un exceso de peticiones.<br/><br/>
+                        <div style="background:rgba(0,0,0,0.3); padding:10px; font-family:monospace; font-size:0.75rem; border-radius:5px; margin:10px 0; border:1px solid rgba(239,68,68,0.2);">
+                            <b>DETALLE TÉCNICO:</b><br/>
+                            ${rawError}
+                        </div>
+                        <strong>¿Qué hacer?</strong> El botón se habilitará automáticamente en 60 segundos. 
+                    </div>`;
+                    
+                    // Asegurarnos de borrar cualquier error que pudiera haber en caché
+                    delete window.aiAuditCache[sym];
+                } else {
+                    content.innerHTML = `<div style="color:#ef4444; border:1px solid #ef4444; padding:20px; border-radius:10px; background:rgba(239, 68, 68, 0.1);">
+                        <h3 style="color:#ef4444; margin-top:0;">❌ Error del Servidor</h3>
+                        <div style="background:rgba(0,0,0,0.3); padding:10px; font-family:monospace; font-size:0.75rem; border-radius:5px; margin:10px 0;">
+                            ${d.message || 'Error desconocido'}
+                        </div>
+                    </div>`;
+                }
+            } catch(e) {
+                console.error("[DIAGNOSTIC] Network Error:", e);
+                content.innerHTML = `<div style="color:#ef4444;">❌ Error de red: ${e.message}</div>`;
+            }
+        }
+
+        function startGlobalBtnCooldown(btn, secs) {
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            
+            let remaining = secs;
+            const timer = setInterval(() => {
+                remaining--;
+                btn.innerText = `⏳ Reintentar en ${remaining}s`;
+                if (remaining <= 0) {
+                    clearInterval(timer);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    window.aiAuditCooldown = null;
+                }
+            }, 1000);
+        }
+
+        function showAuditResult(sym, auditText, isCached) {
+            const overlay = document.getElementById('ai-modal-overlay');
+            const content = document.getElementById('ai-modal-content');
+            const symLabel = document.getElementById('ai-modal-symbol');
+            const speakBtn = document.getElementById('btn-ai-speak');
+
+            symLabel.innerHTML = (sym === 'GLOBAL' ? 'Reporte General del Fondo' : `Símbolo: ${sym}`) + 
+                                 (isCached ? ' <span style="color:#64748b; font-size:0.6rem;">(Desde caché)</span>' : '');
+            
+            window.currentAuditText = auditText.replace(/[#*`]/g, ''); 
+            speakBtn.style.display = 'block';
+
+            let html = auditText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n\s*\*\s(.*?)\n/g, '<li>$1</li>')
+                .replace(/\n\n/g, '<br/><br/>')
+                .replace(/\n/g, '<br/>');
+            
+            if (html.includes('<li>')) html = `<ul>${html}</ul>`;
+            
+            content.innerHTML = `
+                <div class="ai-audit-text">${html}</div>
+                ${isCached ? `
+                <div style="margin-top:20px; text-align:center;">
+                    <a href="#" onclick="analyzeBot('${sym}', true); return false;" style="color:#a78bfa; font-size:0.7rem; text-decoration:underline;">Forzar actualización</a>
+                </div>` : ''}
+            `;
+            overlay.style.display = 'flex';
+        }
+
+        function speakAudit() {
+            if (!window.currentAuditText) return;
+            const btn = document.getElementById('btn-ai-speak');
+            
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                btn.innerText = '🔊 Escuchar';
+                btn.style.background = 'rgba(139, 92, 246, 0.15)';
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(window.currentAuditText);
+            utterance.lang = 'es-ES';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            utterance.onstart = () => {
+                btn.innerText = '🛑 Detener';
+                btn.style.background = '#ef4444';
+            };
+            utterance.onend = () => {
+                btn.innerText = '🔊 Escuchar';
+                btn.style.background = 'rgba(139, 92, 246, 0.15)';
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
         // ─── INITIALIZATION ─────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
             fetchBank();
@@ -810,18 +1411,36 @@
                     const btn = document.getElementById('btn-toggle-auto');
                     const focusEl = document.getElementById('ai-auto-focus');
                     const actionEl = document.getElementById('ai-auto-action');
+                    
+                    // Update profile buttons
+                    const profile = d.performance_profile || 'turbo';
+                    document.getElementById('perf-eco').classList.toggle('active', profile === 'eco');
+                    document.getElementById('perf-turbo').classList.toggle('active', profile === 'turbo');
+                    
+                    const limitInput = document.getElementById('ai-auto-limit');
                     const logsEl = document.getElementById('ai-auto-logs');
 
+                    if (state.max_bots && !limitInput.matches(':focus')) {
+                        limitInput.value = state.max_bots;
+                    }
+
                     if (state.is_running) {
-                        statusEl.innerText = "Operativo (Autónomo)";
-                        statusEl.style.color = "#4ade80";
+                        const isPaused = state.current_focus && state.current_focus.includes("Pausado");
+                        statusEl.innerText = isPaused ? "Pausado (Protección Recursos) 🛡️" : "Operativo (Autónomo)";
+                        statusEl.style.color = isPaused ? "#ef4444" : "#4ade80";
                         btn.innerText = "🛑 Detener Autónoma";
                         btn.style.background = "#ef4444";
+                        
+                        // Si está pausado, agregar un borde rojo pulsante para visibilidad
+                        statusEl.parentElement.parentElement.style.borderColor = isPaused ? "rgba(239, 68, 68, 0.4)" : "rgba(255,255,255,0.05)";
+                        statusEl.parentElement.parentElement.style.boxShadow = isPaused ? "0 0 20px rgba(239, 68, 68, 0.1)" : "none";
                     } else {
                         statusEl.innerText = "Apagado";
                         statusEl.style.color = "#f59e0b";
                         btn.innerText = "⚡ Iniciar Autónoma";
                         btn.style.background = "#8b5cf6";
+                        statusEl.parentElement.parentElement.style.borderColor = "rgba(255,255,255,0.05)";
+                        statusEl.parentElement.parentElement.style.boxShadow = "none";
                     }
 
                     focusEl.innerText = state.current_focus || "—";
@@ -834,6 +1453,66 @@
             } catch(e) { console.error('autotrainer', e); }
         }
 
+        async function setPerfProfile(profile) {
+            try {
+                const res = await fetch('/api/auto-trainer/profile', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ profile: profile })
+                });
+                if (res.ok) {
+                    showToast(`Perfil cambiado a: <b>${profile === 'eco' ? 'Eco-Trabajo' : 'Turbo-Auditoría'}</b>`, 'success');
+                    fetchAutoTrainerStatus();
+                }
+            } catch(e) { console.error('Error setting profile:', e); }
+        }
+
+        function previewETA() {
+            const limit = parseInt(document.getElementById('ai-auto-limit').value) || 1;
+            const etaEl = document.getElementById('ai-auto-eta');
+            
+            if (!window.avg_dur || !window.avg_trades || !window.pending_trades) {
+                if (etaEl) etaEl.innerText = "⏳ ETA: Calculando datos...";
+                return;
+            }
+
+            // ETA Global (minutos) = (Trades Pendientes / (Bots * Trades_per_sim)) * Duration_per_sim
+            const simsNeeded = window.pending_trades / window.avg_trades;
+            const timeMins = (simsNeeded / limit) * window.avg_dur;
+            
+            let timeStr = "";
+            if (timeMins < 60) {
+                timeStr = `${Math.ceil(timeMins)} min`;
+            } else {
+                const hrs = Math.floor(timeMins / 60);
+                const mins = Math.ceil(timeMins % 60);
+                timeStr = `${hrs}h ${mins}m`;
+            }
+            
+            if (etaEl) {
+                etaEl.style.fontSize = "0.7rem";
+                etaEl.style.padding = "4px 8px";
+                etaEl.style.background = "rgba(96, 165, 250, 0.1)";
+                etaEl.style.borderRadius = "6px";
+                etaEl.style.marginTop = "8px";
+                etaEl.innerHTML = `🕒 Reloj de Madurez: <span style="color:#fff;">~${timeStr}</span> para graduación total`;
+                etaEl.style.color = limit >= 6 ? "#4ade80" : "#60a5fa"; // Green if turbo, blue if normal
+            }
+        }
+
+        async function updateAutoLimit() {
+            const limit = document.getElementById('ai-auto-limit').value;
+            try {
+                await fetch('/api/auto-trainer/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ max_bots: parseInt(limit) })
+                });
+                showToast('Límite de slots actualizado', 'success');
+                previewETA(); // Forzar actualización visual
+            } catch(e) { console.error('Error updating limit:', e); }
+        }
+
         async function toggleAutoTrainer() {
             try {
                 const res = await fetch('/api/auto-trainer/toggle', { method: 'POST' });
@@ -841,9 +1520,27 @@
                 if(d.status === 'success') {
                     showToast(d.is_running ? "⚡ Operación Autónoma Iniciada" : "🛑 Operación Autónoma Pausada", "info");
                     fetchAutoTrainerStatus();
-            fetchSystemHealth();
+                    fetchSystemHealth();
                 }
             } catch(e) { console.error(e); }
+        }
+
+        async function updateAutoSettings() {
+            const limit = parseInt(document.getElementById('ai-auto-limit').value);
+            if (isNaN(limit) || limit < 1) return;
+            
+            try {
+                const res = await fetch('/api/auto-trainer/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ max_bots: limit })
+                });
+                const d = await res.json();
+                if (d.status === 'success') {
+                    showToast(`⚙️ Límite actualizado: <b>${d.max_bots} bots</b>`, 'success');
+                    fetchSystemHealth(); // Refresh slots display
+                }
+            } catch(e) { console.error('settings', e); }
         }
 
         // ─── SYMBOLS ────────────────────────────────────────────
@@ -900,7 +1597,7 @@
                     ramBar.style.background = d.ram_pct > 85 ? '#ef4444' : d.ram_pct > 60 ? '#f59e0b' : '#8b5cf6';
                 }
                 if (ramDetail) {
-                    ramDetail.textContent = d.ram_used_mb.toLocaleString() + ' MB / ' + d.ram_total_mb.toLocaleString() + ' MB';
+                    ramDetail.textContent = (d.ram_used_mb / 1024).toFixed(1) + ' GB / ' + (d.ram_total_mb / 1024).toFixed(1) + ' GB';
                 }
 
                 // Running sims
@@ -967,28 +1664,258 @@
             }
         }
 
+        // ─── SYSTEM WIPE (PREMIUM) ────────────────────────────────
+        function openWipeModal() {
+            document.getElementById('wipe-modal').classList.add('active');
+        }
+
+        function closeWipeModal() {
+            document.getElementById('wipe-modal').classList.remove('active');
+        }
+
+        async function executeSystemWipe() {
+            // Cambiar estado del botón
+            const btn = document.querySelector('.btn-confirm-wipe');
+            const originalText = btn.textContent;
+            btn.textContent = "Purgando...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/system/wipe', { method: 'POST' });
+                const d = await res.json();
+                if (d.status === 'success') {
+                    showToast("✅ " + d.message, "success");
+                    // Limpieza visual inmediata antes de recargar
+                    closeWipeModal();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showToast("❌ Error: " + d.message, "error");
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                showToast("❌ Error de comunicación.", "error");
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
         // ─── AI STATUS TICKER ───────────────────────────────────
         function logAI(msg) {
             document.getElementById('ai-status').textContent = msg;
         }
 
-        fetchSystemHealth();
-        setInterval(fetchSystemHealth, 10000);
+        // ─── INITIALIZATION ─────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            // Rehydrating date inputs if used previously
+            const lastDate = localStorage.getItem('hapi_last_sim_date');
+            const lastEndDate = localStorage.getItem('hapi_last_sim_end_date');
+            if (lastDate) {
+                const el = document.getElementById('date-input');
+                if (el) el.value = lastDate;
+            }
+            if (lastEndDate) {
+                const elEnd = document.getElementById('date-end-input');
+                if (elEnd) elEnd.value = lastEndDate;
+            }
 
-        // Poll cada 5 s (Bots y Banco)
-        setInterval(fetchBank, 10000);
-        setInterval(fetchBots, 5000);
-        
-        // Rehydrating date inputs if used previously
-        const lastDate = localStorage.getItem('hapi_last_sim_date');
-        if (lastDate) {
-            const el = document.getElementById('date-input');
-            if (el) el.value = lastDate;
+            // Initial fetch con ocultación de loader
+            (async () => {
+                try {
+                    await Promise.all([
+                        fetchBank(),
+                        fetchBots(),
+                        fetchSymbols(),
+                        fetchAutoTrainerStatus(),
+                        fetchSystemHealth(),
+                        updateMasteryHub()
+                    ]);
+                } finally {
+                    // Ocultar loader con fundido suave
+                    setTimeout(() => {
+                        const loader = document.getElementById('main-loader');
+                        if (loader) {
+                            loader.style.opacity = '0';
+                            setTimeout(() => loader.style.display = 'none', 500);
+                        }
+                    }, 500);
+                }
+            })();
+
+            // Intervals
+            setInterval(fetchBank, 10000);
+            setInterval(fetchBots, 5000);
+            setInterval(fetchAutoTrainerStatus, 5000);
+            setInterval(updateMasteryHub, 10000);
+            setInterval(fetchSystemHealth, 10000);
+        });
+
+        // ─── HISTORY GROUPING & MODAL ───
+        function renderGroupedHistory(completed) {
+            const container = document.getElementById('history-container');
+            if (!container) return;
+            
+            if (completed.length === 0) {
+                container.innerHTML = '<div style="color:#64748b; font-size:0.9rem; text-align:center; padding:2rem;">No hay simulaciones completadas aún.</div>';
+                return;
+            }
+
+            // Agrupar por símbolo
+            const groups = completed.reduce((acc, bot) => {
+                const sym = bot.symbol;
+                if (!acc[sym]) acc[sym] = [];
+                acc[sym].push(bot);
+                return acc;
+            }, {});
+
+            let html = '';
+            Object.keys(groups).sort().forEach(sym => {
+                const sims = groups[sym];
+                const totalPnL = sims.reduce((sum, b) => sum + (b.pnl || 0), 0);
+                const bestWR = Math.max(...sims.map(b => b.win_rate || 0));
+                
+                html += `
+                    <div class="symbol-group" id="group-${sym}">
+                        <div class="symbol-header" onclick="toggleGroup('${sym}')">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div style="background:#6366f1; width:8px; height:8px; border-radius:50%;"></div>
+                                <span style="font-weight:700; font-family:'JetBrains Mono',monospace; font-size:1.1rem; color:white;">${sym}</span>
+                                <span style="color:#64748b; font-size:0.75rem;">${sims.length} ejecuciones</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:20px;">
+                                <div style="text-align:right;">
+                                    <div style="font-size:0.65rem; color:#64748b; text-transform:uppercase;">PnL Acumulado</div>
+                                    <div style="font-weight:600; color:${totalPnL >= 0 ? '#4ade80' : '#f87171'};">${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div style="font-size:0.65rem; color:#64748b; text-transform:uppercase;">Best WR</div>
+                                    <div style="font-weight:600; color:white;">${bestWR.toFixed(1)}%</div>
+                                </div>
+                                <div style="color:#475569; padding-left:10px;">▼</div>
+                            </div>
+                        </div>
+                        <div class="symbol-list">
+                            <table class="trade-log-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fase</th><th>Inicio Sim.</th><th>Fin Sim.</th><th>Finaliz\u00f3 (Real)</th><th>Trades</th><th title="PnL Neto (Final)">PnL Neto</th><th title="PnL Bruto (Mercado)">Bruto \u24d8</th><th>Puntaje</th><th>Acci\u00f3n</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${sims.map(b => {
+                                        const pnlNet = b.pnl || 0;
+                                        const pnlGross = b.pnl_gross || 0;
+                                        const score = b.mastery_score || 0;
+                                        return `
+                                        <tr>
+                                            <td>
+                                            ${(() => {
+                                                const stage = b.stage || 'TRAINING';
+                                                const frozen = b.freeze_learning ? ' 🔒' : '';
+                                                const cls = stage === 'SCOUTING' ? 'stage-scouting'
+                                                          : stage === 'TRAINING' ? 'stage-training'
+                                                          : stage === 'VALIDATING' ? 'stage-validating'
+                                                          : stage === 'STRESS-TEST' ? 'stage-stress'
+                                                          : stage === 'LIVE-SHADOW' ? 'stage-shadow'
+                                                          : 'stage-training';
+                                                const stageDesc = stage === 'SCOUTING' ? 'Exploración inicial. Filtra si el símbolo es apto.'
+                                                                : stage === 'TRAINING' ? 'Aprendizaje profundo. La red absorbe patrones históricos.'
+                                                                : stage === 'VALIDATING' ? 'Examen Ciego. Opera sin aprender para evitar la memorización.'
+                                                                : stage === 'STRESS-TEST' ? 'Prueba Monte Carlo bajo condiciones extremas y volatilidad.'
+                                                                : stage === 'LIVE-SHADOW' ? 'Status Elite. Operando tiempo real en latencia cero.' : '';
+                                                return `<span class="stage-badge pvc-tooltip ${cls}" data-tooltip="${stageDesc}">${stage}${frozen}</span>`;
+                                            })()}
+                                            </td>
+                                            <td style="font-size:0.8rem; color:#cbd5e1;">${b.sim_start_date || '─'}</td>
+                                            <td style="font-size:0.8rem; color:#cbd5e1;">${b.sim_end_date || '─'}</td>
+                                            <td style="font-size:0.8rem; color:#64748b;">${b.finished_at || '─'}</td>
+                                            <td>${b.trades}</td>
+                                            <td style="font-weight:700; color:${pnlNet >= 0 ? '#4ade80' : '#f87171'};">${pnlNet >= 0 ? '+' : ''}$${pnlNet.toFixed(2)}</td>
+                                            <td style="font-size:0.8rem; color:${pnlGross >= 0 ? '#4ade80' : '#f87171'}; opacity:0.8;">${pnlGross >= 0 ? '+' : ''}$${pnlGross.toFixed(2)}</td>
+                                            <td style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:bold; color:${score >= 50 ? '#4ade80' : score > 0 ? '#60a5fa' : '#f87171'};">${score.toFixed(1)}</td>
+                                            <td>
+                                                <div style="display:flex; gap:8px;">
+                                                    <button class="btn-console" style="padding:4px 10px; font-size:0.75rem;" onclick="openSimModal('${b.run_id}')">📈 Ver Detalles</button>
+                                                    <button class="btn-kill" style="padding:4px 10px; font-size:0.75rem; background:transparent; border:1px solid rgba(255,255,255,0.05);" onclick="dismissBot('${b.run_id}')">🗑️</button>
+                                                </div>
+                                            </td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
-        const lastEndDate = localStorage.getItem('hapi_last_sim_end_date');
-        if (lastEndDate) {
-            const elEnd = document.getElementById('date-end-input');
-            if (elEnd) elEnd.value = lastEndDate;
+
+        function toggleGroup(sym) {
+            document.getElementById(`group-${sym}`).classList.toggle('expanded');
+        }
+
+        async function openSimModal(runId) {
+            const res = await fetch('/api/docker/status');
+            const d = await res.json();
+            const bot = (d.completed || []).find(b => b.run_id === runId);
+            if (!bot) return;
+
+            document.getElementById('modal-title').innerText = `${bot.symbol} - Análisis Detallado`;
+            document.getElementById('modal-subtitle').innerText = `Ejecutado el ${bot.finished_at} | Rango Simulado: ${bot.sim_start_date} → ${bot.sim_end_date || 'En curso'}`;
+            
+            const stats = document.getElementById('modal-stats');
+            stats.innerHTML = `
+                <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Net PnL</span>
+                    <div style="font-size:1.5rem; font-weight:800; color:${bot.pnl >= 0 ? '#4ade80' : '#f87171'}; margin-top:4px;">${bot.pnl >= 0 ? '+' : ''}$${(bot.pnl || 0).toFixed(2)}</div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Bruto (Mkt): <span style="color:${(bot.pnl_gross||0) >= 0 ? '#4ade80' : '#f87171'}">${(bot.pnl_gross||0) >= 0 ? '+' : ''}$${(bot.pnl_gross||0).toFixed(2)}</span></div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Win Rate</span>
+                    <div style="font-size:1.5rem; font-weight:800; color:white; margin-top:4px;">${(bot.win_rate || 0).toFixed(1)}%</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Total Trades</span>
+                    <div style="font-size:1.5rem; font-weight:800; color:white; margin-top:4px;">${bot.trades}</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Estatus Maestría</span>
+                    <div style="font-size:1.2rem; font-weight:800; color:#6366f1; margin-top:4px;">${bot.mastery_status || "APRENDIENDO"}</div>
+                </div>
+            `;
+
+            const chartContainer = document.getElementById('modal-chart-container');
+            chartContainer.innerHTML = drawSparkline(bot.equity_history || [], 'big');
+
+            const logBody = document.getElementById('modal-trade-log-body');
+            const trades = bot.trade_log || [];
+            if (trades.length === 0) {
+                logBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem; color:#475569;">No hay bitácora detallada para esta ejecución.<br><span style="font-size:0.8rem;">(Solo disponible para simulaciones nuevas)</span></td></tr>';
+            } else {
+                logBody.innerHTML = trades.map(t => {
+                    const dt = new Date(t.t);
+                    const formatted = isNaN(dt.getTime()) ? t.t : dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const isWin = t.r > 0;
+                    return `
+                        <tr>
+                            <td style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#94a3b8;">${formatted}</td>
+                            <td><span class="tag-${t.s === 'BUY' ? 'ready' : 'validating'}" style="font-weight:bold;">${t.s}</span></td>
+                            <td style="font-family:'JetBrains Mono',monospace;">$${(t.p || 0).toFixed(2)}</td>
+                            <td style="color:#64748b;">${t.q}</td>
+                            <td style="font-family:'JetBrains Mono',monospace; font-weight:700; color:${isWin ? '#4ade80' : (t.r < 0 ? '#f87171' : '#64748b')};">
+                                ${t.s === 'SELL' ? (t.r >= 0 ? '+' : '') + '$' + t.r.toFixed(2) : '─'}
+                            </td>
+                            <td style="font-size:0.75rem; color:#94a3b8; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.m || ''}">${t.m || ''}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('sim-modal').style.display = 'flex';
+        }
+
+        function closeSimModal() {
+            document.getElementById('sim-modal').style.display = 'none';
         }
     </script>
 </body>

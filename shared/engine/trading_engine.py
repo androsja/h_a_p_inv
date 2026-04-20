@@ -41,8 +41,8 @@ class TradingEngine:
         self.stop_event = None
         self.asset_type = "normal"
         self.blocking_history = collections.Counter()
-        self.sim_start_date = None
-        self.sim_end_date = None
+        self.sim_start_date = getattr(args, 'start_date', None) or os.getenv("HAPI_SIM_START_DATE")
+        self.sim_end_date = getattr(args, 'end_date', None) or os.getenv("HAPI_SIM_END_DATE")
         self.investment_style = "Normal"
         self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas activas
         self.ghost_history: list[dict] = []          # 📜 Registro de todos los ghosts cerrados
@@ -98,10 +98,6 @@ class TradingEngine:
                 # 2. Obtener Precio (o Fin de Simulación)
                 try:
                     quote = self.broker.get_quote(self.symbol)
-                    if not self.sim_start_date: 
-                        self.sim_start_date = quote.timestamp
-                        log.info(f"📅 INICIANDO DATOS DEL MERCADO DESDE: {quote.timestamp}")
-                    self.sim_end_date = quote.timestamp
                 except StopIteration:
                     log.info("▶ Datos agotados. Finalizando sesión.")
                     break
@@ -123,7 +119,7 @@ class TradingEngine:
                 if self.position:
                     self._handle_exit(quote, signal)
                 elif signal.signal == SIGNAL_BUY:
-                    self._handle_entry(quote, signal)
+                    self._handle_entry(quote, signal, df)
 
                 # 4.1 Gestión de Posiciones Fantasma (Ghost Trades)
                 if self.ghost_positions:
@@ -179,6 +175,7 @@ class TradingEngine:
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time()),
                         sim_start=str(self.sim_start_date) if self.sim_start_date else "",
                         sim_end=str(self.sim_end_date) if self.sim_end_date else "",
+                        sim_progress_pct=self._calculate_progress(quote.timestamp),
                         is_live_paper=self.is_live_paper
                     )
 
@@ -205,6 +202,49 @@ class TradingEngine:
         except Exception:
             log.exception(f"Error crítico en Engine ({self.symbol})")
             raise
+
+    def _calculate_progress(self, current_ts: str) -> float:
+        """Calcula el porcentaje (0-100) de avance de la simulación."""
+        if not self.is_mock or not self.sim_start_date or not current_ts:
+            return 0.0
+        
+        try:
+            from datetime import datetime
+            # Normalizar formatos de fecha (YYYY-MM-DD vs ISO)
+            def parse_dt(dt_str):
+                if not dt_str: return None
+                # Tomar solo los primeros 10 caracteres (YYYY-MM-DD) y normalizar
+                clean_date = str(dt_str)[:10].replace("/", "-")
+                try:
+                    return datetime.strptime(clean_date, "%Y-%m-%d")
+                except:
+                    return None
+
+            start = parse_dt(self.sim_start_date)
+            # Si no hay sim_end_date, usamos hoy como referencia para el 100%
+            end = parse_dt(self.sim_end_date) or datetime.now()
+            curr = parse_dt(current_ts)
+
+            if not start or not end or not curr:
+                return 0.0
+            
+            total_delta = (end - start).total_seconds()
+            curr_delta = (curr - start).total_seconds()
+
+            # Diagnostico una sola vez para no inundar el log si vemos 100% pero pocos trades
+            if not getattr(self, '_diag_logged', False):
+                log.info(f"[{self.symbol}] PROGRESO DIAG: Start={start}, End={end}, Curr={curr}, TotalDelta={total_delta}")
+                self._diag_logged = True
+
+            if total_delta <= 0:
+                # Si el rango es invalido, mejor mostrar 0% que 100%
+                return 0.0 
+            
+            pct = (curr_delta / total_delta) * 100.0
+            return round(max(0.0, min(100.0, pct)), 1)
+        except Exception as e:
+            log.error(f"Error en calculo de progreso para {self.symbol}: {e}")
+            return 0.0
 
     def _get_data_slice(self):
         if self.is_mock:
@@ -264,7 +304,7 @@ class TradingEngine:
             resp = self.broker.place_limit_order(self.symbol, "SELL", plan.limit_price, plan.qty, reason, metadata)
             return resp.status, plan.limit_price
 
-    def _handle_entry(self, quote, signal):
+    def _handle_entry(self, quote, signal, df):
         if signal.signal == SIGNAL_BUY:
             log.info(f"[{self.symbol}] 🎯 SEÑAL TÉCNICA detectada | RSI: {signal.rsi_value:.1f} | Conf: {len(signal.confirmations)}")
         
@@ -281,8 +321,13 @@ class TradingEngine:
             return
 
         # 4. Plan de Compra (Risk Manager)
+        # Calculamos el Swing Low de las últimas 3 velas para protección extra
+        swing_low_val = float(df["Low"].iloc[-3:].min()) if len(df) >= 3 else quote.bid * 0.98
+
         buy_plan = self.risk_mgr.calculate_buy_order(
-            self.symbol, quote.ask, signal.atr_value, confidence_multiplier=conf_mult
+            self.symbol, quote.ask, signal.atr_value, 
+            swing_low=swing_low_val,
+            confidence_multiplier=conf_mult
         )
 
         # 🚀 Determinar si es un trade Real o Ghost

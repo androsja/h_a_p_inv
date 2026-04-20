@@ -45,14 +45,17 @@ class HapiMock(BrokerInterface):
       4. El capital virtual se actualiza con cada fill.
     """
 
-    def __init__(self, symbol: Optional[str] = None, initial_cash: float = 10_000.0, live_paper: bool = False, start_date: Optional[str] = None):
+    def __init__(self, symbol: Optional[str] = None, initial_cash: float = 10_000.0, live_paper: bool = False, start_date: Optional[str] = None, end_date: Optional[str] = None):
         self._live_paper     = live_paper
-        self._replay         = LivePaperReplay(symbol) if live_paper else MarketReplay(symbol, start_date=start_date)
+        self._replay         = LivePaperReplay(symbol) if live_paper else MarketReplay(symbol, start_date=start_date, end_date=end_date)
         self._cash           = initial_cash
         self._initial_cash   = initial_cash
         self._pending_orders: List[PendingOrder] = []
         self._current_bar: Optional[pd.Series]       = None
         self._stats          = SessionStats()
+        # Mantenimiento de precios de entrada nominales para contabilidad transparente (PnL Bruto)
+        self._nominal_entry_prices: Dict[str, float] = {}
+        
         # Settlement: {fecha_str: amount}
         self._pending_settlement: dict[str, float] = {}
         log.info(
@@ -187,8 +190,7 @@ class HapiMock(BrokerInterface):
         metadata: dict = None,
     ) -> OrderResponse:
         """
-        Registra una orden límite pendiente.
-        La orden se "ejecuta" cuando el precio del replay es favorable.
+        Registra una orden límite o stop pendiente.
         """
         if qty <= 0:
             return OrderResponse(
@@ -200,16 +202,21 @@ class HapiMock(BrokerInterface):
                 message="Cantidad inválida (<= 0)",
             )
 
+        order_type = "LIMIT"
+        if reason and ("STOP_LOSS" in reason or "TRAILING_STOP" in reason):
+            order_type = "STOP"
+
         order = PendingOrder(
             order_id=str(uuid.uuid4())[:8],
             symbol=symbol, side=side,
             limit_price=limit_price, qty=qty,
+            order_type=order_type,
             reason=reason,
             metadata=metadata or {},
         )
         self._pending_orders.append(order)
         log.debug(
-            f"HapiMock | {side} {qty:.4f} {symbol} @ límite ${limit_price:.2f} → PENDIENTE"
+            f"HapiMock | {side} {qty:.4f} {symbol} [{order_type}] @ ${limit_price:.2f} → PENDIENTE ({reason})"
         )
         return OrderResponse(
             order_id=order.order_id,
@@ -327,32 +334,47 @@ class HapiMock(BrokerInterface):
     def _try_fill_pending_orders(self, bar: pd.Series) -> None:
         """
         Intenta ejecutar órdenes pendientes contra los precios de la vela actual.
-
-        Lógica:
-          • BUY  LIMIT → se ejecuta si Low de la vela ≤ limit_price (precio fue alcanzado)
-          • SELL LIMIT → se ejecuta si High de la vela ≥ limit_price
+        Diferencia entre órdenes LIMIT (mejorar precio) y STOP (protección).
         """
         filled: list[PendingOrder] = []
-        bar_low  = float(bar["Low"])
-        bar_high = float(bar["High"])
-        bar_vol  = float(bar.get("Volume", 0))
+        bar_low   = float(bar["Low"])
+        bar_high  = float(bar["High"])
+        bar_open  = float(bar["Open"])
+        bar_vol   = float(bar.get("Volume", 0))
 
         # Requisito de simulación realista: la orden no puede tomar más del 10% del volumen del minuto.
-        # En caso de no haber datos de volumen (0), permitimos que pase para evitar bloquear ETFs raros o testing.
         max_fillable_qty = bar_vol * 0.10 if bar_vol > 0 else float('inf')
 
         for order in self._pending_orders:
-            # Control de liquidez:
             if order.qty > max_fillable_qty:
-                log.debug(f"HapiMock | Orden por {order.qty} ignorada en vela por falta de liquidez (max {max_fillable_qty})")
+                log.debug(f"HapiMock | Orden {order.symbol} ignorada por liquidez (max {max_fillable_qty})")
                 continue
-            if order.side == "BUY" and bar_low <= order.limit_price:
-                self._execute_buy(order, fill_price=order.limit_price, timestamp=str(bar.name))
-                filled.append(order)
 
-            elif order.side == "SELL" and bar_high >= order.limit_price:
-                self._execute_sell(order, fill_price=order.limit_price, timestamp=str(bar.name))
-                filled.append(order)
+            if order.side == "BUY":
+                if order.order_type == "LIMIT":
+                    if bar_low <= order.limit_price:
+                        # Comprar si toca el límite por debajo (Límite normal)
+                        self._execute_buy(order, fill_price=order.limit_price, timestamp=str(bar.name))
+                        filled.append(order)
+                else: # STOP BUY
+                    if bar_high >= order.limit_price:
+                        # Comprar si rompe al alza (Stop de compra)
+                        fill_p = max(order.limit_price, bar_open)
+                        self._execute_buy(order, fill_price=fill_p, timestamp=str(bar.name))
+                        filled.append(order)
+
+            elif order.side == "SELL":
+                if order.order_type == "LIMIT":
+                    if bar_high >= order.limit_price:
+                        # Venta favorable
+                        self._execute_sell(order, fill_price=order.limit_price, timestamp=str(bar.name))
+                        filled.append(order)
+                else: # STOP SELL (Stop Loss / Trailing Stop)
+                    if bar_low <= order.limit_price:
+                        # Venta de protección: se activa cuando el precio CAE al límite
+                        fill_p = min(order.limit_price, bar_open)
+                        self._execute_sell(order, fill_price=fill_p, timestamp=str(bar.name))
+                        filled.append(order)
 
         for o in filled:
             self._pending_orders.remove(o)
@@ -391,9 +413,11 @@ class HapiMock(BrokerInterface):
                 return
             self._cash -= cost
             
-        self._last_buy_price = actual_fill_price
-        self._last_buy_qty   = order.qty
-        self._stats.total_fees += comm
+        self._last_buy_price     = actual_fill_price
+        self._nominal_entry_prices[order.symbol] = fill_price
+        self._last_buy_slippage  = round(fill_price * slippage * order.qty, 2)
+        self._last_buy_qty       = order.qty
+        self._stats.total_fees  += comm
         
         # Record Buy in history for "Last Order" tracking
         self._stats.trade_history.append({
@@ -458,16 +482,41 @@ class HapiMock(BrokerInterface):
             
         self._stats.total_fees += total_fees
         
-        raw_pnl = (actual_fill_price - getattr(self, '_last_buy_price', actual_fill_price)) * order.qty
-        net_pnl = raw_pnl - total_fees
+        # Cálculos de contabilidad transparente
+        # 1. PnL Nominal (Puro mercado - lo que el usuario ve en el calendario)
+        nominal_entry_price = self._nominal_entry_prices.get(order.symbol, fill_price)
+        nominal_exit_price  = fill_price # El precio de la vela sin slippage
+        nominal_pnl         = round((nominal_exit_price - nominal_entry_price) * order.qty, 2)
+
+        # 2. Slippage real (La penalización por ejecución)
+        slippage_pct = 0.0005
+        buy_slip = getattr(self, '_last_buy_slippage', 0.0)
+        sell_slip = round(fill_price * slippage_pct * order.qty, 2)
+        total_trade_slippage = round(buy_slip + sell_slip, 2)
+
+        # 3. PnL Neto (Lo que realmente queda en el banco)
+        net_pnl = round(nominal_pnl - total_trade_slippage - total_fees, 2)
         
+        # USAR PNL NOMINAL (BRUTO) EN EL DIARIO PARA TRANSPARENCIA TOTAL
+        # El usuario sumará $15 + $16 y le dará los +$31 de la tarjeta superior.
         log_order_filled(
-            order.symbol, "SELL", actual_fill_price, order.qty, net_pnl, 
+            order.symbol, "SELL", actual_fill_price, order.qty, nominal_pnl, 
             timestamp=timestamp, reason=order.reason, metadata=order.metadata
         )
-        log.info(f"🏦 IBKR FEES COBRADOS: Com=${comm:.2f} | SEC=${sec_fee:.4f} | TAF=${taf_fee:.4f} | Total=${total_fees:.2f}")
+        log.info(f"💰 CONTABILIDAD TRANSPARENTE | {order.symbol}: Gross=${nominal_pnl:+.2f} | Slip=${total_trade_slippage:.2f} | Fees=${total_fees:.2f} | Net=${net_pnl:+.2f}")
         
-        self._stats.record_trade(net_pnl, current_balance=self._cash, side="SELL", qty=order.qty, price=actual_fill_price, timestamp=timestamp, reason=order.reason, metadata=order.metadata)
+        self._stats.record_trade(
+            gross_pnl=nominal_pnl, 
+            net_pnl=net_pnl, 
+            slippage=total_trade_slippage,
+            current_balance=self._cash, 
+            side="SELL", 
+            qty=order.qty, 
+            price=actual_fill_price, 
+            timestamp=timestamp, 
+            reason=order.reason, 
+            metadata=order.metadata
+        )
         
         # Update global state
         try:

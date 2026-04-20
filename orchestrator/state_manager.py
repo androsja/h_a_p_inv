@@ -52,8 +52,8 @@ class StateManager:
                         self.global_state[key] = obj
                         if key != "_main":
                             self.global_state["_main"] = obj
-
-        await self.broadcast()
+        # Difundir cambios de forma asíncrona (no bloqueante)
+        asyncio.create_task(self.broadcast())
 
     async def broadcast(self):
         # Capturar un snapshot rápido
@@ -76,7 +76,8 @@ class StateManager:
     async def clear(self):
         async with self._lock:
             self.global_state.clear()
-        await self.broadcast()
+        # Difundir limpieza de forma asíncrona
+        asyncio.create_task(self.broadcast())
 
     async def clear_symbol(self, symbol: str):
         """Limpia el estado en memoria de un símbolo específico."""
@@ -88,4 +89,5 @@ class StateManager:
             main = self.global_state.get("_main", {})
             if main.get("symbol") == symbol_up:
                 del self.global_state["_main"]
-        await self.broadcast()
+        # Difundir limpieza de forma asíncrona
+        asyncio.create_task(self.broadcast())

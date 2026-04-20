@@ -44,6 +44,7 @@ class SimulationRunner:
         self.all_done = False  # 🏁 Bandera de finalización global
         self.start_real_time = None # 🕒 Momento real en que inició la simulación global
         self.equity_history = [0.0] # 📈 Historial de equidad para sparklines
+        self.trade_log = []         # 📜 Registro de trades (con horas) para el historial
         
     def main_loop(self, args: argparse.Namespace):
         log.info("🚀 MOTOR SIMULADOR HISTÓRICO: Preparando...")
@@ -57,6 +58,22 @@ class SimulationRunner:
             # Forzamos que sea el único elemento porsiacaso la lógica intente iterar
             self.all_symbols = [target]
             self.symbol_idx = 0
+            
+            # 🔒 PVC: Si esta es una fase de evaluación, congelar el aprendizaje
+            # para evitar Data Leakage. El modelo corre en modo inferencia puro.
+            freeze_learning = os.getenv("FREEZE_LEARNING", "false").lower() == "true"
+            sim_stage = os.getenv("SIM_STAGE", "TRAINING")
+            if freeze_learning:
+                try:
+                    from shared.utils.neural_filter import get_neural_filter
+                    nf = get_neural_filter(target)
+                    nf.freeze()
+                    log.info(f"🔒 [{sim_stage}] Aprendizaje CONGELADO para {target} — Fase de evaluación pura (Cross-Validation)")
+                except Exception as e:
+                    log.warning(f"No se pudo congelar el neural filter: {e}")
+            else:
+                log.info(f"🧠 [{sim_stage}] Aprendizaje ACTIVO para {target}")
+            
             self._run_single_session(args)
             self._handle_completion()
             log.info(f"✅ WORKER FINALIZADO ({target}). Apagando contenedor...")
@@ -269,7 +286,8 @@ class SimulationRunner:
             total_sim_slippage=float(round(float(getattr(self, "total_sim_slippage", 0.0)), 2)),
             total_sim_ghosts=int(getattr(self, "total_sim_ghosts", 0)),
             win_rate=float(round(float(wr), 2)),
-            equity_history=hist
+            equity_history=hist,
+            trade_log=self.trade_log[-100:] # Mandar los últimos 100 trades para el modal de detalles
         )
         
         # 🚀 FORZAR ENVÍO: Asegurar que el Orquestador recibe el estatus "completed"
@@ -362,7 +380,15 @@ class SimulationRunner:
             available_cash=_acct.total_cash,
             session=self.session_num,
             total_trades=0,
-            win_rate=0.0
+            win_rate=0.0,
+            total_sim_trades=self.total_sim_trades,
+            total_sim_wins=self.total_sim_wins,
+            total_sim_pnl=round(self.total_sim_pnl, 2),
+            total_sim_fees=round(self.total_sim_fees, 2),
+            total_sim_slippage=round(self.total_sim_slippage, 2),
+            total_sim_gross_profit=round(self.total_sim_gross_profit, 2),
+            total_sim_gross_loss=round(self.total_sim_gross_loss, 2),
+            total_sim_ghosts=self.total_sim_ghosts
         )
         
         engine.run(session_num=self.session_num, asset_type=asset_type)
@@ -409,6 +435,7 @@ class SimulationRunner:
             session_result = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "symbol": engine.symbol,
+                "stage": os.getenv("SIM_STAGE", "TRAINING"),
                 "session_num": self.session_num,
                 "total_trades": trades_val,
                 "winning_trades": getattr(stats, 'winning_trades', 0),
@@ -417,11 +444,13 @@ class SimulationRunner:
                 "accuracy": accuracy_ia,
                 "total_samples": total_samples,
                 "pnl": round(pnl_val, 2),
-                "gross_pnl": round(pnl_val + total_fees + round(trades_val * 0.10, 2), 2),  # NET + FEES + SLIPPAGE = GROSS
+                "gross_pnl": round(getattr(stats, 'gross_profit', 0.0) + getattr(stats, 'gross_loss', 0.0), 2),
                 "total_fees": total_fees,
-                "slippage_est": round(trades_val * 0.10, 2),
+                "slippage_est": round(getattr(stats, 'total_slippage', 0.0), 2),
                 "gross_profit": round(getattr(stats, 'gross_profit', 0.0), 2),
                 "gross_loss": round(getattr(stats, 'gross_loss', 0.0), 2),
+                "net_profit": round(getattr(stats, 'net_profit', 0.0), 2),
+                "net_loss": round(getattr(stats, 'net_loss', 0.0), 2),
                 "drawdown": round(getattr(stats, 'max_drawdown', 0.0), 2),
                 "insight": insight,
                 "sim_start": str(engine.sim_start_date) if engine.sim_start_date else "",
@@ -442,8 +471,25 @@ class SimulationRunner:
             self.total_sim_pnl += float(pnl_val)
             self.total_sim_gross_profit += float(session_result.get("gross_profit", 0.0))
             self.total_sim_gross_loss += float(session_result.get("gross_loss", 0.0))
+            self.total_sim_net_profit = getattr(self, 'total_sim_net_profit', 0.0) + float(session_result.get("net_profit", 0.0))
+            self.total_sim_net_loss = getattr(self, 'total_sim_net_loss', 0.0) + float(session_result.get("net_loss", 0.0))
             self.total_sim_ghosts += int(session_result.get("total_ghosts", 0))
             self.equity_history.append(float(round(self.total_sim_pnl, 2)))
+
+            # Capturar log de trades con horas para el Orquestador
+            try:
+                broker_trades = getattr(stats, 'trade_history', [])
+                for t in broker_trades:
+                    # Guardamos un resumen ligero
+                    self.trade_log.append({
+                        "t": t.get("timestamp"),
+                        "s": t.get("side"),
+                        "p": round(float(t.get("price", 0)), 2),
+                        "q": t.get("qty"),
+                        "r": round(float(t.get("net_pnl", 0)), 2) if t.get("side") == "SELL" else 0,
+                        "m": t.get("reason", "")
+                    })
+            except: pass
 
             excluded_keys = ["symbol", "status", "blocking_summary", "timestamp", "session_num", "accuracy", "total_samples"]
             update_state(
@@ -453,8 +499,14 @@ class SimulationRunner:
                 blocking_summary=session_result.get("blocking_summary"),
                 model_accuracy=accuracy_ia,   
                 total_samples=total_samples,
+                total_sim_trades=self.total_sim_trades,
+                total_sim_wins=self.total_sim_wins,
+                total_sim_pnl=round(self.total_sim_pnl, 2),
+                total_sim_fees=round(self.total_sim_fees, 2),
+                total_sim_slippage=round(self.total_sim_slippage, 2),
                 total_sim_gross_profit=round(self.total_sim_gross_profit, 2),
                 total_sim_gross_loss=round(self.total_sim_gross_loss, 2),
+                total_sim_ghosts=self.total_sim_ghosts,
                 **{k:v for k,v in session_result.items() if k not in excluded_keys}
             )
 

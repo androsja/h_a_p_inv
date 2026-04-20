@@ -7,7 +7,9 @@ Este plan transforma nuestro actual motor ciego (que asume que hacer trading es 
 ---
 
 ## 🎯 Objetivo General
-Desarrollar un entorno de *Paper Trading en Vivo (Shadow Broker)* que reproduzca fielmente las comisiones ("Fees"), spreads (diferencial bid-ask) y tiempos de compensación de HapiTrade. El usuario debe poder "Fondear", "Retirar" y observar cómo la plataforma (Hapi) se alimenta de las comisiones en cada operación, y aun así, comprobar si el Algoritmo de IA es rentable.
+Desarrollar un entorno de *Paper Trading en Vivo (Shadow Broker)* que reproduzca fielmente las comisiones ("Fees"), spreads (diferencial bid-ask) y tiempos de compensación de HapiTrade. 
+
+**Métrica de Éxito:** Este sistema es la base para alcanzar la meta a largo plazo de **$10,000 USD mensuales de utilidad neta**. El usuario debe poder "Fondear", "Retirar" y observar cómo la plataforma (Hapi) se alimenta de las comisiones en cada operación, y aun así, comprobar si el Algoritmo de IA es rentable.
 
 ---
 
