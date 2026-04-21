@@ -76,7 +76,20 @@ COLUMNS = [
 def _ensure_header():
     """Crea el archivo con cabecera si no existe aún."""
     with _journal_lock:
+        needs_header = False
         if not JOURNAL_PATH.exists():
+            needs_header = True
+        else:
+            # Si el archivo existe pero la primera línea no es la cabecera, arreglarlo
+            with open(JOURNAL_PATH, "r", encoding="utf-8") as f:
+                first = f.readline()
+                if "timestamp_close" not in first:
+                    content = f.read()
+                    with open(JOURNAL_PATH, "w", encoding="utf-8") as fw:
+                        fw.write(",".join(COLUMNS) + "\n" + first + content)
+                    return # Ya lo arreglamos
+        
+        if needs_header:
             JOURNAL_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=COLUMNS)

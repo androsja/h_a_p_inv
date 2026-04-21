@@ -1,4 +1,6 @@
 import json
+import os
+import requests
 import time
 import threading
 from pathlib import Path
@@ -43,6 +45,9 @@ _symbol_model_stats: dict[str, dict] = {}  # {symbol: {"model_accuracy": float, 
 # 🏆 Métricas de Maestría (Persistentes en sesión)
 _session_max_drawdown: float = 0.0
 _session_peak_pnl:     float = 0.0
+
+# Per-symbol state persistent (acumulado de sesiones previas en esta simulación)
+_symbol_accumulated_stats: dict[str, dict] = {} # {symbol: {trades, wins, pnl, fees, slip, gross_p, gross_l}}
 
 def load_global_stats_from_journal() -> None:
     """Carga los totales acumulados y los últimos trades desde el archivo CSV de la bitácora."""
@@ -291,6 +296,7 @@ def update_state(
     is_quality_blocked: bool = False,
     last_action: str = "",
     mock_time: str = "",  # Reloj simulado para modo Replay
+    stage: str = "TRAINING",
     **kwargs
 ) -> None:
     global _symbol_states, _trades
@@ -345,15 +351,15 @@ def update_state(
         ts_gross_loss   = round(kwargs.get("total_sim_gross_loss", _global_sim_gross_loss), 2)
         ts_ghosts       = _global_sim_ghosts
     else:
-        # Caso Fallback (Live): Sumamos en Bruto para transparencia (Neto se calcula al final)
-        ts_trades  = _global_sim_trades  + sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol) + total_trades
-        ts_wins    = _global_sim_wins    + sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol) + winning_trades
-        ts_fees    = round(_global_sim_fees   + sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol) + total_fees, 2)
-        ts_slippage= round(_global_sim_slippage + sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol) + total_slippage, 2)
+        # Caso Fallback (Live): Sumatoria de lo que hay en memoria actualmente
+        ts_trades  = sum(s.total_trades for s in _symbol_states.values() if s.symbol != symbol) + total_trades
+        ts_wins    = sum(s.winning_trades for s in _symbol_states.values() if s.symbol != symbol) + winning_trades
+        ts_fees    = round(sum(s.total_fees for s in _symbol_states.values() if s.symbol != symbol) + total_fees, 2)
+        ts_slippage= round(sum(s.total_slippage for s in _symbol_states.values() if s.symbol != symbol) + total_slippage, 2)
         
-        ts_gross_profit = round(_global_sim_gross_profit + sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol) + gross_profit, 2)
-        ts_gross_loss   = round(_global_sim_gross_loss   - sum(abs(s.gross_loss) for s in _symbol_states.values() if s.symbol != symbol) - abs(gross_loss), 2)
-        ts_ghosts  = _global_sim_ghosts + sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol) + total_ghosts
+        ts_gross_profit = round(sum(s.gross_profit for s in _symbol_states.values() if s.symbol != symbol) + gross_profit, 2)
+        ts_gross_loss   = round(-sum(abs(s.gross_loss) for s in _symbol_states.values() if s.symbol != symbol) - abs(gross_loss), 2)
+        ts_ghosts  = sum(s.total_ghosts for s in _symbol_states.values() if s.symbol != symbol) + total_ghosts
 
     # ─── CÁLCULO DE PNL NETO TOTAL ───
     # ts_pnl = (Beneficio Bruto - Pérdida Bruta) - Fees - Slippage
@@ -417,6 +423,7 @@ def update_state(
         ai_recommendation=ai_recommendation,
         ai_expected_up=ai_expected_up,
         ai_expected_down=ai_expected_down,
+        stage=stage,
         model_accuracy=_symbol_model_stats.get(symbol, {}).get("model_accuracy", 0.0),
         total_samples=_symbol_model_stats.get(symbol, {}).get("total_samples", 0),
         is_quality_blocked=is_quality_blocked,
@@ -427,76 +434,91 @@ def update_state(
     with _state_lock:
         _symbol_states[symbol] = new_s
         _flush()
+        
+    # 📡 Reporte al Orquestador (para Dashboard en tiempo real)
+    orchestrator_url = os.getenv("ORCHESTRATOR_URL")
+    if orchestrator_url:
+        try:
+            # Enviar solo el fragmento de este símbolo para eficiencia
+            payload = asdict(new_s)
+            requests.post(
+                f"{orchestrator_url}/api/state/update",
+                json={"symbol": symbol, "data": payload},
+                timeout=1
+            )
+        except Exception:
+            # Silencioso: no queremos tumbar el bot si el orquestador tiene lag
+            pass
 
 def _flush(blocking: bool = False) -> None:
     """Vuelca el estado a disco con protección de concurrencia y throttling."""
     global _last_flush_time
+    import time
     now = time.time()
     
-    # Throttle: No escribir más de una vez por segundo para evitar corrupción y saturación de IO
-    # A menos que sea un flush bloqueante (ej: al terminar)
+    # Throttle: No escribir más de una vez por segundo para ahorrar IO
     if not blocking and (now - _last_flush_time) < (_flush_throttle_ms / 1000.0):
         return
 
+    lock_path = _state_path.with_suffix(".lock")
     try:
-        # El estado final es un diccionario de símbolos
-        output = {}
-        
-        # Trabajamos bajo el lock para asegurar que nadie modifique los diccionarios mientras serializamos
+        # 1. Preparar el fragmento de estado de ESTE bot
+        local_output = {}
         for sym, st in _symbol_states.items():
             d = asdict(st)
             sym_stats = _symbol_model_stats.get(sym, {})
             d["model_accuracy"] = sym_stats.get("model_accuracy", 0.0)
             d["total_samples"] = sym_stats.get("total_samples", 0)
-            output[sym] = d
-        
-        import os
-        orchestrator_url = os.getenv("ORCHESTRATOR_URL")
-        if orchestrator_url:
-            import requests
-            import threading
-            def _send_state(payload):
-                try:
-                    for s, data in payload.items():
-                        # We send to the orchestrator the internal data for this bot
-                        requests.post(f"{orchestrator_url}/api/state/update", json={"symbol": s, "data": data}, timeout=3.0)
-                except Exception:
-                    pass
-            
-            if blocking:
-                _send_state(output)
-            else:
-                threading.Thread(target=_send_state, args=(output,), daemon=True).start()
-                
-            _last_flush_time = now
-            return
+            local_output[sym] = d
 
-        # --- Legacy Fallback Para Standalone ---
-        _state_path.parent.mkdir(parents=True, exist_ok=True)
+        # 2. Lógica de Fusión Protegida (Merge-on-Write)
+        # Usamos un sistema de bloqueo simple para coordinación multi-contenedor
+        final_output = {}
         
-        if _symbol_states:
-            keys = list(_symbol_states.keys())
-            if keys:
-                last_sym = keys[-1]
-                st_main = _symbol_states[last_sym]
-                d_main = asdict(st_main)
-                main_stats = _symbol_model_stats.get(last_sym, {})
-                d_main["model_accuracy"] = main_stats.get("model_accuracy", getattr(st_main, "model_accuracy", 0.0))
-                d_main["total_samples"] = main_stats.get("total_samples", getattr(st_main, "total_samples", 0))
-                output["_main"] = d_main
-        
-        # Serializar a JSON
-        json_str = json.dumps(output, indent=2, default=str)
-        
-        # Escritura atómica
-        tmp = _state_path.with_suffix(".tmp")
-        tmp.write_text(json_str, encoding="utf-8")
-        tmp.replace(_state_path)
-        
+        # Esperar turno si hay bloqueo (máximo 2 segundos)
+        for _ in range(20):
+            if not lock_path.exists():
+                try:
+                    lock_path.write_text(str(os.getpid()))
+                    break
+                except: pass
+            time.sleep(0.1)
+            
+        try:
+            if _state_path.exists():
+                try:
+                    content = _state_path.read_text(encoding="utf-8")
+                    if content.strip():
+                        final_output = json.loads(content)
+                except: pass
+
+            # 3. Fusionar
+            final_output.update(local_output)
+            if local_output:
+                last_sym = list(local_output.keys())[-1]
+                final_output["_main"] = local_output[last_sym]
+
+            # 4. Escritura robusta y atómica
+            json_str = json.dumps(final_output, indent=2, default=str)
+            _state_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = _state_path.with_suffix(".tmp")
+            tmp.write_text(json_str, encoding="utf-8")
+            
+            if tmp.exists():
+                tmp.replace(_state_path)
+            else:
+                _state_path.write_text(json_str, encoding="utf-8")
+                
+        finally:
+            # Liberar bloqueo
+            if lock_path.exists():
+                try: lock_path.unlink()
+                except: pass
+            
         _last_flush_time = now
     except Exception as e:
         from shared.utils.logger import log
-        log.error(f"Error flushing state: {e}")
+        log.error(f"❌ [StateWriter] Error Crítico al fusionar estado: {e}")
 
 def force_flush() -> None:
     """Fuerza un volcado inmediato y síncrono del estado."""

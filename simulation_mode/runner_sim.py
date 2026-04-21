@@ -388,7 +388,9 @@ class SimulationRunner:
             total_sim_slippage=round(self.total_sim_slippage, 2),
             total_sim_gross_profit=round(self.total_sim_gross_profit, 2),
             total_sim_gross_loss=round(self.total_sim_gross_loss, 2),
-            total_sim_ghosts=self.total_sim_ghosts
+            total_sim_ghosts=self.total_sim_ghosts,
+            sim_start=str(args.start_date) if hasattr(args, 'start_date') and args.start_date else "",
+            sim_end=str(args.end_date) if hasattr(args, 'end_date') and args.end_date else ""
         )
         
         engine.run(session_num=self.session_num, asset_type=asset_type)

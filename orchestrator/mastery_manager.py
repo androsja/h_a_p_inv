@@ -108,12 +108,29 @@ class MasteryManager:
 
         # Lógica de Promoción Robusta (PVC Stage Machine)
         prev_pvc = prev_data.get("pvc_stage", "SCOUTING")
+        prev_status = prev_data.get("status", "LEARNING")
         pvc_stage = prev_pvc
         last_stage = metrics.get("stage", "SCOUTING")
 
-        if effective_rank >= 50:
+        # --- PROTECCIÓN "STICKY ELITE" (ESCUDO PROTECTOR) ---
+        # No permitimos demociones si la última simulación fue corta (< 10 trades)
+        # o si el bot ya era ELITE y el nuevo rank no es desastroso (< 30)
+        is_short_test = total_trades < 10
+        was_elite = prev_status in ["ELITE", "READY_FOR_LIVE"]
+        
+        if was_elite and (is_short_test or effective_rank > 35):
+            # Mantener estatus previo si la prueba fue muy corta o el rank aún es aceptable
+            status = prev_status
+            pvc_stage = prev_pvc
+            if is_short_test:
+                log.info(f"🛡️ [MasteryHub] {symbol} protegido: Manteniendo estatus {prev_status} tras prueba corta ({total_trades} trades).")
+        elif effective_rank >= 50:
             # Si tiene rank de graduación, lo movemos a la fase siguiente si no la ha superado
-            if last_stage == "VALIDATING" or prev_pvc == "VALIDATING":
+            if last_stage == "STRESS-TEST" or prev_pvc == "STRESS-TEST":
+                status = "ELITE"
+                pvc_stage = "LIVE-SHADOW"  # ¡GRADUACIÓN!
+                suggested_capital = round(profit_factor * 2000, 0)
+            elif last_stage == "VALIDATING" or prev_pvc == "VALIDATING":
                 status = "ELITE"
                 pvc_stage = "STRESS-TEST"
                 suggested_capital = round(profit_factor * 1000, 0)
@@ -125,6 +142,7 @@ class MasteryManager:
                 pvc_stage = "TRAINING"
         elif effective_rank >= 10:
              status = "LEARNING"
+             # HIGH-WATER MARK: No bajar de TRAINING a SCOUTING si ya se llegó ahí
              if prev_pvc == "SCOUTING":
                  pvc_stage = "TRAINING"
         else:

@@ -78,18 +78,24 @@
             background: rgba(255,255,255,0.06);
             border-color: rgba(255,255,255,0.15);
         }
-        .perf-btn.active#perf-eco {
-            background: rgba(16,185,129,0.15);
-            border-color: #10b981;
-            color: #10b981;
-            box-shadow: 0 0 15px rgba(16,185,129,0.1);
+        .perf-btn.active#perf-eco { background: rgba(16, 185, 129, 0.2); color: #4ade80; border-color: #10b981; }
+        .perf-btn.active#perf-turbo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: #3b82f6; }
+        .perf-btn.active#perf-sim, .perf-btn.active#safety-sim { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+        .perf-btn.active#safety-normal { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: #3b82f6; }
+
+        #sim-forced-banner {
+            display: none;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            margin-top: 8px;
+            animation: pulse-alert 2s infinite;
         }
-        .perf-btn.active#perf-turbo {
-            background: rgba(59,130,246,0.15);
-            border-color: #3b82f6;
-            color: #3b82f6;
-            box-shadow: 0 0 15px rgba(59,130,246,0.1);
-        }
+
         select {
             flex: 1;
             padding: 0.6rem 0.8rem;
@@ -289,86 +295,134 @@
             border-radius: 12px; cursor: pointer; font-weight: 600;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); transition: all 0.2s;
         }
-        .btn-confirm-wipe:hover { background: #dc2626; transform: translateY(-2px); }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* ─── MODAL DETALLES SIMULACIÓN ─── */
-        #sim-modal .modal-content {
-            background: #0f172a; border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px; width: 100%; max-width: 1000px; max-height: 90vh;
-            display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); text-align: left;
-        }
-        .modal-header {
-            padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .modal-body {
-            padding: 1.5rem; overflow-y: auto; flex: 1;
-        }
-        .modal-close {
-            cursor: pointer; font-size: 1.5rem; color: #94a3b8;
-        }
-        .modal-close:hover { color: white; }
-
-        /* ─── GROUPED HISTORY ─── */
-        .symbol-group {
-            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; margin-bottom: 0.75rem;
-            background: rgba(255,255,255,0.01); transition: all 0.2s;
-        }
-        .symbol-header {
-            padding: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-        }
-        .symbol-header:hover { background: rgba(255,255,255,0.03); }
-        .symbol-list {
-            padding: 0 1rem 1rem 1rem; display: none; border-top: 1px solid rgba(255,255,255,0.05);
-        }
-        .symbol-group.expanded .symbol-list { display: block; }
-        .symbol-group.expanded { border-color: rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.05); }
-
-        .trade-log-table {
-            width: 100%; border-collapse: collapse; font-size: 0.85rem;
-        }
-        .trade-log-table th { text-align: left; color: #64748b; padding: 12px 8px; font-weight: 500; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .trade-log-table td { padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .btn-kill:hover { background: #ef4444; color: white; transform: translateY(-1px); }
         
-        .modal-overlay-sim {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
-            display: none; align-items: center; justify-content: center; z-index: 9998;
-            padding: 2rem;
-        }
-        .modal-overlay-sim.show { display: flex; }
+        /* Queue Styles */
+        .card-queue { border: 1px dashed rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.02); }
+        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.05); }
+        .queue-item:last-child { margin-bottom: 0; }
+        .queue-info { display: flex; align-items: center; gap: 12px; }
+        .queue-symbol { font-weight: 800; font-size: 1.1rem; color: #f8fafc; }
+        .queue-stage { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: rgba(148, 163, 184, 0.1); color: #94a3b8; }
+        .btn-remove-queue { background: transparent; border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+        .btn-remove-queue:hover { background: #ef4444; color: white; }
 
-        /* AI Modal Styles */
-        .ai-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .ai-modal { background: linear-gradient(145deg, #1e1b4b, #0f172a); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 20px; width: 100%; max-width: 650px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-        .ai-modal-header { padding: 20px 25px; background: rgba(139, 92, 246, 0.1); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .ai-modal-body { padding: 25px; overflow-y: auto; color: #e2e8f0; line-height: 1.6; font-size: 0.95rem; }
-        .ai-modal-body h1, .ai-modal-body h2, .ai-modal-body h3 { color: #a78bfa; margin-top: 20px; margin-bottom: 10px; }
-        .ai-modal-body strong { color: #f472b6; }
-        .ai-modal-body blockquote { border-left: 4px solid #8b5cf6; background: rgba(139, 92, 246, 0.1); padding: 10px 15px; margin: 15px 0; border-radius: 4px; }
+        /* STRESS TEST MODAL SPECIFIC */
+        .modal-stress-content {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 20px; padding: 2rem;
+            max-width: 450px; width: 90%;
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+            text-align: center;
+            backdrop-filter: blur(12px);
+        }
+        .stress-input {
+            width: 100%; padding: 12px; margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px; color: white; font-family: 'JetBrains Mono', monospace;
+            text-align: center; font-size: 1.1rem;
+        }
+        .btn-launch-stress {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white; border: none; padding: 12px 24px;
+            border-radius: 10px; font-weight: 700; cursor: pointer;
+            width: 100%; transition: all 0.3s;
+        }
+        .btn-launch-stress:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
 
-        @keyframes pulse-brain {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
+        /* TABS SYSTEM */
+        .tabs-nav {
+            display: flex; gap: 10px; margin-bottom: 1.5rem;
+            padding: 5px; background: rgba(15, 23, 42, 0.5);
+            border-radius: 14px; border: 1px solid rgba(255,255,255,0.05);
         }
-        .brain-loader { font-size: 3rem; animation: pulse-brain 1.5s infinite ease-in-out; margin-bottom: 20px; }
-        /* Loader */
-        #main-loader {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #060d1a; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 9999;
-            transition: opacity 0.5s ease;
+        .tab-btn {
+            flex: 1; padding: 12px; border-radius: 10px; border: none;
+            background: transparent; color: #94a3b8; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .spinner {
-            width: 50px; height: 50px; border: 4px solid rgba(59,130,246,0.1);
-            border-top: 4px solid #3b82f6; border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+        .tab-btn:hover { background: rgba(255,255,255,0.03); color: #fff; }
+        .tab-btn.active {
+            background: rgba(59, 130, 246, 0.1); color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .tab-content { display: none; width: 100%; animation: slideUp 0.3s ease; }
+        .tab-content.active { display: block; }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* LIVE CONSOLE MODAL */
+        .log-modal-content {
+            background: #090e16;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+        .log-header {
+            padding: 15px 20px;
+            background: #111827;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-body {
+            flex: 1;
+            background: #000;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #d1d5db;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+        .log-body b { color: #60a5fa; }
+        .log-body i { color: #94a3b8; font-style: normal; }
+        .log-body .log-level-error { color: #ef4444; }
+        .log-body .log-level-success { color: #4ade80; }
+
+        /* MONITOR MENU */
+        .monitor-menu {
+            position: absolute;
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 8px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            min-width: 180px;
+        }
+        .monitor-menu-btn {
+            background: transparent;
+            border: none;
+            color: #e2e8f0;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+        .monitor-menu-btn:hover { background: rgba(59, 130, 246, 0.2); color: #fff; }
     </style>
 </head>
 <body>
@@ -377,343 +431,237 @@
         <div style="font-family:'JetBrains Mono', monospace; color:#60a5fa; font-size:0.9rem;">Sincronizando Cerebro...</div>
         <div style="font-size:0.75rem; color:#475569; margin-top:10px;">(Esto puede tardar 20s en el primer arranque)</div>
     </div>
-    <div id="toast-container"></div>
+    <!-- CONSOLE LOG MODAL -->
+    <div id="log-modal" class="modal-overlay" onclick="if(event.target==this) closeLogModal()">
+        <div class="log-modal-content">
+            <div class="log-header">
+                <div>
+                    <h3 id="log-title" style="margin:0; font-size:1rem; color:#fff;">📟 Consola de Comportamiento</h3>
+                    <div id="log-status" style="font-size:0.7rem; color:#4ade80; margin-top:2px;">● Conectado - Streaming en vivo</div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button onclick="refreshLogs(true)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:6px 12px; border-radius:6px; font-size:0.7rem; cursor:pointer;">🔄 Refrescar</button>
+                    <div class="modal-close" onclick="closeLogModal()" style="margin:0;">×</div>
+                </div>
+            </div>
+            <div id="log-content" class="log-body">Cargando logs...</div>
+        </div>
+    </div>
+
+    <!-- MONITOR CONTEXT MENU -->
+    <div id="monitor-menu" class="monitor-menu">
+        <div style="padding:4px 10px; font-size:0.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Opciones de Monitor</div>
+        <button class="monitor-menu-btn" onclick="openDashboard()">
+            <span>📊</span> Ver Panel de Gráficas
+        </button>
+        <button class="monitor-menu-btn" onclick="openLogConsole()">
+            <span>📟</span> Ver Consola de Comportamiento
+        </button>
+    </div>
     
     <!-- DASHBOARD CONTAINER -->
-    <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <div style="max-width: 1100px; margin: 0 auto; padding: 20px;">
         
-        <!-- MODAL AUDITORÍA IA -->
-        <div id="ai-modal-overlay" class="ai-modal-overlay" onclick="closeAIModal()">
+        <div class="grid">
+            
+            <!-- 1. CORE INTELLIGENCE BANNER (Unified Bank + AI) -->
+            <div class="card full-width" style="padding: 0; overflow: hidden; border: 1px solid rgba(139, 92, 246, 0.2); background: #0b1120; display: flex; flex-direction: column; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.4rem;">🧠</span>
+                        <h1 style="margin:0; font-size: 1.1rem; letter-spacing: 1px; color: #fff;">HAPI MASTER ORCHESTRATOR</h1>
+                        <div id="ai-maturity-badge" style="font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; text-transform: uppercase;">—</div>
+                    </div>
+                </div>
 
-        <!-- ══ MODAL AUDITORÍA IA ══ -->
-        <div id="ai-modal-overlay" class="ai-modal-overlay" onclick="closeAIModal()">
-            <div class="ai-modal" onclick="event.stopPropagation()">
-                <div class="ai-modal-header">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <span style="font-size:1.5rem;">🧠</span>
+                <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; min-height: 160px;">
+                    <!-- FINANCIALS -->
+                    <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-bottom: 15px;">Liquidez Total</div>
+                        <div class="stat-row" style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: #94a3b8;">Disponible</span><span id="av-cash" style="font-size: 1.1rem; font-weight: 800; color: #4ade80;">—</span></div>
+                        <div class="stat-row" style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: #94a3b8;">PnL Global</span><span id="tot-pnl" style="font-size: 1.1rem; font-weight: 800;">—</span></div>
+                        <div style="font-size: 0.7rem; color: #475569; margin-top: 5px;">Capital Base: <span id="init-cash">—</span></div>
+                    </div>
+                    <!-- PRECISION -->
+                    <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.15);">
+                        <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Precisión del Cerebro</div>
+                        <div style="font-size: 3.2rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff;" id="ai-acc-val">—%</div>
+                        <div style="width: 80%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden;"><div id="ai-acc-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #a78bfa);"></div></div>
+                    </div>
+                    <!-- SPECS -->
+                    <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: center;">
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Arquitectura</span><div id="ai-arch" style="font-size:0.75rem; font-weight:700;">—</div></div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Memoria</span><div id="ai-memory" style="font-size:0.75rem; font-weight:700;">—</div></div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Muestras</span><div id="ai-total-samples" style="font-size:0.75rem; font-weight:700;">—</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. AUTO-TRAINER ENGINE (Pinned) -->
+            <div class="card full-width">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <div style="display:flex; align-items:center; gap: 15px;">
+                        <h2 style="margin:0; font-size:1.2rem;">✨ Aprendizaje Autónomo (Master AI)</h2>
+                        <button onclick="openGlossaryModal()" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; cursor:pointer; padding:6px 12px; border-radius:6px; font-size:0.75rem; font-weight:bold;">📖 Glosario PVC</button>
+                    </div>
+                    <button id="btn-toggle-auto" class="auto-btn" onclick="toggleAutoTrainer()">⚡ Iniciar Autónoma</button>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
-                            <h3 style="margin:0; color:white;">Auditoría Estratégica IA</h3>
-                            <span id="ai-modal-symbol" style="font-size:0.75rem; color:#a78bfa; font-family:monospace; font-weight:bold;">Símbolo: ---</span>
+                            <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Estado del Motor</span>
+                            <div id="ai-auto-status" style="font-weight: 700; color: #f59e0b; font-size: 1.1rem;">Apagado</div>
+                        </div>
+                        <div style="flex:1; margin:0 1.5rem; padding:0 1.5rem; border-left:1px solid rgba(255,255,255,0.05); border-right:1px solid rgba(255,255,255,0.05);">
+                            <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Intensidad (Perfil)</span>
+                            <div style="display:flex; gap:8px; margin-top:8px;">
+                                <button id="perf-eco" class="perf-btn" onclick="setPerfProfile('eco')" title="Máximo 2 bots simultáneos">🍃 Eco-Trabajo</button>
+                                <button id="perf-turbo" class="perf-btn active" onclick="setPerfProfile('turbo')" title="Usa todos los recursos disponibles">🚀 Turbo-Auditoría</button>
+                            </div>
+                            
+                            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Seguridad (Muestras)</span>
+                                <div style="display:flex; gap:8px; margin-top:8px;">
+                                    <button id="safety-normal" class="perf-btn active" onclick="toggleSafetyMode(false)" title="Permite Live/Paper en fase final">⚖️ Híbrido</button>
+                                    <button id="safety-sim" class="perf-btn" onclick="toggleSafetyMode(true)" title="Forzar 100% Simulación (Aun en Fase Live)">🛡️ Solo Simular</button>
+                                </div>
+                                <div id="sim-forced-banner" style="margin-top: 10px;">⚠️ BLOQUEO DE SEGURIDAD: SOLO SIMULACIÓN</div>
+                            </div>
+                        </div>
+                        <div style="margin-right:1.5rem; padding-right:1.5rem; border-right:1px solid rgba(255,255,255,0.05);">
+                            <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Límite Bots</span>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                                <input type="number" id="ai-auto-limit" min="1" max="10" value="4" style="width: 50px; background: #091524; border: 1px solid #1e3a5f; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;" onchange="updateAutoLimit()" oninput="previewETA()">
+                            </div>
+                            <div id="ai-auto-eta" style="font-size:0.6rem; color:#60a5fa; margin-top:4px; font-weight:bold;">ETA: -</div>
+                        </div>
+                        <div>
+                            <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Próxima Acción</span>
+                            <div id="ai-auto-action" style="font-size: 0.9rem; color: #e2e8f0; margin-top: 4px;">—</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-top:8px;">Foco Actual</div>
+                            <div id="ai-auto-focus" style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #e2e8f0; font-size: 0.9rem;">—</div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <button id="btn-ai-speak" onclick="speakAudit()" class="btn-ai" style="padding:6px 10px; font-size:11px;" title="Escuchar reporte (Audio)">🔊 Escuchar</button>
-                        <button onclick="closeAIModal()" style="background:none; border:none; color:#94a3b8; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                         <ul id="ai-auto-logs" style="list-style:none; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; margin:0; max-height:80px; overflow-y:auto; padding-left:0;"></ul>
                     </div>
                 </div>
-                <div id="ai-modal-content" class="ai-modal-body">
-                    <!-- Injected AI response -->
-                    <div style="text-align:center; padding:40px;">
-                        <div class="brain-loader">🧠</div>
-                        <div style="color:#a78bfa;">Conectando con Gemini 2.0 Flash...</div>
-                        <div style="font-size:0.8rem; color:#64748b; margin-top:10px;">Analizando métricas de rendimiento y validez estadística.</div>
+            </div>
+
+            <!-- 3. BOTS ACTIVOS (Pinned) -->
+            <div class="card full-width">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                    <h2 style="margin:0;">📦 Bots Activos <span id="running-count" style="color:#4ade80;font-size:0.85rem;font-weight:400;"></span></h2>
+                    <button onclick="analyzeBot('GLOBAL')" class="btn-ai" style="padding:6px 14px; font-size:0.75rem;">🧠 Auditoría Global</button>
+                </div>
+                <table id="bot-table">
+                    <thead><tr><th>Símbolo</th><th>Modo</th><th>Trades</th><th>PnL Neto</th><th>Puntaje</th><th>Fase PVC</th><th>Acciones</th></tr></thead>
+                    <tbody id="running-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- 4. COLA (Queue Manager) -->
+            <div class="card full-width card-queue" id="queue-card" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
+                    <h2 style="margin:0; font-size:1.1rem; color:#60a5fa;">⏳ Lista de Espera (Queue)</h2>
+                    <span id="queue-count-badge" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; background:rgba(59,130,246,0.2); color:#60a5fa;">0 pendientes</span>
+                </div>
+                <div id="queue-list-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+            </div>
+
+            <!-- 5. SISTEMA DE PESTAÑAS (Modulares) -->
+            <div class="full-width">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchTab('mastery')">🏆 Maestría Hub</button>
+                    <button class="tab-btn" onclick="switchTab('history')">✅ Historial OOS</button>
+                    <button class="tab-btn" onclick="switchTab('tools')">🛠️ Control & Salud</button>
+                </div>
+
+                <!-- TAB: MASTERY -->
+                <div id="tab-mastery" class="tab-content active">
+                    <div class="card full-width" id="maturity-hub-card" style="margin-top:0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h2 style="margin:0;">🏆 Certificación de Maestría</h2>
+                            <div id="ai-global-advisor" style="font-size:0.85rem; font-weight:600; color:#3b82f6; padding:8px 16px; background:rgba(59,130,246,0.1); border-radius:12px;">🌀 Analizando...</div>
+                        </div>
+
+                        <!-- Global Portfolio Maturity Summary -->
+                        <div style="background:rgba(255,255,255,0.02); padding:1rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem; display:flex; align-items:center; gap:2rem;">
+                            <div style="flex:1;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:0.75rem;">
+                                    <span style="color:#94a3b8;">Madurez Total del Portafolio</span>
+                                    <span id="global-maturity-val" style="color:#60a5fa; font-weight:700;">0%</span>
+                                </div>
+                                <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden;">
+                                    <div id="global-maturity-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #3b82f6, #a78bfa); box-shadow:0 0 10px rgba(59,130,246,0.2);"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table id="maturity-table">
+                            <thead><tr>
+                                <th>Símbolo</th>
+                                <th>Tendencia</th>
+                                <th>Madurez</th>
+                                <th>ETA Grado</th>
+                                <th>Estado PVC</th>
+                                <th>Métricas (WR/PF)</th>
+                                <th>Confianza (MC)</th>
+                                <th>Capital Sug.</th>
+                                <th>Acciones</th>
+                            </tr></thead>
+                            <tbody id="maturity-tbody"></tbody>
+                        </table>
                     </div>
                 </div>
-                <div style="padding:15px 25px; border-top:1px solid rgba(255,255,255,0.05); text-align:right; background:rgba(0,0,0,0.2);">
-                    <button onclick="closeAIModal()" class="btn-kill" style="padding:8px 20px;">Entendido</button>
+
+                <!-- TAB: HISTORY -->
+                <div id="tab-history" class="tab-content">
+                    <div class="card full-width" style="margin-top:0;">
+                        <h2>✅ Registro Histórico</h2>
+                        <div id="history-container"></div>
+                    </div>
+                </div>
+
+                <!-- TAB: TOOLS & HEALTH -->
+                <div id="tab-tools" class="tab-content">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="card">
+                            <h2>🚀 Lanzador Manual</h2>
+                            <div style="display:flex; flex-direction:column; gap:12px;">
+                                <select id="sym-input" style="width:100%;"><option value="">Símbolo...</option></select>
+                                <input type="date" id="date-input" style="width:100%;">
+                                <button class="btn-primary" onclick="launchBot()" style="width:100%;">▶ Start Manual</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h2>⚡ Salud de Hardware</h2>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                                <div style="padding:10px; background:rgba(255,255,255,0.02); border-radius:10px;">
+                                    <div style="font-size:9px; color:#64748b;">CPU</div>
+                                    <div id="sys-cpu-val" style="font-size:1.4rem; font-weight:900;">—%</div>
+                                </div>
+                                <div style="padding:10px; background:rgba(255,255,255,0.02); border-radius:10px;">
+                                    <div style="font-size:9px; color:#64748b;">RAM</div>
+                                    <div id="sys-ram-val" style="font-size:1.4rem; font-weight:900;">—%</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h2 style="color:#f87171;">🛠️ Mantenimiento Crítico</h2>
+                            <p style="font-size:0.75rem; color:#64748b; margin-bottom:12px;">Resetear el estado del orquestador y detener todos los bots activos.</p>
+                            <button class="btn-kill" onclick="openWipeModal()" style="width:100%; padding:10px; border: 1px solid rgba(248,113,113,0.3); background:rgba(248,113,113,0.05); color:#f87171; font-weight:700;">
+                                💣 Limpiar Sistema (Safe Wipe)
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
     </div>
 
-    <!-- PREMIUM WIPE MODAL -->
-    <div id="wipe-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-icon">⚠️</div>
-            <div class="modal-title">¿Borrar todo el sistema?</div>
-            <p class="modal-text">
-                Esta acción detendrá todos los procesos, reseteará el banco y purgará la IA central. 
-                <br><br>
-                <strong>Esta acción no se puede deshacer.</strong>
-            </p>
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="closeWipeModal()">Cancelar</button>
-                <button class="btn-confirm-wipe" onclick="executeSystemWipe()">Confirmar Borrado</button>
-            </div>
-        </div>
-    </div>
 
-    <div class="grid">
-
-        <!-- CORE INTELLIGENCE BANNER (Unified Bank + AI) -->
-        <div class="card full-width" style="padding: 0; overflow: hidden; border: 1px solid rgba(139, 92, 246, 0.2); background: #0b1120; display: flex; flex-direction: column;">
-            
-            <!-- Banner Header: Branding & Global Actions -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 1.4rem;">🧠</span>
-                    <h1 style="margin:0; font-size: 1.1rem; letter-spacing: 1px; color: #fff;">HAPI MASTER ORCHESTRATOR</h1>
-                    <div id="ai-maturity-badge" style="font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; text-transform: uppercase;">—</div>
-                </div>
-                <button class="btn-kill" onclick="openWipeModal()" style="padding: 4px 12px; font-size: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
-                    🛡️ EMERGENCIA: WIPE TOTAL
-                </button>
-            </div>
-
-            <!-- Banner Content: Balanced KPIs -->
-            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; min-height: 160px;">
-                
-                <!-- COLUMN 1: FINANCIALS -->
-                <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;">Liquidez Total</div>
-                    <div class="stat-row" style="margin-bottom: 8px;">
-                        <span style="font-size: 0.8rem; color: #94a3b8;">Disponible</span>
-                        <span id="av-cash" style="font-size: 1.1rem; font-weight: 800; color: #4ade80;">—</span>
-                    </div>
-                    <div class="stat-row" style="margin-bottom: 8px;">
-                        <span style="font-size: 0.8rem; color: #94a3b8;">PnL Global</span>
-                        <span id="tot-pnl" style="font-size: 1.1rem; font-weight: 800;">—</span>
-                    </div>
-                    <div style="font-size: 0.7rem; color: #475569; margin-top: 5px;">Capital Base: <span id="init-cash">—</span></div>
-                </div>
-
-                <!-- COLUMN 2: ANALYTICAL CORE (Precision Gauge) -->
-                <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.15);">
-                    <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Precisión del Cerebro</div>
-                    <div style="font-size: 3.2rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff; line-height: 1;" id="ai-acc-val">—%</div>
-                    <div style="width: 80%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden;">
-                        <div id="ai-acc-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #a78bfa); transition: width 1.5s cubic-bezier(0.1, 0.5, 0.1, 1);"></div>
-                    </div>
-                    <div style="margin-top: 12px; font-size: 0.65rem; color: #475569; display: flex; align-items: center; gap: 6px;">
-                        <span class="dot dot-green" style="width: 5px; height: 5px;"></span>
-                        RF-GLOBAL/MLP ENGINE ONLINE
-                    </div>
-                </div>
-
-                <!-- COLUMN 3: TECHNICAL SPECS -->
-                <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: center;">
-                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
-                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Arquitectura</span>
-                        <div id="ai-arch" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">—</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
-                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Memoria</span>
-                        <div id="ai-memory" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0;">—</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03);">
-                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Muestras</span>
-                        <div id="ai-total-samples" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0; font-family: monospace;">—</div>
-                    </div>
-                    <div class="pvc-tooltip" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); cursor: help;" 
-                         data-tooltip="Los 13 'Inputs' son los datos maestros que la IA analiza para cada trade:&#10;1. Hora del día&#10;2. Distancia al VWAP&#10;3. RSI&#10;4. Histograma MACD&#10;5. Volatilidad (ATR%)&#10;6. Ratio de Volumen&#10;7. Spread de EMAs&#10;8. Z-Score (Pivote)&#10;9. Régimen de Mercado&#10;10. Confirmaciones Técnicas&#10;11. ADX (Fuerza)&#10;12. Patrones Visuales&#10;13. Tendencia de Fuerza">
-                        <span style="display: block; font-size: 8px; color: #475569; text-transform: uppercase;">Inputs</span>
-                        <div id="ai-features" style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0; font-family: monospace;">13</div>
-                    </div>
-                </div>
-                
-            </div>
-        </div>
-
-        <!-- CERTIFICACIÓN DE MAESTRÍA (MATURITY HUB) -->
-        <div class="card full-width" id="maturity-hub-card" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <div>
-                    <h2 style="margin-bottom:4px;">🏆 Certificación de Maestría (Maturity Hub)</h2>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:0.75rem; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Madurez Global del Fondo:</span>
-                        <div style="width:200px; height:8px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.05);">
-                            <div id="global-maturity-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3b82f6, #8b5cf6); transition:width 1s ease-in-out;"></div>
-                        </div>
-                        <span id="global-maturity-val" style="font-size:0.9rem; font-weight:700; color:#e2e8f0; font-family:'JetBrains Mono', monospace;">0%</span>
-                    </div>
-                </div>
-                <div id="ai-global-advisor" style="font-size:0.85rem; font-weight:600; color:#3b82f6; padding:0.6rem 1rem; background:rgba(59,130,246,0.1); border-radius:12px; border:1px solid rgba(59,130,246,0.2); transition: all 0.3s ease;">
-                    🌀 Analizando mejor activo...
-                </div>
-            </div>
-            <table id="maturity-table">
-                <thead><tr>
-                    <th>Símbolo</th>
-                    <th>Tendencia</th>
-                    <th>Madurez (%)</th>
-                    <th>ETA de Graduación</th>
-                    <th>Estatus</th>
-                    <th>Análisis (WinRate / PF)</th>
-                    <th>Certeza (MC)</th>
-                    <th>Capital Sugerido</th>
-                </tr></thead>
-                <tbody id="maturity-tbody"></tbody>
-            </table>
-        </div>
-
-        
-        <!-- SALUD DEL SISTEMA -->
-        <div class="card full-width" id="sys-health-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.8rem;">
-                <h2 style="margin:0;">⚡ Capacidad del Sistema</h2>
-                <span id="sys-advice-badge" style="font-size:0.75rem; padding:4px 12px; border-radius:20px; font-weight:700; background:rgba(100,116,139,0.2); color:#94a3b8; transition:all 0.4s;">
-                    Analizando…
-                </span>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-                <!-- CPU -->
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
-                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🖥 CPU</div>
-                    <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; margin-bottom:6px;" id="sys-cpu-val">—%</div>
-                    <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; overflow:hidden;">
-                        <div id="sys-cpu-bar" style="height:100%; width:0%; background:#3b82f6; transition:width 0.6s ease; border-radius:4px;"></div>
-                    </div>
-                </div>
-                <!-- RAM -->
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
-                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">💾 RAM</div>
-                    <div style="font-size:22px; font-weight:900; font-family:'JetBrains Mono',monospace; margin-bottom:6px;" id="sys-ram-val">—%</div>
-                    <div style="background:rgba(255,255,255,0.06); border-radius:4px; height:6px; overflow:hidden;">
-                        <div id="sys-ram-bar" style="height:100%; width:0%; background:#8b5cf6; transition:width 0.6s ease; border-radius:4px;"></div>
-                    </div>
-                    <div style="font-size:10px; color:#475569; margin-top:4px;" id="sys-ram-detail">—</div>
-                </div>
-                <!-- Sims Activas -->
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px;">
-                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🐳 Sims Activas</div>
-                    <div style="font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace; color:#4ade80;" id="sys-running-val">—</div>
-                </div>
-                <!-- Capacidad Disponible -->
-                <div id="sys-capacity-card" style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); border-radius:12px; padding:14px; transition:all 0.4s;">
-                    <div style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:700;">🚀 Puedes Lanzar</div>
-                    <div style="font-size:32px; font-weight:900; font-family:'JetBrains Mono',monospace;" id="sys-max-val">—</div>
-                    <div style="font-size:10px; color:#475569; margin-top:4px;">simulaciones más</div>
-                </div>
-            </div>
-            <!-- Advice bar -->
-            <div id="sys-advice-bar" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px 16px; font-size:12px; color:#94a3b8; display:flex; align-items:center; gap:10px; transition:all 0.4s;">
-                <span id="sys-advice-icon">ℹ️</span>
-                <span id="sys-advice-text">Cargando diagnóstico del sistema…</span>
-            </div>
-        </div>
-
-<!-- LANZAR SIMULACIÓN -->
-        <div class="card full-width">
-            <h2>🚀 Lanzar Simulación</h2>
-            <div class="launch-row" style="align-items:flex-end;">
-                <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
-                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">SÍMBOLO</span>
-                   <select id="sym-input">
-                       <option value="">Selecciona un símbolo…</option>
-                   </select>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">INICIO SIMULACIÓN</span>
-                   <input type="date" id="date-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de inicio (opcional)">
-                </div>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                   <span style="font-size:0.65rem; color:#94a3b8; font-weight:600;">FIN SIMULACIÓN</span>
-                   <input type="date" id="date-end-input" style="padding: 0.6rem; border-radius: 8px; border: 1px solid #1e3a5f; background: #091524; color: #f8fafc; font-family: 'Inter', sans-serif;" title="Fecha de fin (opcional)">
-                </div>
-                <button class="btn-primary" onclick="launchBot()" style="padding:0.7rem 1.2rem; font-size:0.9rem;">▶ Start Simulation</button>
-            </div>
-        </div>
-
-        <!-- AUTO-PERFECCIONADOR AUTÓNOMO -->
-        <div class="card full-width">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <div style="display:flex; align-items:center; gap: 15px;">
-                    <h2>✨ Auto-Perfeccionador Autónomo</h2>
-                    <button onclick="openGlossaryModal()" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; cursor:pointer; padding:6px 12px; border-radius:6px; font-size:0.75rem; font-weight:bold; transition:all 0.2s;">📖 Glosario Fases PVC</button>
-                </div>
-                <button id="btn-toggle-auto" class="auto-btn" onclick="toggleAutoTrainer()">⚡ Iniciar Autónoma</button>
-            </div>
-            
-            <div style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Estado del Motor</span>
-                        <div id="ai-auto-status" style="font-weight: 700; color: #f59e0b; font-size: 1.1rem;">Apagado</div>
-                    </div>
-                    <div style="flex:1; margin:0 1.5rem; padding:0 1.5rem; border-left:1px solid rgba(255,255,255,0.05); border-right:1px solid rgba(255,255,255,0.05);">
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Perfil de Vuelo</span>
-                        <div style="display:flex; gap:8px; margin-top:8px;">
-                            <button id="perf-eco" class="perf-btn" onclick="setPerfProfile('eco')" title="Modo Trabajo: Silencioso y ligero (max 2 bots)">🍃 Eco-Trabajo</button>
-                            <button id="perf-turbo" class="perf-btn active" onclick="setPerfProfile('turbo')" title="Modo Auditoría: Máxima velocidad con Protocolo PVC">🚀 Turbo-Auditoría</button>
-                        </div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Límite Manual (MAX 10)</span>
-                        <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-                            <input type="number" id="ai-auto-limit" min="1" max="10" value="4" 
-                                style="width: 50px; background: #091524; border: 1px solid #1e3a5f; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;"
-                                onchange="updateAutoLimit()" oninput="previewETA()">
-                        </div>
-                        <div id="ai-auto-eta" style="font-size:0.6rem; color:#60a5fa; margin-top:4px; font-weight:bold;">ETA: Calculando...</div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Foco Actual</span>
-                        <div id="ai-auto-focus" style="font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #e2e8f0; font-size: 1.1rem;">—</div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;">Próxima Acción</span>
-                        <div id="ai-auto-action" style="font-size: 0.9rem; color: #e2e8f0; margin-top: 4px;">—</div>
-                
-                <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
-                    <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; display:block;">Cerebro de Operaciones (Logs)</span>
-                    <ul id="ai-auto-logs" style="list-style:none; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; margin:0; display:flex; flex-direction:column; gap:4px; max-height:80px; overflow-y:auto;">
-                        <li>Esperando inicialización...</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- BOTS ACTIVOS -->
-        <div class="card full-width">
-            <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:1.2rem; border-radius:8px; margin-bottom:1.5rem; display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
-                <div>
-                    <div style="font-weight:600; color:#c084fc; font-size:0.8rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">⚖️ ¿Cómo leer el Puntaje?</div>
-                    <div style="font-size:0.75rem; color:#94a3b8; line-height: 1.4; margin-bottom:0.8rem;">La calificación (0 a 100) que se le otorga al bot por su fase <strong>actual</strong>. Decide si avanza al siguiente paso o se elimina.</div>
-                    <div style="display:flex; flex-direction:column; gap:4px; font-size:0.75rem; color:#94a3b8;">
-                        <div>• <span style="color:#f87171; font-weight:600;">Negativo (&lt; 0):</span> Reprobado. Destruye dinero, por tanto el símbolo es purgado del sistema.</div>
-                        <div>• <span style="color:#60a5fa; font-weight:600;">Entre 0 y 50:</span> Inestable. Aprobando por la mínima, requiere más iteración neuronal.</div>
-                        <div>• <span style="color:#4ade80; font-weight:600;">Mayor a 50 (Verde):</span> Aprobado con Honores. Sólido Win-Rate; promociona de fase.</div>
-                    </div>
-                </div>
-                
-                <div style="border-left: 1px solid rgba(255,255,255,0.05); padding-left:1.5rem;">
-                    <div style="font-weight:600; color:#4ade80; font-size:0.8rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:6px;">🛣️ Camino de Promoción (Si el puntaje es Verde)</div>
-                    <div style="font-size:0.75rem; color:#94a3b8; line-height: 1.4; margin-bottom:0.8rem;">Al sacar un puntaje aprobatorio, el contenedor se destruye y el símbolo se inyecta en la siguiente categoría:</div>
-                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.6rem; font-family:'JetBrains Mono', monospace;">
-                        <span style="background:rgba(192,132,252,0.1); color:#c084fc; padding:4px 8px; border-radius:4px; border:1px solid rgba(192,132,252,0.2);">1. SCOUTING</span>
-                        <span style="color:#64748b;">➔</span>
-                        <span style="background:rgba(96,165,250,0.1); color:#60a5fa; padding:4px 8px; border-radius:4px; border:1px solid rgba(96,165,250,0.2);">2. TRAINING</span>
-                        <span style="color:#64748b;">➔</span>
-                        <span style="background:rgba(251,191,36,0.1); color:#fbbf24; padding:4px 8px; border-radius:4px; border:1px solid rgba(251,191,36,0.2);">3. VALIDATING</span>
-                        <span style="color:#64748b;">➔</span>
-                        <span style="background:rgba(248,113,113,0.1); color:#f87171; padding:4px 8px; border-radius:4px; border:1px solid rgba(248,113,113,0.2);">4. STRESS-TEST</span>
-                        <span style="color:#64748b;">➔</span>
-                        <span style="background:rgba(52,211,153,0.1); color:#34d399; padding:4px 8px; border-radius:4px; border:1px solid rgba(52,211,153,0.2);">5. LIVE-SHADOW</span>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
-                <h2 style="margin:0;">📦 Bots Activos <span id="running-count" style="color:#4ade80;font-size:0.85rem;text-transform:none;font-weight:400;"></span></h2>
-                <button id="btn-global-audit" onclick="analyzeBot('GLOBAL')" class="btn-ai" style="padding:6px 14px; font-size:0.75rem; border:1px solid rgba(139, 92, 246, 0.4); background:rgba(139, 92, 246, 0.1);">
-                    🧠 Auditoría Global (IA)
-                </button>
-            </div>
-            <table id="bot-table">
-                <thead><tr>
-                    <th>Símbolo</th>
-                    <th>Modo</th>
-                    <th>Trades</th>
-                    <th title="De Bruto (\u00fanico mercado) a Neto (final despu\u00e9s de fees y slip)">PnL (Bruto \u2192 Neto) \u24d8</th>
-                    <th>Puntaje</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr></thead>
-                <tbody id="running-tbody"></tbody>
-            </table>
-        </div>
-
-        <!-- BOTS COMPLETADOS -->
-        <div class="card full-width">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h2>✅ Historial de Simulaciones</h2>
-                <div style="font-size: 0.75rem; color: #64748b;">Agrupado por activo</div>
-            </div>
-            <div id="history-container">
-                <!-- Se llenará dinámicamente con grupos de símbolos -->
-            </div>
-        </div>
 
     </div>
 
@@ -797,11 +745,95 @@
             </div>
         </div>
     </div>
+    
+    <!-- STRESS TEST MODAL -->
+    <div id="stress-modal" class="modal-overlay" onclick="if(event.target==this) closeStressModal()">
+        <div class="modal-content" style="max-width: 450px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(217, 70, 239, 0.3);">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:12px;">
+                <div>
+                    <h2 id="stress-modal-title" style="margin:0; font-size:1.2rem; color:#fff;">Validación Ciega (Stress-Test)</h2>
+                    <div style="font-size:0.75rem; color:#d946ef; font-weight:bold; margin-top:4px;">⚠️ PROTOCOLO PVC NIVEL 4</div>
+                </div>
+                <div class="modal-close" onclick="closeStressModal()" style="cursor:pointer; font-size:1.5rem; color:#94a3b8;">×</div>
+            </div>
+            
+            <div class="modal-body">
+                <div style="background:rgba(217, 70, 239, 0.05); padding:1rem; border-radius:12px; margin-bottom:1.5rem; text-align:left;">
+                    <p style="font-size:0.85rem; color:#94a3b8; line-height:1.5; margin:0;">
+                        Se bloqueará el aprendizaje neuronal. El bot operará únicamente con los pesos optimizados actuales para probar su robustez en un periodo out-of-sample (OOS).
+                    </p>
+                </div>
+
+                <div style="text-align:left; margin-bottom:1.5rem;">
+                    <label style="display:block; font-size:0.75rem; color:#64748b; text-transform:uppercase; margin-bottom:8px; font-weight:700;">Fecha de Inicio de Prueba:</label>
+                    <input type="date" id="stress-date-input" style="width:100%; padding:12px; background:#091524; border:1px solid #1e3a5f; color:white; border-radius:10px; font-family:'JetBrains Mono',monospace;">
+                    <div style="font-size:0.7rem; color:#64748b; margin-top:8px;">Por defecto: Últimos 6 meses para máxima volatilidad.</div>
+                </div>
+
+                <button id="btn-do-launch-stress" class="auto-btn" style="width:100%; padding:14px; background:#d946ef; font-weight:800; border-radius:12px; box-shadow:0 10px 20px rgba(217, 70, 239, 0.2);">
+                    🚀 Lanzar Auditoría Ciega
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL LIMPIEZA DE SISTEMA (BLINDADO) -->
+    <div id="wipe-modal" class="modal-overlay" onclick="if(event.target==this) closeWipeModal()">
+        <div class="modal-content" style="max-width: 450px; border-top: 5px solid #f87171;">
+            <div class="modal-header">
+                <div>
+                    <h2 style="margin:0; color:#f87171;">💣 Limpieza de Sistema</h2>
+                    <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">Define el nivel de purga</div>
+                </div>
+                <div class="modal-close" onclick="closeWipeModal()">×</div>
+            </div>
+            <div class="modal-body">
+                <p style="color:#e2e8f0; font-size:0.9rem; line-height:1.5;">Esta acción detendrá todos los procesos activos y reseteará la cuenta bancaria del orquestador.</p>
+                
+                <div style="background:rgba(255,255,255,0.03); padding:1rem; border-radius:12px; margin: 1.5rem 0; border:1px solid rgba(255,255,255,0.05);">
+                    <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+                        <input type="checkbox" id="wipe-keep-history" checked style="width:20px; height:20px; accent-color:#3b82f6;">
+                        <div>
+                            <div style="font-weight:700; color:#60a5fa;">🛡️ Proteger Historial PVC</div>
+                            <div style="font-size:0.7rem; color:#64748b;">Conserva tus Elites y resultados pasados.</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="font-size:0.75rem; color:#f87171; background:rgba(248,113,113,0.1); padding:10px; border-radius:8px; margin-bottom:1.5rem;">
+                    ⚠️ Si desmarcas la protección, se borrará absolutamente toda la inteligencia acumulada (ELITE -> SCOUTING).
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-kill" onclick="closeWipeModal()" style="background:transparent; border:1px solid #334155;">Cancelar</button>
+                    <button class="btn-confirm-wipe" onclick="executeSystemWipe()" style="background:#f87171; color:white; font-weight:800; padding:10px 24px; border-radius:10px; cursor:pointer;">Confirmar Purgado</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // ─── MODALS ─────────────────────────────────────────────
-        function openGlossaryModal() { document.getElementById('pvc-modal').style.display = 'flex'; }
-        function closeGlossaryModal() { document.getElementById('pvc-modal').style.display = 'none'; }
+        // ─── TABS SYSTEM ───────────────────────────────────────
+        function switchTab(tabId) {
+            // Update UI
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabId));
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === `tab-${tabId}`);
+            });
+            
+            // Persist
+            localStorage.setItem('hapi_active_tab', tabId);
+            window.currentTab = tabId;
+
+            // Trigger immediate refresh for the active tab if needed
+            if (tabId === 'history') fetchBots();
+            if (tabId === 'mastery') updateMasteryHub();
+        }
+
+        // ─── ANALYST TOOLS ──────────────────────────────────────
 
         // ─── ANALYST TOOLS ──────────────────────────────────────
         function drawSparkline(data, size = 'small') {
@@ -899,80 +931,67 @@
                 document.getElementById('running-count').textContent = containers.length ? `(${containers.length} activos)` : '';
 
                 if (containers.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No hay procesos activos</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No hay procesos activos</td></tr>';
                 } else {
                     tbody.innerHTML = containers.map(c => {
-                        const pnlNet = c.pnl_net || 0;
-                        const pnlGross = c.pnl_gross || 0;
+                        const pnlNet = (c.pnl_net !== undefined ? c.pnl_net : (c.session_pnl_net || 0));
                         const pnlColor = pnlNet >= 0 ? '#4ade80' : '#ef4444';
-                        const grossColor = pnlGross >= 0 ? '#4ade80' : '#ef4444';
-                        const pfx = pnlNet >= 0 ? '+' : '';
-                        const gpfx = pnlGross >= 0 ? '+' : '';
                         const progress = c.progress || 0;
                         const score = c.score || 0;
+                        const trades = (c.trades !== undefined ? c.trades : (c.session_trades || 0));
+
+                        // PVC Badge Logic
+                        const stage = c.stage || 'SCOUTING';
+                        const isLiveShadow = stage === 'LIVE-SHADOW';
+                        const frozen = (stage !== 'SCOUTING' && stage !== 'TRAINING') || isLiveShadow ? ' 🔒' : '';
+                        const labelText = isLiveShadow ? 'ELITE' : stage;
+                        const stageClass = isLiveShadow ? 'stage-elite' : `stage-${stage.toLowerCase().replace(' ', '-')}`;
+                        
+                        // Formatear Sub-Etiqueta
+                        let subLabel = `${progress.toFixed(1)}% | ${c.eta_str || '...'}`;
+                        if (c.mode && c.mode.includes('LIVE')) {
+                            const launched = c.launched_at !== '—' ? c.launched_at : 'Ahora';
+                            subLabel = `<span style="color:#4ade80; font-weight:700;">Shadow Mode</span> | Activo: ${launched}`;
+                        }
 
                         return `
                         <tr>
                             <td>
                                 <div style="display:flex; flex-direction:column; gap:4px;">
-                                    <span style="font-weight:700; font-size:1.1rem; display:flex; align-items:center;">
+                                    <span style="font-weight:700; font-size:1rem; display:flex; align-items:center;">
                                         ${c.symbol}
-                                        ${(() => {
-                                            if (!c.stage) return '';
-                                            const frozen = c.stage !== 'SCOUTING' && c.stage !== 'TRAINING' ? ' 🔒' : '';
-                                            const cls = c.stage === 'SCOUTING' ? 'stage-scouting'
-                                                        : c.stage === 'TRAINING' ? 'stage-training'
-                                                        : c.stage === 'VALIDATING' ? 'stage-validating'
-                                                        : c.stage === 'STRESS-TEST' ? 'stage-stress'
-                                                        : c.stage === 'LIVE-SHADOW' ? 'stage-shadow'
-                                                        : 'stage-training';
-                                            const stageDesc = c.stage === 'SCOUTING' ? 'Exploración inicial. Filtra si el símbolo es apto.'
-                                                            : c.stage === 'TRAINING' ? 'Aprendizaje profundo. La red absorbe patrones históricos.'
-                                                            : c.stage === 'VALIDATING' ? 'Examen Ciego. Opera sin aprender para evitar la memorización.'
-                                                            : c.stage === 'STRESS-TEST' ? 'Prueba Monte Carlo bajo condiciones extremas y volatilidad.'
-                                                            : c.stage === 'LIVE-SHADOW' ? 'Status Elite. Operando tiempo real en latencia cero.' : '';
-                                            return `<span class="stage-badge pvc-tooltip ${cls}" data-tooltip="${stageDesc}" style="margin-left:8px; font-size:0.6rem; padding:2px 6px;">${c.stage}${frozen}</span>`;
-                                        })()}
+                                        <span class="stage-badge ${stageClass}" style="margin-left:8px; font-size:0.6rem; padding:2px 6px;">${labelText}${frozen}</span>
                                     </span>
-                                    <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; position:relative;">
-                                        <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, #3b82f6, #06b6d4); transition: width 0.5s ease; border-radius:10px;"></div>
+                                    <div style="width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden;">
+                                        <div style="width:${c.mode && c.mode.includes('LIVE') ? 100 : progress}%; height:100%; background:linear-gradient(90deg, ${isLiveShadow ? '#fbbf24, #f59e0b' : '#3b82f6, #8b5cf6'}); border-radius:10px;"></div>
                                     </div>
-                                    <span style="font-size:0.65rem; color:#94a3b8; font-family:monospace;">${parseFloat(progress).toFixed(1)}% completado${c.eta_str || ''}</span>
+                                    <span style="font-size:0.6rem; color:#64748b;">${subLabel}</span>
                                 </div>
                             </td>
-                            <td style="font-size:0.75rem; color:#94a3b8; border-left:1px solid rgba(255,255,255,0.05); padding-left:12px;">
-                                <div style="display:flex; flex-direction:column; gap:4px;">
-                                    <span>${c.mode}</span>
-                                    ${c.sim_start_date && c.sim_end_date ? `<span style="font-family:'JetBrains Mono', monospace; font-size:0.65rem; color:#64748b;">${c.sim_start_date} <br/>→ ${c.sim_end_date}</span>` : ''}
-                                </div>
-                            </td>
-                            <td style="font-weight:600; font-family:'JetBrains Mono', monospace;">
-                                <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span>${c.session_trades || 0}</span>
-                                    ${(c.trades > (c.session_trades || 0)) ? `<span style="font-size:0.65rem; color:#64748b; font-weight:normal;" title="Total Acumulado (Historial + Sesión)">Acum: ${c.trades}</span>` : ''}
-                                </div>
-                            </td>
+                            <td style="font-size:0.75rem; color:#94a3b8;">${c.mode}</td>
+                            <td style="font-family:'JetBrains Mono',monospace;">${trades}</td>
                             <td>
-                                <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span style="color:${(c.session_pnl_net || 0) >= 0 ? '#4ade80' : '#ef4444'}; font-weight:800; font-size:1.1rem; font-family:'JetBrains Mono', monospace;">
-                                        ${(c.session_pnl_net || 0) >= 0 ? '+' : ''}$${(c.session_pnl_net || 0).toFixed(2)}
-                                    </span>
-                                    <span style="font-size:0.7rem; color:#64748b;" title="PnL Neto Total (Banco)">Banco: <span style="color:${pnlColor}">${pfx}$${pnlNet.toFixed(2)}</span></span>
-                                </div>
+                                <span style="color:${pnlColor}; font-weight:800; font-size:1.1rem; font-family:'JetBrains Mono',monospace;">
+                                    ${pnlNet >= 0 ? '+' : ''}$${pnlNet.toFixed(2)}
+                                </span>
                             </td>
-                            <td><span style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; font-weight:bold; color:${score >= 50 ? '#4ade80' : score > 0 ? '#60a5fa' : '#f87171'};">${score.toFixed(1)}</span></td>
-                            <td><span class="pill pill-running"><span class="dot dot-green"></span>running</span></td>
+                            <td><span style="font-weight:bold; color:${score >= 50 ? '#4ade80' : '#f87171'}; font-size:1.1rem;">${score.toFixed(1)}</span></td>
+                            <td style="font-size:0.7rem; color:#64748b;">${c.status || 'running'}</td>
                             <td>
                                 <div style="display:flex; gap:6px;">
-                                    <button class="btn-console" onclick="openConsole('${c.symbol}')" title="Abrir Consola Individual">💻</button>
-                                    <button class="btn-kill" onclick="killBot('${c.symbol}')" title="Detener Instancia">🛑 Matar</button>
+                                    <button class="btn-console" onclick="showMonitorMenu(event, '${c.symbol}')" style="padding:4px 8px; font-size:0.7rem; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; border-radius:6px; cursor:pointer;">👁️ Monitor</button>
+                                    <button class="btn-kill" onclick="killBot('${c.symbol}')" style="padding:4px 8px; font-size:0.7rem; border-radius:6px;">🛑 Matar</button>
                                 </div>
                             </td>
                         </tr>`;
                     }).join('');
                 }
 
-                renderGroupedHistory(d.completed || []);
+                // OPTIMIZACIÓN: Solo renderizar historial si la pestaña está activa
+                if (window.currentTab === 'history') {
+                    renderGroupedHistory(d.completed || []);
+                }
+                
                 if (d.ai) updateAIStats(d.ai);
 
             } catch(e) { console.error('fetchBots error', e); }
@@ -1031,7 +1050,7 @@
                         previewETA(); // Actualizar ETA con los nuevos datos
                     }
                     
-                    tbody.innerHTML = rankings.rankings.slice(0, 10).map(m => {
+                    tbody.innerHTML = rankings.rankings.map(m => {
                         // Desglose de fórmula para transparencia
                         const wr_score = (Math.min(m.win_rate, 100) * 0.40).toFixed(1);
                         const pf_score = (Math.min(m.profit_factor * 50, 100) * 0.40).toFixed(1);
@@ -1057,14 +1076,20 @@
                             'VALIDATING': 'Validación Ciega (OOS): Pesos CONGELADOS. Prueba de fuego contra datos desconocidos.'
                         }[m.pvc_stage] || 'Fase Desconocida';
 
-                        const statusText = m.status === 'LEARNING' ? `LEARNING (${m.total_trades}/30)` : m.status;
+                        const lowScoreWarning = m.rank < 30 ? '⚠️ Baja Certeza' : '';
+                        let statusText = m.status === 'LEARNING' ? `LEARNING (${m.total_trades}/30)` : m.status;
+                        if (m.status === 'NEEDS_IMPROVEMENT') statusText = '🔴 RE-ENTRENANDO (Falió Stress)';
+                        
                         const statusTooltip = `Fase PVC: ${m.pvc_stage}\n${pvcDesc}`;
 
                         return `
                         <tr>
                             <td style="font-weight:700;">${m.symbol}</td>
                             <td><div class="mastery-progress-bg"><div class="mastery-progress-fill" style="width:${m.rank}%"></div></div></td>
-                            <td title="${formulaTooltip}" style="cursor:help;"><b>${m.rank}%</b> ℹ️</td>
+                            <td title="${formulaTooltip}" style="cursor:help;">
+                                <b>${m.rank}%</b> ℹ️
+                                <div style="font-size:0.6rem; color:#ef4444; margin-top:2px;">${lowScoreWarning}</div>
+                            </td>
                             <td>${etaText}</td>
                             <td>
                                 <span class="tag-${m.status.toLowerCase().replace(' ', '-')}" title="${statusTooltip}" style="cursor:help; display:inline-block;">
@@ -1074,6 +1099,13 @@
                             <td style="font-size:0.75rem;">WR: <b>${m.win_rate}%</b> | PF: <b>${m.profit_factor}</b></td>
                             <td style="font-weight:700; color:#10b981;" title="Auditoría Monte Carlo">Certeza: ${m.confidence_score || 0}% <span style="font-size:0.6rem; color:#94a3b8;">(±${m.audit_drawdown || 0}%)</span></td>
                             <td style="color:#3b82f6; font-weight:700;">$${m.suggested_capital ? m.suggested_capital.toLocaleString() : 0}</td>
+                            <td>
+                                ${(m.status === 'READY_FOR_LIVE' || m.status === 'ELITE') ? `
+                                    <button class="auto-btn" onclick="launchStressTest('${m.symbol}')" style="padding:4px 8px; font-size:0.65rem; background:rgba(217, 70, 239, 0.2); border:1px solid rgba(217, 70, 239, 0.4); color:#f5d0fe;">
+                                        ⚡ Stress Test
+                                    </button>
+                                ` : '<span style="color:#475569; font-size:0.6rem;">En Progreso...</span>'}
+                            </td>
                         </tr>`;
                     }).join('');
                 }
@@ -1116,6 +1148,57 @@
 
             const d = new Date(Date.UTC(y, m - 1, day));
             return d.getUTCFullYear() === y && (d.getUTCMonth() + 1) === m && d.getUTCDate() === day;
+        }
+
+        async function launchStressTest(sym) {
+            // Calcular fecha de hace 6 meses por defecto
+            const now = new Date();
+            const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+            const defaultDate = sixMonthsAgo.toISOString().split('T')[0];
+
+            // Configurar modal
+            document.getElementById('stress-modal-title').innerText = `Validación Ciega: ${sym}`;
+            document.getElementById('stress-date-input').value = defaultDate;
+            document.getElementById('stress-modal').style.display = 'flex';
+            
+            // Asignar acción al botón
+            document.getElementById('btn-do-launch-stress').onclick = async () => {
+                const startDate = document.getElementById('stress-date-input').value;
+                if (!startDate) return;
+                
+                closeStressModal();
+                showToast(`🚀 Lanzando Auditoría Ciega para <b>${sym}</b>...`, 'info');
+                
+                const payload = {
+                    symbol: sym,
+                    mode: "SIMULATED",
+                    start_date: startDate,
+                    freeze_learning: true,
+                    stage: "STRESS-TEST"
+                };
+                
+                try {
+                    const res = await fetch('/api/docker/launch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const d = await res.json();
+                    if (d.status === "success" || d.status === "queued") {
+                        showToast(`🎯 Auditoría <b>${sym}</b> iniciada correctamente.`, 'success');
+                        refreshAll();
+                    } else {
+                        showToast(`❌ Error: ${d.message || 'Desconocido'}`, 'error');
+                    }
+                } catch(e) { 
+                    console.error('stress test error', e); 
+                    showToast("❌ Error de conexión al servidor", "error");
+                }
+            };
+        }
+
+        function closeStressModal() {
+            document.getElementById('stress-modal').style.display = 'none';
         }
 
         async function launchBot() {
@@ -1213,7 +1296,96 @@
             fetchBots();
         }
 
+        // ─── MONITORING CONTEXT MENU & LOGS ───────────────────────────────────
+        let activeMonitorSym = null;
+        let logInterval = null;
+
+        function showMonitorMenu(event, sym) {
+            event.stopPropagation();
+            activeMonitorSym = sym;
+            const menu = document.getElementById('monitor-menu');
+            
+            // Posicionar el menú cerca del botón
+            menu.style.display = 'flex';
+            menu.style.left = (event.pageX - 185) + 'px';
+            menu.style.top = event.pageY + 'px';
+
+            // Cerrar al hacer clic fuera
+            const closer = () => {
+                menu.style.display = 'none';
+                document.removeEventListener('click', closer);
+            };
+            setTimeout(() => document.addEventListener('click', closer), 10);
+        }
+
+        function openDashboard() {
+            if (!activeMonitorSym) return;
+            // 📡 Inteligencia de Redirección:
+            // Buscamos si el bot está en modo LIVE en los datos actuales
+            let mode = "sim";
+            if (window.last_bots_data) {
+                const b = window.last_bots_data.find(x => x.symbol === activeMonitorSym);
+                if (b && b.mode && b.mode.includes("LIVE")) mode = "live";
+            }
+            
+            const url = mode === "live" 
+                ? `http://localhost:8080/live/?symbol=${activeMonitorSym}`
+                : `http://localhost:8080/?symbol=${activeMonitorSym}`;
+                
+            window.open(url, '_blank');
+        }
+
+        function openLogConsole() {
+            if (!activeMonitorSym) return;
+            const sym = activeMonitorSym;
+            const overlay = document.getElementById('log-modal');
+            const content = document.getElementById('log-content');
+            document.getElementById('log-title').innerText = `📟 Consola: ${sym}`;
+            
+            content.innerHTML = "Iniciando stream de consola...";
+            overlay.style.display = 'flex';
+            
+            refreshLogs(true);
+            
+            // Polling de logs cada 2.5 seg
+            if (logInterval) clearInterval(logInterval);
+            logInterval = setInterval(() => refreshLogs(false), 2500);
+        }
+
+        async function refreshLogs(isFirst) {
+            if (!activeMonitorSym) return;
+            try {
+                const res = await fetch(`/api/docker/logs/${activeMonitorSym}`);
+                const d = await res.json();
+                if (d.status === 'success' && d.logs) {
+                    const content = document.getElementById('log-content');
+                    
+                    // Colorear un poco los logs
+                    let lines = d.logs
+                        .replace(/ERROR/g, '<b class="log-level-error">ERROR</b>')
+                        .replace(/SUCCESS/g, '<b class="log-level-success">SUCCESS</b>')
+                        .replace(/Checking/g, '<i>Checking</i>')
+                        .replace(/Looking/g, '<i>Looking</i>')
+                        .replace(/PnL/g, '<b>PnL</b>');
+
+                    content.innerHTML = lines;
+                    
+                    // Solo hacer scroll si es la primera vez o está cerca del final
+                    if (isFirst) {
+                        content.scrollTop = content.scrollHeight;
+                    }
+                }
+            } catch(e) { console.error("Error fetching logs", e); }
+        }
+
+        function closeLogModal() {
+            document.getElementById('log-modal').style.display = 'none';
+            if (logInterval) clearInterval(logInterval);
+            logInterval = null;
+        }
+
         function openConsole(sym) {
+            // Legacy fallback if needed
             window.open(`http://localhost:8080/?symbol=${sym}`, '_blank');
         }
 
@@ -1389,18 +1561,76 @@
         }
 
         // ─── INITIALIZATION ─────────────────────────────────────
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchBank();
+        async function fetchQueue() {
+            try {
+                const res = await fetch('/api/queue/list');
+                const d = await res.json();
+                const queue = d.queue || [];
+                
+                const card = document.getElementById('queue-card');
+                const container = document.getElementById('queue-list-container');
+                const badge = document.getElementById('queue-count-badge');
+                
+                if (queue.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+                
+                card.style.display = 'block';
+                badge.textContent = `${queue.length} pendiente${queue.length > 1 ? 's' : ''}`;
+                
+                container.innerHTML = queue.map(item => `
+                    <div class="queue-item">
+                        <div class="queue-info">
+                            <span class="queue-symbol">${item.symbol}</span>
+                            <span class="queue-stage">${item.stage || 'TRAINING'}</span>
+                            <span style="font-size:0.6rem; color:#64748b;">${item.mode}</span>
+                        </div>
+                        <button class="btn-remove-queue" onclick="removeFromQueue('${item.symbol}')">Quitar</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error('fetchQueue error', e); }
+        }
+
+        async function removeFromQueue(sym) {
+            try {
+                const res = await fetch(`/api/queue/remove/${sym}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`🗑️ <b>${sym}</b> eliminado de la cola.`, 'info');
+                    fetchQueue();
+                }
+            } catch(e) { console.error('removeQueue error', e); }
+        }
+
+        // --- Main Polling ---
+        function refreshAll() {
             fetchBots();
-            fetchSymbols();
+            fetchBank();
+            fetchQueue();
+            updateMasteryHub();
             fetchAutoTrainerStatus();
             fetchSystemHealth();
-            setInterval(fetchBank, 10000);
-            setInterval(fetchBots, 5000);
-            setInterval(fetchAutoTrainerStatus, 5000);
+            fetchSymbols();
+        }
+
+        // ─── INITIALIZATION ─────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            // Restore tab
+            const savedTab = localStorage.getItem('hapi_active_tab') || 'mastery';
+            switchTab(savedTab);
+
+            refreshAll();
+            setInterval(() => {
+                fetchBots(); // Always fetch for stats, but we will optimize its rendering
+                fetchBank();
+                fetchQueue();
+                fetchAutoTrainerStatus();
+                fetchSystemHealth();
+                // Mastery solo si está visible
+                if (window.currentTab === 'mastery') updateMasteryHub();
+            }, 6000);
         });
 
-        // ─── AUTO-TRAINER LOGIC ───────────────────────────────────
         async function fetchAutoTrainerStatus() {
             try {
                 const res = await fetch('/api/auto-trainer/status');
@@ -1413,9 +1643,18 @@
                     const actionEl = document.getElementById('ai-auto-action');
                     
                     // Update profile buttons
-                    const profile = d.performance_profile || 'turbo';
+                    const profile = state.performance_profile || 'turbo';
                     document.getElementById('perf-eco').classList.toggle('active', profile === 'eco');
                     document.getElementById('perf-turbo').classList.toggle('active', profile === 'turbo');
+                    
+                    // Update safety buttons
+                    const forceSim = state.force_sim_only || false;
+                    document.getElementById('safety-sim').classList.toggle('active', forceSim);
+                    document.getElementById('safety-normal').classList.toggle('active', !forceSim);
+
+                    // Banner de Simulación Forzada
+                    const banner = document.getElementById('sim-forced-banner');
+                    if (banner) banner.style.display = forceSim ? 'inline-block' : 'none';
                     
                     const limitInput = document.getElementById('ai-auto-limit');
                     const logsEl = document.getElementById('ai-auto-logs');
@@ -1461,10 +1700,27 @@
                     body: JSON.stringify({ profile: profile })
                 });
                 if (res.ok) {
-                    showToast(`Perfil cambiado a: <b>${profile === 'eco' ? 'Eco-Trabajo' : 'Turbo-Auditoría'}</b>`, 'success');
+                    let name = 'Turbo-Auditoría';
+                    if (profile === 'eco') name = 'Eco-Trabajo';
+                    showToast(`Intensidad ajustada a: <b>${name}</b>`, 'info');
                     fetchAutoTrainerStatus();
                 }
-            } catch(e) { console.error('Error setting profile:', e); }
+            } catch(e) { console.error('setPerfProfile', e); }
+        }
+
+        async function toggleSafetyMode(forceSim) {
+            try {
+                const res = await fetch('/api/auto-trainer/force-sim', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ force_sim: forceSim })
+                });
+                if (res.ok) {
+                    const status = forceSim ? 'Solo Simulación 🛡️' : 'Modo Híbrido ⚖️';
+                    showToast(`Seguridad: <b>${status}</b>`, forceSim ? 'info' : 'success');
+                    fetchAutoTrainerStatus();
+                }
+            } catch(e) { console.error('toggleSafetyMode', e); }
         }
 
         function previewETA() {
@@ -1680,8 +1936,14 @@
             btn.textContent = "Purgando...";
             btn.disabled = true;
 
+            const keepHistory = document.getElementById('wipe-keep-history').checked;
+
             try {
-                const res = await fetch('/api/system/wipe', { method: 'POST' });
+                const res = await fetch('/api/system/wipe', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: json.stringify({ keep_history: keepHistory })
+                });
                 const d = await res.json();
                 if (d.status === 'success') {
                     showToast("✅ " + d.message, "success");
@@ -1863,11 +2125,13 @@
             document.getElementById('modal-title').innerText = `${bot.symbol} - Análisis Detallado`;
             document.getElementById('modal-subtitle').innerText = `Ejecutado el ${bot.finished_at} | Rango Simulado: ${bot.sim_start_date} → ${bot.sim_end_date || 'En curso'}`;
             
-            const stats = document.getElementById('modal-stats');
+            const pnlColor = bot.pnl >= 0 ? '#4ade80' : '#f87171';
+            const displayStage = bot.stage || bot.mastery_status || "APRENDIENDO";
+
             stats.innerHTML = `
                 <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
                     <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Net PnL</span>
-                    <div style="font-size:1.5rem; font-weight:800; color:${bot.pnl >= 0 ? '#4ade80' : '#f87171'}; margin-top:4px;">${bot.pnl >= 0 ? '+' : ''}$${(bot.pnl || 0).toFixed(2)}</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:${pnlColor}; margin-top:4px;">${bot.pnl >= 0 ? '+' : ''}$${(bot.pnl || 0).toFixed(2)}</div>
                     <div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Bruto (Mkt): <span style="color:${(bot.pnl_gross||0) >= 0 ? '#4ade80' : '#f87171'}">${(bot.pnl_gross||0) >= 0 ? '+' : ''}$${(bot.pnl_gross||0).toFixed(2)}</span></div>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
@@ -1879,8 +2143,8 @@
                     <div style="font-size:1.5rem; font-weight:800; color:white; margin-top:4px;">${bot.trades}</div>
                 </div>
                 <div style="background:rgba(255,255,255,0.03); padding:1.2rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
-                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Estatus Maestría</span>
-                    <div style="font-size:1.2rem; font-weight:800; color:#6366f1; margin-top:4px;">${bot.mastery_status || "APRENDIENDO"}</div>
+                    <span style="font-size:0.65rem; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">Fase PVC Actual</span>
+                    <div style="font-size:1.2rem; font-weight:800; color:#6366f1; margin-top:4px;">${displayStage}</div>
                 </div>
             `;
 

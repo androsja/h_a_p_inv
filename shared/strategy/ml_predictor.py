@@ -2,12 +2,15 @@ import pandas as pd
 import numpy as np
 import os
 import threading
+from datetime import datetime
 from shared import config
 from sklearn.ensemble import RandomForestClassifier
 from shared.utils.logger import log
-import collections
+import joblib
+from pathlib import Path
 
 DATASET_PATH = config.ML_DATASET_FILE
+MODEL_PATH   = config.DATA_DIR / "models" / "global_ai_model.joblib"
 
 class MLPredictor:
     def __init__(self):
@@ -18,9 +21,30 @@ class MLPredictor:
         self.blocking_count = 0 # Contador de trades bloqueados por ML en la sesión actual
         self._frozen: bool = False   # ❄️ Si True, no guarda nuevos trades ni reentrena
         self._lock = threading.Lock()
+        
+        # 📂 Asegurar que la carpeta de modelos existe
+        MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        
         self._load_and_train()
 
     def _load_and_train(self):
+        # 1. Intentar cargar modelo ya entrenado desde disco
+        if MODEL_PATH.exists():
+            try:
+                with self._lock:
+                    loaded_data = joblib.load(MODEL_PATH)
+                    self.model = loaded_data['model']
+                    self.accuracy = loaded_data.get('accuracy', 0.0)
+                    self.is_trained = True
+                log.info(f"🧠 [MLPredictor] Modelo cargado desde disco. Precisión previa: {self.accuracy*100:.1f}%")
+                
+                # Opcional: ¿Necesitamos re-entrenar porque el dataset es mucho más grande ahora?
+                # Si el dataset tiene < 50 trades nuevos desde el último guardado, no re-entrenamos.
+                return
+            except Exception as e:
+                log.warning(f"⚠️ [MLPredictor] No se pudo cargar el modelo de disco: {e}")
+
+        # 2. Si no hay modelo o falló, entrenar desde CSV
         if not DATASET_PATH.exists():
             return
         
@@ -28,10 +52,8 @@ class MLPredictor:
             try:
                 # Leer dataset
                 df = pd.read_csv(DATASET_PATH)
-                log.info(f"📊 [MLPredictor] Cargando dataset para entrenamiento ({len(df)} filas)...")
+                log.info(f"📊 [MLPredictor] Procesando dataset para entrenamiento ({len(df)} filas)...")
                 
-                # Solo queremos trades cerrados. Asumimos que todos en el CSV están cerrados.
-                    
                 # Variables predictoras (features):
                 features = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct']
                 target = 'is_win'
@@ -43,24 +65,19 @@ class MLPredictor:
                     return
 
                 # Limpiar datos nulos
-                before_count = len(df)
                 df = df.dropna(subset=features + [target])
-                after_count = len(df)
                 
-                if after_count < self.min_samples:
-                    log.warning(f"⚠️ [MLPredictor] No hay suficientes datos limpios ({after_count}/{before_count}). Min requerido: {self.min_samples}")
+                if len(df) < self.min_samples:
+                    log.warning(f"⚠️ [MLPredictor] Datos insuficientes ({len(df)}). Min: {self.min_samples}")
                     return
 
                 X = df[features]
                 y = df[target]
-
-                # Convertir a numérico por si acaso (evitar errores de tipo objeto)
                 X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
                 y = y.astype(int)
 
-                log.info(f"⚙️ [MLPredictor] Entrenando Random Forest con {after_count} muestras...")
+                log.info(f"⚙️ [MLPredictor] Entrenando Random Forest con {len(df)} muestras...")
                 
-                # Entrenar un Random Forest Classifier (robusto a no-linealidades)
                 self.model = RandomForestClassifier(
                     n_estimators=50, 
                     max_depth=5, 
@@ -71,11 +88,17 @@ class MLPredictor:
                 self.is_trained = True
                 self.accuracy = float(self.model.score(X, y))
                 
-                # Evaluar precisión en su propio set de entrenamiento (básico)
-                acc = self.accuracy
+                # 💾 Guardar modelo recién entrenado para la próxima vez
+                joblib.dump({
+                    'model': self.model,
+                    'accuracy': self.accuracy,
+                    'trained_at': datetime.now().isoformat(),
+                    'samples_count': len(df)
+                }, MODEL_PATH)
+                
                 from shared.utils.logger import log_training
-                log_training("MLPredictor_RF", len(df), float(acc), extra="Initial_load")
-                log.info(f"✅ [MLPredictor] Modelo entrenado. Precisión: {acc*100:.1f}%")
+                log_training("MLPredictor_RF", len(df), self.accuracy, extra="Fresh_train")
+                log.info(f"✅ [MLPredictor] Modelo entrenado y GUARDADO en disco.")
                 
             except Exception as e:
                 log.error(f"❌ [MLPredictor] Error crítico en entrenamiento: {e}")

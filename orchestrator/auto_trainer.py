@@ -14,6 +14,7 @@ log = logging.getLogger("api")
 class SystemState(BaseModel):
     is_running: bool = False
     performance_profile: str = "turbo" # "eco" o "turbo"
+    force_sim_only: bool = False      # 🛡️ Bloqueo global de seguridad
     current_focus: Optional[str] = None
     next_action: Optional[str] = None
     status_log: List[str] = []
@@ -31,6 +32,7 @@ class AutoTrainerManager:
         
         # Inyectado desde el orquestador
         self.mastery_mgr = None
+        self.queue_mgr = None
         
         self._load_settings()
 
@@ -41,9 +43,10 @@ class AutoTrainerManager:
                 data = json.loads(self.settings_file.read_text())
                 self.max_concurrent_bots = data.get("max_concurrent_bots", config.MAX_AUTOTRAINER_BOTS)
                 self.state.performance_profile = data.get("performance_profile", "turbo")
+                self.state.force_sim_only = data.get("force_sim_only", False)
                 # Recuperar estado de ejecucion previo
                 saved_running = data.get("is_running", False)
-                log.info(f"AutoTrainer | Settings cargados: max_bots={self.max_concurrent_bots}, profile={self.state.performance_profile}, was_running={saved_running}")
+                log.info(f"AutoTrainer | Settings cargados: max_bots={self.max_concurrent_bots}, profile={self.state.performance_profile}, force_sim={self.state.force_sim_only}, was_running={saved_running}")
                 
                 if saved_running:
                     # Usar un pequeño delay para asegurar que el orquestador este listo
@@ -57,6 +60,7 @@ class AutoTrainerManager:
             data = {
                 "max_concurrent_bots": self.max_concurrent_bots,
                 "performance_profile": self.state.performance_profile,
+                "force_sim_only": self.state.force_sim_only,
                 "is_running": self.state.is_running
             }
             self.settings_file.write_text(json.dumps(data))
@@ -145,11 +149,18 @@ class AutoTrainerManager:
         self._log(f"⚙️ Configuración: Límite ajustado a {self.max_concurrent_bots}")
 
     def update_performance_profile(self, profile: str):
-        """Cambia entre eco y turbo."""
+        """Cambia entre eco o turbo (Intensidad)."""
         if profile in ["eco", "turbo"]:
             self.state.performance_profile = profile
             self._save_settings()
-            self._log(f"🎭 Perfil cambiado a: {profile.upper()}")
+            self._log(f"🎭 Perfil de RENDIMIENTO cambiado a: {profile.upper()}")
+
+    def update_safety_mode(self, force_sim: bool):
+        """Activa o desactiva el bloqueo de Solo Simulación."""
+        self.state.force_sim_only = force_sim
+        self._save_settings()
+        status = "ACTIVADO (Solo Simulación)" if force_sim else "DESACTIVADO (Permitir Live/Paper)"
+        self._log(f"🛡️ Seguro de SEGURIDAD: {status}")
 
     async def _training_loop(self):
         self._log("Bucle de entrenamiento iniciado.")
@@ -181,7 +192,11 @@ class AutoTrainerManager:
             health = self.docker_mgr.get_resource_health()
             ram_avail = health.get('ram_avail_mb', 0)
             reason = ""
-            if target_limit < self.max_concurrent_bots:
+            ram_avail = health.get('ram_avail_mb', 0)
+            reason = ""
+            if self.state.force_sim_only:
+                reason = " (🛡️ Modo Simulación Forzada)"
+            elif target_limit < self.max_concurrent_bots:
                 reason = f" (🚀 Limitado por RAM: {ram_avail}MB disponibles)"
 
         self.state.next_action = f"Vigilando {len(active_bots)}/{target_limit} bots{reason}"
@@ -246,102 +261,144 @@ class AutoTrainerManager:
             target_mode = None
             start_dt = None
             end_dt = None
+            freeze = False
+            is_from_queue = False
 
-            active_symbols = set(b.get("symbol") for b in active_bots)
-            completed_bots = self.docker_mgr.list_completed_bots()
-            latest_history = {}
-            for b in completed_bots:
-                sym = b.get("symbol")
-                if sym not in latest_history:
-                    latest_history[sym] = b
+            # --- PRIORIDAD 1: COLA MANUAL DEL USUARIO ---
+            if self.queue_mgr:
+                queued = self.queue_mgr.get_queue()
+                if queued:
+                    next_item = self.queue_mgr.pop_next()
+                    if next_item:
+                        target_to_launch = next_item.get("symbol")
+                        target_mode = next_item.get("stage", "TRAINING")
+                        start_dt = next_item.get("start_date")
+                        end_dt = next_item.get("end_date")
+                        freeze = next_item.get("freeze_learning", False)
+                        launched_mode = next_item.get("mode", "SIMULATED")
+                        is_from_queue = True
+                        
+                        self._log(f"📥 Procesando elemento de COLA: {target_to_launch} ({target_mode})")
+            
+            # --- PRIORIDAD 2: CURRICULUM AUTOMATICO (Si no hubo nada en cola) ---
+            if not is_from_queue:
+                active_symbols = set(b.get("symbol") for b in active_bots)
+                completed_bots = self.docker_mgr.list_completed_bots()
+                latest_history = {}
+                for b in completed_bots:
+                    sym = b.get("symbol")
+                    if sym not in latest_history:
+                        latest_history[sym] = b
 
-            # 1. Obtener candidatos ordenados por rango de maestria
-            symbol_ranks = []
-            for sym in all_symbols:
-                if sym in active_symbols: continue
-                status_data = self.mastery_mgr.get_symbol_status(sym)
-                symbol_ranks.append({
-                    "symbol": sym,
-                    "rank": status_data.get("rank", 0),
-                    "status": status_data.get("status", "LEARNING")
-                })
+                # 1. Obtener candidatos ordenados por rango de maestria
+                symbol_ranks = []
+                for sym in all_symbols:
+                    if sym in active_symbols: continue
+                    status_data = self.mastery_mgr.get_symbol_status(sym)
+                    symbol_ranks.append({
+                        "symbol": sym,
+                        "rank": status_data.get("rank", 0),
+                        "status": status_data.get("status", "LEARNING")
+                    })
 
-            symbol_ranks.sort(key=sort_priority, reverse=True)
+                symbol_ranks.sort(key=sort_priority, reverse=True)
 
-            # 2. Buscar el siguiente para lanzar
-            for item in symbol_ranks:
-                sym = item["symbol"]
-                
-                # ── FUENTE DE VERDAD: pvc_stage del MasteryHub ──────────────────
-                mastery_data = self.mastery_mgr.get_symbol_status(sym) if self.mastery_mgr else {}
-                pvc_stage = mastery_data.get("pvc_stage", "SCOUTING")
-                history = latest_history.get(sym)
-                last_stage = history.get("stage", "") if history else ""
+                # 2. Buscar el siguiente para lanzar
+                for item in symbol_ranks:
+                    sym = item["symbol"]
+                    
+                    # ── FUENTE DE VERDAD: pvc_stage del MasteryHub ──────────────────
+                    mastery_data = self.mastery_mgr.get_symbol_status(sym) if self.mastery_mgr else {}
+                    pvc_stage = mastery_data.get("pvc_stage", "SCOUTING")
+                    history = latest_history.get(sym)
+                    last_stage = history.get("stage", "") if history else ""
 
-                # 🛡️ FILTRO DE DIVERSIFICACIÓN (SOLO PARA TRADING REAL/PAPER)
-                # En simulación NO tiene sentido limitar por sector; queremos validar lo mejor rápido.
-                
-                # Solo aplicar límite si el modo final será Live/Shadow
-                if pvc_stage == "LIVE-SHADOW":
-                    from shared.utils.metadata import get_sector_for
-                    sector = get_sector_for(sym)
-                    active_sectors = [get_sector_for(b["symbol"]) for b in active_bots]
-                    if active_sectors.count(sector) >= 2:
-                        continue # Saltar a otro sector para diversificar en Shadow/Live
+                    # 🛡️ FILTRO DE DIVERSIFICACIÓN (SOLO PARA TRADING REAL/PAPER)
+                    # En simulación NO tiene sentido limitar por sector; queremos validar lo mejor rápido.
+                    
+                    # Solo aplicar límite si el modo final será Live/Shadow
+                    if pvc_stage == "LIVE-SHADOW":
+                        from shared.utils.metadata import get_sector_for
+                        sector = get_sector_for(sym)
+                        active_sectors = [get_sector_for(b["symbol"]) for b in active_bots]
+                        if active_sectors.count(sector) >= 2:
+                            continue # Saltar a otro sector para diversificar en Shadow/Live
 
-                # La fase a lanzar la dicta pvc_stage. Solo se evita re-lanzar la misma fase.
-                if pvc_stage == "SCOUTING":
-                    if last_stage != "SCOUTING":
-                        target_to_launch = sym
-                        target_mode = "SCOUTING"
-                        start_dt, end_dt = self._get_curriculum_dates("SCOUTING")
-                        break
-                    continue
+                    # La fase a lanzar la dicta pvc_stage. Solo se evita re-lanzar la misma fase.
+                    if pvc_stage == "SCOUTING":
+                        if last_stage != "SCOUTING":
+                            target_to_launch = sym
+                            target_mode = "SCOUTING"
+                            start_dt, end_dt = self._get_curriculum_dates("SCOUTING")
+                            break
+                        continue
 
-                elif pvc_stage == "TRAINING":
-                    if last_stage != "TRAINING":
-                        target_to_launch = sym
-                        target_mode = "TRAINING"
-                        start_dt, end_dt = self._get_curriculum_dates("TRAINING")
-                        break
-                    continue
+                    elif pvc_stage == "TRAINING":
+                        if last_stage != "TRAINING":
+                            target_to_launch = sym
+                            target_mode = "TRAINING"
+                            start_dt, end_dt = self._get_curriculum_dates("TRAINING")
+                            break
+                        continue
 
-                elif pvc_stage == "VALIDATING":
-                    if last_stage != "VALIDATING":
-                        target_to_launch = sym
-                        target_mode = "VALIDATING"
-                        start_dt, end_dt = self._get_curriculum_dates("VALIDATING")
-                        break
-                    continue
+                    elif pvc_stage == "VALIDATING":
+                        if last_stage != "VALIDATING":
+                            target_to_launch = sym
+                            target_mode = "VALIDATING"
+                            start_dt, end_dt = self._get_curriculum_dates("VALIDATING")
+                            break
+                        continue
 
-                elif pvc_stage == "STRESS-TEST":
-                    if last_stage != "STRESS-TEST":
-                        target_to_launch = sym
-                        target_mode = "STRESS-TEST"
-                        start_dt, end_dt = self._get_curriculum_dates("STRESS-TEST")
-                        break
-                    continue
+                    elif pvc_stage == "STRESS-TEST":
+                        if last_stage != "STRESS-TEST":
+                            target_to_launch = sym
+                            target_mode = "STRESS-TEST"
+                            start_dt, end_dt = self._get_curriculum_dates("STRESS-TEST")
+                            break
+                        continue
 
-                elif pvc_stage == "LIVE-SHADOW":
-                    if last_stage != "LIVE-SHADOW":
-                        target_to_launch = sym
-                        target_mode = "LIVE-SHADOW"
-                        start_dt, end_dt = None, None
-                        break
-                    continue
+                    elif pvc_stage == "LIVE-SHADOW":
+                        if last_stage != "LIVE-SHADOW":
+                            target_to_launch = sym
+                            target_mode = "LIVE-SHADOW"
+                            start_dt, end_dt = None, None
+                            break
+                        continue
 
             if target_to_launch:
-                # 🔒 Determinar si esta fase debe congelar el aprendizaje
-                # REGLA CRÍTICA: Solo las fases de entrenamiento puro pueden aprender.
-                # Las fases de evaluación (Validación, Stress, Shadow) deben ser
-                # completamente "ciegas" para evitar Data Leakage.
-                EVALUATION_PHASES = {"VALIDATING", "STRESS-TEST", "LIVE-SHADOW"}
-                freeze = target_mode in EVALUATION_PHASES
+                if not is_from_queue:
+                    # 🔒 Determinar si esta fase debe congelar el aprendizaje (Solo para curriculum)
+                    EVALUATION_PHASES = {"VALIDATING", "STRESS-TEST", "LIVE-SHADOW"}
+                    freeze = target_mode in EVALUATION_PHASES
+                    
+                    # 🛡️ SOBREESCRITURA PARA MODO SIM-ONLY (SEGURIDAD)
+                    if self.state.force_sim_only:
+                        launched_mode = "SIMULATED"
+                        if target_mode == "LIVE-SHADOW":
+                            # En modo sim-only, las de LIVE-SHADOW se corren como una validación de 30 días
+                            start_dt, end_dt = self._get_curriculum_dates("VALIDATING")
+                    else:
+                        launched_mode = "LIVE_PAPER" if target_mode == "LIVE-SHADOW" else "SIMULATED"
+                
+                # 🏷️ ETIQUETA DE MODO PARA EL LOG
+                display_mode = target_mode
+                if self.state.force_sim_only and target_mode == "LIVE-SHADOW":
+                    display_mode = "SIMULACIÓN-FORZADA 🛡️"
                 
                 freeze_icon = "🔒 Frozen" if freeze else "🧠 Learning"
-                self._log(f"🚀 Iniciando {target_to_launch} [{target_mode} | {freeze_icon}] - Slot {len(active_bots)+1}/{target_limit}")
+                source_tip = "[COLA]" if is_from_queue else "[AUTO]"
                 
-                launched_mode = "LIVE_PAPER" if target_mode == "LIVE-SHADOW" else "SIMULATED"
+                # 📢 REGISTRO DETALLADO DEL MOTIVO (Para que el usuario entienda "porque iniciaron")
+                mastery_data = self.mastery_mgr.get_symbol_status(target_to_launch) if self.mastery_mgr else {}
+                rank = mastery_data.get("rank", 0)
+                status = mastery_data.get("status", "SCOUTING")
+                
+                log_msg = f"🚀 {source_tip} Lanzando {target_to_launch} en fase {display_mode} [{freeze_icon}]"
+                if not is_from_queue:
+                    log_msg += f" - Motivo: Rango {rank} alcanzó estatus {status}"
+                
+                self._log(log_msg)
+                
                 success, msg = self.docker_mgr.launch_bot(
                     symbol=target_to_launch, 
                     mode=launched_mode, 

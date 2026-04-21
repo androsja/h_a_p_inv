@@ -1,6 +1,7 @@
 import os
 import docker
 import json
+import subprocess
 from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
@@ -38,17 +39,39 @@ class DockerManager:
         print("🧹 [DockerManager] Memoria de bots y sesiones limpiada.")
 
     def _connect_docker(self):
-        """Intenta (re)conectar con el daemon de Docker con timeout."""
+        """Intenta (re)conectar con el daemon de Docker con múltiples fallbacks."""
+        # Rutas comunes en macOS y Linux
+        potential_sockets = [
+            # 🎯 RUTA PRIORITARIA MAC (Localizada en esta sesión)
+            "unix:///Users/jflorezgaleano/.docker/run/docker.sock",
+            "unix:///var/run/docker.sock",
+            f"unix://{os.path.expanduser('~')}/.docker/run/docker.sock"
+        ]
+        
+        # 1. Primer intento: Entorno estándar
         try:
-            # En Mac, usamos un timeout corto para evitar que el orquestador se cuelgue si el daemon no responde
             self.client = docker.from_env(timeout=5)
-            # Test de conexión rápido
             self.client.ping()
             self.is_connected = True
-        except Exception as e:
-            print(f"⚠️ [DockerManager] No se pudo conectar a Docker: {e}")
-            self.is_connected = False
-            self.client = None
+            return
+        except Exception:
+            pass
+
+        # 2. Ciclo de fallbacks por ruta física
+        for socket_url in potential_sockets:
+            try:
+                self.client = docker.DockerClient(base_url=socket_url, timeout=5)
+                self.client.ping()
+                self.is_connected = True
+                print(f"✅ [DockerManager] Conexión establecida vía: {socket_url}")
+                return
+            except Exception:
+                continue
+
+        # 3. Si todo falla
+        print("⚠️ [DockerManager] No se pudo conectar a Docker. Verifique que Docker Desktop esté encendido.")
+        self.is_connected = False
+        self.client = None
 
     def _load_completed(self) -> List[Dict]:
         """Carga el historial de simulaciones completadas desde disco."""
@@ -120,31 +143,43 @@ class DockerManager:
             print(f"[DockerManager] No se pudo guardar active sessions: {e}")
 
     def _clear_symbol_history(self, symbol: str):
-        """Elimina todos los registros de un símbolo en el diario de trades para iniciar limpio."""
+        """Elimina todos los registros de un símbolo en el diario y en los archivos de estado para iniciar limpio."""
         symbol_up = symbol.upper()
-        if not self.journal_path.exists():
-            return
+        
+        # 1. Limpiar Diario (CSV)
+        if self.journal_path.exists():
+            print(f"🧹 [DockerManager] Limpiando historial previo en diario para: {symbol_up}")
+            try:
+                temp_file = self.journal_path.with_suffix(".tmp_clean")
+                with open(self.journal_path, "r", encoding="utf-8") as f_in, \
+                     open(temp_file, "w", newline="", encoding="utf-8") as f_out:
+                    reader = csv.DictReader(f_in)
+                    writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames)
+                    writer.writeheader()
+                    rows_kept = 0
+                    for row in reader:
+                        if row.get("symbol", "").upper() != symbol_up:
+                            writer.writerow(row)
+                            rows_kept += 1
+                os.replace(temp_file, self.journal_path)
+            except Exception as e:
+                print(f"❌ [DockerManager] Error limpiando historial CSV: {e}")
 
-        print(f"🧹 [DockerManager] Limpiando historial previo en diario para: {symbol_up}")
-        try:
-            temp_file = self.journal_path.with_suffix(".tmp_clean")
-            with open(self.journal_path, "r", encoding="utf-8") as f_in, \
-                 open(temp_file, "w", newline="", encoding="utf-8") as f_out:
-                
-                reader = csv.DictReader(f_in)
-                writer = csv.DictWriter(f_out, fieldnames=reader.fieldnames)
-                writer.writeheader()
-                
-                rows_kept = 0
-                for row in reader:
-                    if row.get("symbol", "").upper() != symbol_up:
-                        writer.writerow(row)
-                        rows_kept += 1
-            
-            os.replace(temp_file, self.journal_path)
-            print(f"✅ [DockerManager] Historial limpiado. Registros de otros símbolos conservados: {rows_kept}")
-        except Exception as e:
-            print(f"❌ [DockerManager] Error limpiando historial: {e}")
+        # 2. Limpiar Estados (JSON) - Para que el monitor individual no muestre datos viejos
+        from shared import config
+        state_files = [config.STATE_FILE, config.STATE_FILE_SIM, config.STATE_FILE_LIVE]
+        for spath in state_files:
+            if spath and spath.exists():
+                try:
+                    with open(spath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if isinstance(data, dict) and symbol_up in data:
+                        del data[symbol_up]
+                        with open(spath, "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=2)
+                        print(f"🧹 [DockerManager] Estado JSON limpiado para {symbol_up} en {spath.name}")
+                except Exception as e:
+                    print(f"⚠️ [DockerManager] No se pudo limpiar {spath.name}: {e}")
 
     def launch_bot(self, symbol: str, mode: str = "SIMULATED", start_date: str = None, end_date: str = None, freeze_learning: bool = False, stage: str = "TRAINING") -> tuple:
         container_name = f"hapi_worker_{mode.lower()}_{symbol.upper()}"
@@ -275,44 +310,75 @@ class DockerManager:
             self._save_completed()
 
     def kill_bot(self, symbol: str) -> tuple:
-        if not self.is_connected:
-            return False, "Docker connection error"
-
-        for prefix in ["simulated", "live"]:
-            container_name = f"hapi_worker_{prefix}_{symbol.upper()}"
-            try:
-                container = self.client.containers.get(container_name)
-                container.stop(timeout=1)
+        symbol_up = symbol.upper()
+        # Intentamos los prefijos comunes
+        for prefix in ["simulated", "live", "live_paper"]:
+            container_name = f"hapi_worker_{prefix}_{symbol_up}"
+            
+            # --- INTENTO 1: SDK Oficial ---
+            if self.is_connected and self.client:
                 try:
-                    container.remove(force=True)
-                except Exception:
-                    pass  # Si tiene auto_remove=True y ya lo está borrando docker, ignoramos el choque.
-                return True, f"Killed worker for {symbol}"
-            except docker.errors.NotFound:
-                continue
+                    container = self.client.containers.get(container_name)
+                    container.stop(timeout=1)
+                    try:
+                        container.remove(force=True)
+                    except: pass
+                    print(f"✅ [DockerManager] Bot {symbol_up} detenido via SDK.")
+                    return True, f"Killed worker for {symbol}"
+                except docker.errors.NotFound:
+                    continue
+                except Exception as e:
+                    print(f"⚠️ [DockerManager] Error SDK matando {symbol_up}, probando CLI: {e}")
+
+            # --- INTENTO 2: CLI (Fuerza Bruta / Fallback macOS) ---
+            try:
+                # Inyectamos DOCKER_HOST para asegurar que el CLI conecte con el socket correcto en Mac
+                my_env = os.environ.copy()
+                my_env["DOCKER_HOST"] = "unix:///Users/jflorezgaleano/.docker/run/docker.sock"
+                
+                # Intentamos el comando de consola directamente (docker kill es instantáneo)
+                res = subprocess.run(["/usr/local/bin/docker", "kill", container_name], 
+                                     capture_output=True, text=True, env=my_env)
+                if res.returncode == 0:
+                    subprocess.run(["/usr/local/bin/docker", "rm", "-f", container_name], 
+                                   capture_output=True, env=my_env)
+                    print(f"🔨 [DockerManager] Bot {symbol_up} fulminado via CLI (Thor 2.0).")
+                    return True, f"Killed worker for {symbol} (CLI Fallback)"
             except Exception as e:
-                return False, str(e)
+                print(f"❌ [DockerManager] Error total matando {symbol_up}: {e}")
+
+        return False, "No se pudo detener el bot (daemon no responde o contenedor no existe)"
 
     def kill_all_bots(self) -> List[str]:
-        """Stops and removes all hapi_worker_* containers aggressively."""
+        """Stops and removes all hapi_worker_* containers aggressively using dual-path."""
         killed = []
-        if not self.is_connected or not self.client:
-            return killed
-            
-        try:
-            # Filtramos todos los contenedores relacionados con el bot
-            containers = self.client.containers.list(all=True, filters={"name": "hapi_worker_"})
-            for c in containers:
-                try:
-                    # Usamos kill en lugar de stop para que sea instantáneo en el Wipe
-                    c.kill()
-                    c.remove(force=True)
-                    killed.append(c.name)
-                except Exception:
-                    # Si ya estaba muerto o borrándose, lo ignoramos
+        
+        # --- INTENTO 1: SDK ---
+        if self.is_connected and self.client:
+            try:
+                containers = self.client.containers.list(all=True, filters={"name": "hapi_worker_"})
+                for c in containers:
                     try:
+                        c.kill()
                         c.remove(force=True)
+                        killed.append(c.name)
                     except: pass
+            except: pass
+
+        # --- INTENTO 2: CLI (Fuerza Bruta) ---
+        try:
+            my_env = os.environ.copy()
+            my_env["DOCKER_HOST"] = "unix:///Users/jflorezgaleano/.docker/run/docker.sock"
+            
+            # Obtener lista de nombres via CLI
+            res = subprocess.run(["/usr/local/bin/docker", "ps", "-a", "--filter", "name=hapi_worker_", "--format", "{{.Names}}"], 
+                                 capture_output=True, text=True, env=my_env)
+            if res.returncode == 0:
+                for name in res.stdout.strip().split("\n"):
+                    if name and name not in killed:
+                        subprocess.run(["/usr/local/bin/docker", "kill", name], capture_output=True, env=my_env)
+                        subprocess.run(["/usr/local/bin/docker", "rm", "-f", name], capture_output=True, env=my_env)
+                        killed.append(name)
         except Exception as e:
             print(f"⚠️ [DockerManager] Error en kill_all_bots masivo: {e}")
 
@@ -329,7 +395,8 @@ class DockerManager:
             for c in containers:
                 parts = c.name.split('_')
                 if len(parts) >= 4:
-                    sym = parts[3].upper()
+                    # El símbolo siempre es la ULTIMA parte del nombre: hapi_worker_mode_SYMBOL
+                    sym = parts[-1].upper()
                     mode = parts[2].upper()
                     
                     # Enriquecer con metadatos del lanzamiento (recuperados de disco si hubo reinicio)
@@ -354,6 +421,29 @@ class DockerManager:
     def list_completed_bots(self) -> List[Dict]:
         """Retorna los bots que ya finalizaron su simulación en orden cronológico inverso."""
         return self.completed_bots
+
+    def get_container_logs(self, symbol: str, tail: int = 100) -> str:
+        """Obtiene los últimos logs del contenedor de un símbolo."""
+        if not self.is_connected or not self.client:
+            return "Error: Docker no conectado."
+        
+        try:
+            # Buscar el contenedor por el símbolo en los metadatos de lanzamiento
+            meta = self._launch_meta.get(symbol.upper())
+            if not meta:
+                # Intento desesperado: buscar por nombre en la lista de activos
+                for c in self.client.containers.list():
+                    if c.name.endswith(f"_{symbol.upper()}"):
+                        return c.logs(tail=tail).decode("utf-8")
+                return f"No se encontró sesión activa para {symbol}."
+
+            mode = meta.get("mode", "SIMULATED").lower()
+            name = f"hapi_worker_{mode}_{symbol.upper()}"
+            
+            container = self.client.containers.get(name)
+            return container.logs(tail=tail).decode("utf-8", errors="ignore")
+        except Exception as e:
+            return f"Error al obtener logs: {str(e)}"
 
     # ─── System Health & Resource Governance ───────────────────────────────────
 

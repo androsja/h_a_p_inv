@@ -99,8 +99,7 @@ class BotState:
     sim_end:   str = ""
     sim_duration: float = 0.0
     mock_time: str = ""  # Reloj simulado para modo Replay
-
-    mock_time: str = ""  # Reloj simulado para modo Replay
+    stage: str = "TRAINING" # 🏷️ Etapa del curriculum (TRAINING, VALIDATING, etc.)
 
 
     # 🧠 Información de la IA Asesora

@@ -46,6 +46,7 @@ class TradingEngine:
         self.investment_style = "Normal"
         self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas activas
         self.ghost_history: list[dict] = []          # 📜 Registro de todos los ghosts cerrados
+        self.stage = os.getenv("SIM_STAGE", "TRAINING")  # 🏷️ Etapa del curriculum PVC
 
     @property
     def total_ghosts(self) -> int:
@@ -134,21 +135,22 @@ class TradingEngine:
                 self._handle_ghost_exits(quote, signal)
 
                 # 5. UI Update per iteration
-                # En simulación histórica (modo mock) actualizamos con menos frecuencia
-                # para maximizar la velocidad. Solo actualizamos si:
-                # - Hay una señal activa (BUY/SELL)
-                # - Hay una posición o ghost trade abierto
-                # - Cada 50 iteraciones (heartbeat de la UI)
+                # En modo LIVE priorizamos la actualización constante para evitar el look "congelado"
                 _has_activity = (
                     signal.signal != SIGNAL_HOLD
                     or self.position is not None
                     or len(self.ghost_positions) > 0
                 )
-                _ui_interval = 50 if self.is_mock else 2
+                
+                # Para Live Paper, actualizamos cada 2 iteraciones (aprox 2s)
+                # Para MOCK (simulación), actualizamos cada 10 para mayor fluidez del progreso
+                _ui_interval = 10 if self.is_mock else 2
+                
                 if _has_activity or iteration % _ui_interval == 0:
                     update_state(
                         mode=self.args.mode, symbol=self.symbol, session=self.session_num,
                         iteration=iteration, bid=quote.bid, ask=quote.ask, signal=signal.signal,
+                        status="running", # Aseguramos que siempre reporte running una vez superada la carga inicial
                         rsi=signal.rsi_value, ema_fast=signal.ema_fast, ema_slow=signal.ema_slow,
                         ema_200=signal.ema_200, macd_hist=signal.macd_hist, vwap=signal.vwap_value,
                         atr=signal.atr_value, confirmations=signal.confirmations,
@@ -167,16 +169,16 @@ class TradingEngine:
                         candles=[], timestamp=quote.timestamp,
                         regime=signal.regime, blocks=signal.blocks,
                         blocking_summary=dict(self.blocking_history),
-                        investment_style=self.investment_style,
-                        # Reportar estadísticas de aprendizaje de la IA (del NeuralFilter, que es el que aprende dinámicamente)
-                        **(nf.get_stats() if 'nf' in locals() else {"total_samples": 0, "model_accuracy": 0.0}),
+                        # Reportar estadísticas de aprendizaje de la IA 
+                        **(nf.get_stats() if 'nf' in locals() else {"total_samples": self.args.get('total_samples', 0) if hasattr(self.args, 'get') else 0, "model_accuracy": 0.0}),
                         ai_recommendation=getattr(signal, 'ai_recommendation', 'Analizando...'),
                         ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5,
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time()),
                         sim_start=str(self.sim_start_date) if self.sim_start_date else "",
-                        sim_end=str(self.sim_end_date) if self.sim_end_date else "",
+                        sim_end=quote.timestamp if self.is_mock else (str(self.sim_end_date) if self.sim_end_date else ""),
                         sim_progress_pct=self._calculate_progress(quote.timestamp),
-                        is_live_paper=self.is_live_paper
+                        is_live_paper=self.is_live_paper,
+                        stage=self.stage
                     )
 
                 # 6. Throttling for Live Paper
@@ -231,13 +233,7 @@ class TradingEngine:
             total_delta = (end - start).total_seconds()
             curr_delta = (curr - start).total_seconds()
 
-            # Diagnostico una sola vez para no inundar el log si vemos 100% pero pocos trades
-            if not getattr(self, '_diag_logged', False):
-                log.info(f"[{self.symbol}] PROGRESO DIAG: Start={start}, End={end}, Curr={curr}, TotalDelta={total_delta}")
-                self._diag_logged = True
-
             if total_delta <= 0:
-                # Si el rango es invalido, mejor mostrar 0% que 100%
                 return 0.0 
             
             pct = (curr_delta / total_delta) * 100.0
