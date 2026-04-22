@@ -476,24 +476,39 @@
 
                 <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; min-height: 160px;">
                     <!-- FINANCIALS -->
+                <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 0; min-height: 160px;">
+                    <!-- FINANCIALS -->
                     <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center;">
                         <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-bottom: 15px;">Liquidez Total</div>
                         <div class="stat-row" style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: #94a3b8;">Disponible</span><span id="av-cash" style="font-size: 1.1rem; font-weight: 800; color: #4ade80;">—</span></div>
-                        <div class="stat-row" style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: #94a3b8;">PnL Global</span><span id="tot-pnl" style="font-size: 1.1rem; font-weight: 800;">—</span></div>
+                        <div class="stat-row" style="margin-bottom: 8px;"><span style="font-size: 0.8rem; color: #94a3b8;">PnL Neto Global</span><span id="tot-pnl" style="font-size: 1.1rem; font-weight: 800;">—</span></div>
                         <div style="font-size: 0.7rem; color: #475569; margin-top: 5px;">Capital Base: <span id="init-cash">—</span></div>
                     </div>
-                    <!-- PRECISION -->
-                    <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.15);">
-                        <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-bottom: 10px;">Precisión del Cerebro</div>
-                        <div style="font-size: 3.2rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff;" id="ai-acc-val">—%</div>
-                        <div style="width: 80%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden;"><div id="ai-acc-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #a78bfa);"></div></div>
+                    <!-- MATURITY & EFFICIENCY (NUEVO FOCO) -->
+                    <div style="padding: 20px; border-right: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(139, 92, 246, 0.05);">
+                        <div style="font-size: 0.7rem; color: #a78bfa; text-transform: uppercase; margin-bottom: 5px; font-weight: 700; letter-spacing: 1px;">Madurez del Portafolio</div>
+                        <div style="font-size: 3.2rem; font-weight: 900; font-family: 'JetBrains Mono', monospace; color: #fff; line-height: 1;" id="hdr-maturity-val">0%</div>
+                        <div style="font-size: 0.7rem; color: #10b981; margin-top: 10px; font-weight: 600;">Efectividad: <span id="hdr-winrate-val">0%</span> Win Rate</div>
+                        <div style="width: 80%; height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03);">
+                            <div id="hdr-maturity-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #a78bfa); transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                        </div>
                     </div>
-                    <!-- SPECS -->
-                    <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: center;">
-                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Arquitectura</span><div id="ai-arch" style="font-size:0.75rem; font-weight:700;">—</div></div>
-                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Memoria</span><div id="ai-memory" style="font-size:0.75rem; font-weight:700;">—</div></div>
-                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px;"><span style="display: block; font-size: 8px; color: #475569;">Muestras</span><div id="ai-total-samples" style="font-size:0.75rem; font-weight:700;">—</div></div>
+                    <!-- AI BRAIN STATS (SECONDARY) -->
+                    <div style="padding: 20px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.65rem; color: #64748b; text-transform: uppercase;">Precisión del Cerebro</span>
+                            <span id="ai-acc-val" style="font-size: 0.85rem; font-weight: 700; color: #60a5fa;">—%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div><span style="display: block; font-size: 7px; color: #475569; text-transform: uppercase;">Arquitectura</span><div id="ai-arch" style="font-size:0.65rem; font-weight:700;">—</div></div>
+                            <div><span style="display: block; font-size: 7px; color: #475569; text-transform: uppercase;">Muestras</span><div id="ai-total-samples" style="font-size:0.65rem; font-weight:700;">—</div></div>
+                        </div>
+                        <div style="font-size: 0.65rem; color: #475569; text-align: center;">
+                            Cerebro Global: <span id="hdr-ai-samples">0</span> casos procesados
+                        </div>
                     </div>
+                </div>
+
                 </div>
             </div>
 
@@ -1039,16 +1054,40 @@
                     
                     // Actualizar Madurez Global
                     if (rankings.summary) {
-                        const maturity = rankings.summary.global_maturity;
-                        document.getElementById('global-maturity-val').innerText = `${maturity}%`;
-                        document.getElementById('global-maturity-bar').style.width = `${maturity}%`;
+                        const summ = rankings.summary;
+                        const maturity = summ.maturity_index || summ.global_maturity || 0;
+                        
+                        // Header KPIs (Nuevos)
+                        const hdrMat = document.getElementById('hdr-maturity-val');
+                        if (hdrMat) hdrMat.innerText = `${maturity.toFixed(1)}%`;
+                        const hdrBar = document.getElementById('hdr-maturity-bar');
+                        if (hdrBar) hdrBar.style.width = `${maturity}%`;
+                        const hdrWR = document.getElementById('hdr-winrate-val');
+                        if (hdrWR) hdrWR.innerText = `${(summ.portfolio_win_rate || 0).toFixed(1)}%`;
+                        const hdrSamples = document.getElementById('hdr-ai-samples');
+                        if (hdrSamples) hdrSamples.innerText = `${summ.active_symbols || 0} de ${summ.total_symbols || 0}`;
+
+                        // Badge de estatus madurez
+                        const badge = document.getElementById('ai-maturity-badge');
+                        if (badge) {
+                            if (maturity > 80) { badge.textContent = 'PORTAFOLIO ELITE'; badge.style.color = '#10b981'; badge.style.borderColor = '#10b981'; }
+                            else if (maturity > 40) { badge.textContent = 'MADURANDO'; badge.style.color = '#60a5fa'; badge.style.borderColor = '#60a5fa'; }
+                            else { badge.textContent = 'INFANCIA / APRENDIZAJE'; badge.style.color = '#f59e0b'; badge.style.borderColor = '#f59e0b'; }
+                        }
+
+                        // Sync tab metrics
+                        const tabMatVal = document.getElementById('global-maturity-val');
+                        if (tabMatVal) tabMatVal.innerText = `${maturity.toFixed(1)}%`;
+                        const tabMatBar = document.getElementById('global-maturity-bar');
+                        if (tabMatBar) tabMatBar.style.width = `${maturity}%`;
                         
                         // Guardar datos para el ETA dinámico
-                        window.avg_dur = rankings.summary.avg_sim_duration;
-                        window.avg_trades = rankings.summary.avg_trades_per_sim;
+                        window.avg_dur = summ.avg_sim_duration;
+                        window.avg_trades = summ.avg_trades_per_sim;
                         window.pending_trades = rankings.rankings.reduce((acc, r) => acc + Math.max(0, 30 - r.total_trades), 0);
-                        previewETA(); // Actualizar ETA con los nuevos datos
+                        previewETA();
                     }
+
                     
                     tbody.innerHTML = rankings.rankings.map(m => {
                         // Desglose de fórmula para transparencia

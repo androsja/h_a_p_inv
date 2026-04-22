@@ -196,40 +196,59 @@ class MasteryManager:
             return {"global_maturity": 0, "avg_sim_duration": 6.14, "avg_trades_per_sim": 10.65}
         
         # 1. Calidad (70%): Promedio de Confidence Scores
-        avg_confidence = sum(r.get("confidence_score", 0) for r in rankings) / len(rankings)
+        scored_rankings = [r for r in rankings if r.get("total_trades", 0) > 0]
+        avg_confidence = sum(r.get("confidence_score", 0) for r in scored_rankings) / len(scored_rankings) if scored_rankings else 0
         
         # 2. Consistencia (30%): Progreso de Fases PVC
-        # SCOUTING=0, TRAINING=0.4, VALIDATING=0.8, ELITE/LIVE=1.0
         phase_weights = {
             "SCOUTING": 0.0,
             "TRAINING": 0.4,
             "VALIDATING": 0.8,
             "ELITE": 1.0,
             "READY_FOR_LIVE": 1.0,
-            "LIVE_PAPER": 1.0
+            "LIVE_PAPER": 1.0,
+            "LIVE-SHADOW": 1.0
         }
         
         phase_score = 0
         active_count = 0
+        total_pnl = 0.0
+        total_wr = 0.0
+        elite_count = 0
+        
         for r in rankings:
+            total_pnl += r.get("net_pnl", 0.0)
             if r.get("total_trades", 0) > 0:
                 stage = r.get("pvc_stage", "SCOUTING")
-                # Si el status ya es READY_FOR_LIVE, forzamos peso de 1.0
-                if r.get("status") in ["READY_FOR_LIVE", "ELITE"]: stage = "ELITE"
-                phase_score += phase_weights.get(stage, 0.0)
+                status = r.get("status", "LEARNING")
+                
+                if status in ["ELITE", "READY_FOR_LIVE"]:
+                    elite_count += 1
+                    stage_weight = 1.0
+                else:
+                    stage_weight = phase_weights.get(stage, 0.0)
+                    
+                phase_score += stage_weight
+                total_wr += r.get("win_rate", 0.0)
                 active_count += 1
         
         avg_phase = (phase_score / active_count * 100) if active_count > 0 else 0
-        
         global_maturity = (avg_confidence * 0.7) + (avg_phase * 0.3)
+        portfolio_win_rate = (total_wr / active_count) if active_count > 0 else 0.0
+        maturity_index = (elite_count / len(rankings) * 100) if rankings else 0
         
         return {
             "global_maturity": round(global_maturity, 1),
+            "maturity_index": round(maturity_index, 1),
+            "portfolio_win_rate": round(portfolio_win_rate, 1),
+            "total_net_pnl": round(total_pnl, 2),
             "active_symbols": active_count,
             "total_symbols": len(rankings),
-            "avg_sim_duration": 6.14,      # Constante medida en esta sesión
-            "avg_trades_per_sim": 10.65    # Constante medida en esta sesión
+            "elite_count": elite_count,
+            "avg_sim_duration": 6.14,
+            "avg_trades_per_sim": 10.65
         }
+
 
     def get_elite_recommendations(self, limit: int = 5) -> List[str]:
         """Recomienda los mejores símbolos para invertir hoy."""
