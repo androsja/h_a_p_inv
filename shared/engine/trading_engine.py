@@ -47,6 +47,14 @@ class TradingEngine:
         self.ghost_positions: list[OpenPosition] = [] # 👻 Rastreo de señales bloqueadas activas
         self.ghost_history: list[dict] = []          # 📜 Registro de todos los ghosts cerrados
         self.stage = os.getenv("SIM_STAGE", "TRAINING")  # 🏷️ Etapa del curriculum PVC
+        self.oracle_stats = None                     # 🛡️ Memoria del último audit del Sentinel
+        self.oracle_approved_count = 0               # ✅ Contador de aprobaciones
+        self.oracle_blocked_count = 0                # 🛑 Contador de bloqueos/penalizaciones
+        self.actual_start = None                     # 📅 Fecha real de inicio detectada en datos
+        self.actual_end = None                       # 📅 Fecha real de fin detectada en datos
+        self.equity_history = [0.0]                  # 📈 Curva de equidad (PnL Neto acumulado)
+        self.trade_log = []                          # 📜 Bit\u00e1cora detallada de trades finalizados
+
 
     @property
     def total_ghosts(self) -> int:
@@ -99,6 +107,18 @@ class TradingEngine:
                 # 2. Obtener Precio (o Fin de Simulación)
                 try:
                     quote = self.broker.get_quote(self.symbol)
+                    # 🕒 Rastrear fechas reales procesadas
+                    if not self.actual_start:
+                        self.actual_start = quote.timestamp
+                    self.actual_end = quote.timestamp
+                    
+                    # 🕒 Actualizar el reloj de mercado en la cuenta (T+1 Settlement Sync)
+                    if hasattr(self.account, "current_market_date") and quote.timestamp:
+                        try:
+                            from dateutil import parser
+                            self.account.current_market_date = parser.parse(str(quote.timestamp)).date()
+                        except: pass
+                        
                 except StopIteration:
                     log.info("▶ Datos agotados. Finalizando sesión.")
                     break
@@ -173,13 +193,22 @@ class TradingEngine:
                         **(nf.get_stats() if 'nf' in locals() else {"total_samples": self.args.get('total_samples', 0) if hasattr(self.args, 'get') else 0, "model_accuracy": 0.0}),
                         ai_recommendation=getattr(signal, 'ai_recommendation', 'Analizando...'),
                         ai_win_prob=signal.ai_win_prob if hasattr(signal, 'ai_win_prob') else 0.5,
+                        effective_threshold=getattr(signal, 'effective_threshold', 0.60),
                         sim_duration=time.time() - getattr(self, '_engine_start_time', time.time()),
-                        sim_start=str(self.sim_start_date) if self.sim_start_date else "",
-                        sim_end=quote.timestamp if self.is_mock else (str(self.sim_end_date) if self.sim_end_date else ""),
+                        sim_start_date=self.sim_start_date or self.actual_start or "",
+                        sim_end_date=quote.timestamp if self.is_mock else (self.sim_end_date or self.actual_end or ""),
                         sim_progress_pct=self._calculate_progress(quote.timestamp),
                         is_live_paper=self.is_live_paper,
-                        stage=self.stage
+                        stage=self.stage,
+                        oracle_stats=getattr(signal, 'oracle_stats', self.oracle_stats) or {},
+                        oracle_totals={
+                            "approved": self.oracle_approved_count,
+                            "blocked": self.oracle_blocked_count,
+                            "mode": "AUDITOR\u00cdA (REDUCCI\u00d3N 0.5x)"
+                        },
+                        equity_history=self.equity_history[:]
                     )
+
 
                 # 6. Throttling for Live Paper
                 if self.is_live_paper:
@@ -363,6 +392,15 @@ class TradingEngine:
                     entry_metadata=metadata, ml_features=signal.ml_features,
                     is_ghost=False
                 )
+                # 📜 Registrar la entrada en la bitácora
+                self.trade_log.append({
+                    "t": quote.timestamp,
+                    "s": "BUY",
+                    "p": buy_plan.limit_price,
+                    "q": buy_plan.qty,
+                    "r": 0.0,
+                    "m": who_decided
+                })
         else:
             if buy_plan.block_reason:
                 if "Ganancia esperada" in buy_plan.block_reason:
@@ -411,12 +449,64 @@ class TradingEngine:
     def _calculate_confidence(self, signal):
         try:
             from shared.strategy.ml_predictor import ml_predictor
-            is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
+            is_alpha, prob_win, expected_pnl = ml_predictor.predict_win(signal.ml_features, signal.regime)
             signal.ml_features['ml_prob'] = prob_win
-        except: prob_win = 0.5
+            signal.ml_features['expected_pnl'] = expected_pnl
+        except: 
+            prob_win = 0.5
+            expected_pnl = 0.0
+            is_alpha = True
+
+        # --- AUDITORÍA ORACLE (Sentinel) ---
+        oracle_multiplier = 1.0
+        try:
+            from shared.utils.oracle_shield import oracle
+            oracle_audit = oracle.predict_quality(signal.ml_features.get('features', []))
+            if not oracle_audit['approved']:
+                oracle_multiplier = 0.5
+                self.oracle_blocked_count += 1
+            else:
+                self.oracle_approved_count += 1
+        except Exception as e:
+            log.debug(f"Error en auditoría Oracle: {e}")
+            oracle_audit = {"approved": True, "confidence": 1.0, "reason": "Error Auditoría"}
+        
+        self.oracle_stats = oracle_audit # Persistencia para UI
+        signal.oracle_stats = oracle_audit
+
+        # --- GATILLO INTELIGENTE (ADAPTIVE THRESHOLD) ---
+        # Base: 0.51
+        # Oracle Aprobado: -0.04 (Premio a la calidad)
+        # Volatilidad Alta (>0.4% ATR): +0.05 (Protección)
+        base_threshold = 0.51
+        oracle_bonus = 0.04 if oracle_audit['approved'] else 0.0
+        
+        # Volatilidad relativa
+        atr_pct = (signal.atr_value / signal.close) * 100 if signal.close > 0 else 0
+        vol_penalty = 0.05 if atr_pct > 0.4 else 0.0
+        
+        eff_threshold = round(base_threshold - oracle_bonus + vol_penalty, 2)
+        signal.effective_threshold = eff_threshold
+        
+        # Sobreescribir bloqueo de la IA con el umbral dinámico y el filtro Alpha
+        # Usamos el máximo entre prob_win (RF) y la prob del Neural Filter si está disponible
+        final_prob = max(prob_win, getattr(signal, 'ai_win_prob', prob_win))
+        
+        # El bloqueo ahora es por Probabilidad BAJA O por Falta de Valor (Alpha)
+        signal.is_ml_blocked = (final_prob < eff_threshold) or (not is_alpha)
+        
+        # Incrementar contador si fue bloqueado por IA/Oracle combinado
+        if signal.is_ml_blocked:
+            self.blocking_history["🛡️ Oracle AI/Shield"] += 1
+        
+        # Log de Transparencia (En Color Cian para destacar)
+        color_cyan = "\033[96m"
+        log.info(f"{color_cyan}🎯 GATILLO INTELIGENTE | Umbral: {eff_threshold:.2f} | IA Prob: {final_prob:.1%} | {'APROBADO' if not signal.is_ml_blocked else 'BLOQUEADO'}\033[0m")
+
+
 
         mult = 1.0
-        log.info(f"🧠 IA PREDICTION | {self.symbol} | Probabilidad de éxito: {prob_win:.1%} (Score: {prob_win:.2f})")
+        log.info(f"🧠 IA PREDICTION | {self.symbol} | Prob: {prob_win:.1%} | Est: ${expected_pnl:.2f}")
         
         if prob_win > 0.85: 
             mult *= 1.5
@@ -428,7 +518,13 @@ class TradingEngine:
             mult *= 0.7
             log.warning(f"⚠️ IA CAUTION | {self.symbol} | Probabilidad baja, reduciendo exposición (x0.7)")
         
-        return mult
+        # Combinar con opinión del Oracle
+        final_mult = mult * oracle_multiplier
+        if oracle_multiplier < 1.0:
+            log.warning(f"🛡️ [RISK PROTECT] Multiplicador final ajustado por Oracle: {final_mult:.2f}")
+            
+        return final_mult
+
         
         if len(signal.confirmations) >= 4: mult *= 1.2
         return min(mult, 2.0)
@@ -463,7 +559,9 @@ class TradingEngine:
         # Ignorar "SIMULATION_END" para no ensuciar el entrenamiento de la IA con salidas no naturales
         if hasattr(self.position, 'ml_features') and reason != "SIMULATION_END":
             net_pnl = self._get_net_pnl(pnl, self.position.qty, self.position.entry_price)
-            ml_predictor.save_trade(self.symbol, self.position.ml_features, net_pnl)
+            # Recuperar el régimen del metadata de la entrada si es posible, o usar NEUTRAL
+            regime = self.position.entry_metadata.get("xai_metrics", {}).get("regime", "NEUTRAL")
+            ml_predictor.save_trade(self.symbol, self.position.ml_features, net_pnl, regime=regime)
             self._train_neural_filter(net_pnl)
             
             journal_record_trade(
@@ -478,6 +576,22 @@ class TradingEngine:
         if not self.is_mock:
             self.account.record_sale(sell_price * self.position.qty)
         
+        # 📈 Actualizar curva de equidad
+        net_profit = round(self.broker.stats.net_profit, 2)
+        if not self.equity_history or self.equity_history[-1] != net_profit:
+            self.equity_history.append(net_profit)
+        
+        # 📜 Registrar en Bit\u00e1cora para el Dashboard (Modal Detalle)
+        self.trade_log.append({
+            "t": timestamp,
+            "entry_t": getattr(self.position, 'entry_timestamp', None) or timestamp,
+            "s": "SELL",
+            "p": sell_price,
+            "q": self.position.qty,
+            "r": round(pnl, 2),
+            "m": reason
+        })
+
         self.position = None
 
     def _train_neural_filter(self, pnl, pos=None):

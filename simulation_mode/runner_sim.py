@@ -152,7 +152,7 @@ class SimulationRunner:
                 self.all_assets = [a for a in data.get("assets", []) if a.get("enabled", True)]
                 self.all_symbols = [a["symbol"] for a in self.all_assets]
                 
-                update_state("─", mode="SIMULATED", status="starting")
+                update_state("🛡️ SYSTEM_PULSE", mode="SIMULATED", status="starting")
                 if not getattr(self, '_last_symbols_count', None) == len(self.all_symbols):
                     log.info(f"📋 Cargadas {len(self.all_symbols)} empresas para simular.")
                     self._last_symbols_count = len(self.all_symbols)
@@ -210,7 +210,7 @@ class SimulationRunner:
                 self.total_sim_ghosts = 0
                 self.all_done = False
                 self.start_real_time = None
-                update_state("─", mode="SIMULATED", status="restarting")
+                update_state("🛡️ SYSTEM_PULSE", mode="SIMULATED", status="restarting")
                 return True
         except: pass
         return False
@@ -333,17 +333,17 @@ class SimulationRunner:
                 "pnl": round(getattr(self, "total_sim_pnl", 0.0), 2),
                 "symbols_list": self.all_symbols,
                 "detailed_results": detailed_results,
-                "sim_start": detailed_results[0].get("sim_start", "─") if detailed_results else "─",
-                "sim_end": detailed_results[-1].get("sim_end", "─") if detailed_results else "─",
+                "sim_start_date": detailed_results[0].get("sim_start_date", "─") if detailed_results else "─",
+                "sim_end_date": detailed_results[-1].get("sim_end_date", "─") if detailed_results else "─",
                 "start_real_time": self.start_real_time.isoformat() if self.start_real_time else None,
                 "investment_style": "Normal",
                 "is_partial": is_partial
             }
 
-            if entry["sim_start"] != "─" and entry["sim_end"] != "─":
+            if entry["sim_start_date"] != "─" and entry["sim_end_date"] != "─":
                 try:
-                    d1 = datetime.strptime(entry["sim_start"][:10], "%Y-%m-%d")
-                    d2 = datetime.strptime(entry["sim_end"][:10], "%Y-%m-%d")
+                    d1 = datetime.strptime(entry["sim_start_date"][:10], "%Y-%m-%d")
+                    d2 = datetime.strptime(entry["sim_end_date"][:10], "%Y-%m-%d")
                     entry["sim_days"] = (d2 - d1).days + 1
                 except:
                     entry["sim_days"] = 0
@@ -389,8 +389,10 @@ class SimulationRunner:
             total_sim_gross_profit=round(self.total_sim_gross_profit, 2),
             total_sim_gross_loss=round(self.total_sim_gross_loss, 2),
             total_sim_ghosts=self.total_sim_ghosts,
-            sim_start=str(args.start_date) if hasattr(args, 'start_date') and args.start_date else "",
-            sim_end=str(args.end_date) if hasattr(args, 'end_date') and args.end_date else ""
+            sim_start_date=engine.sim_start_date or engine.actual_start or "",
+            sim_end_date=engine.sim_end_date or engine.actual_end or "",
+            stage=os.getenv("SIM_STAGE", "TRAINING"),
+            freeze_learning=os.getenv("FREEZE_LEARNING", "false").lower() == "true"
         )
         
         engine.run(session_num=self.session_num, asset_type=asset_type)
@@ -400,7 +402,13 @@ class SimulationRunner:
     def _record_session_results(self, engine, broker):
         try:
             stats = broker.stats
-            pnl_val = getattr(stats, 'total_pnl', 0.0)
+            trades_list = getattr(stats, 'trade_history', [])
+            if trades_list:
+                # Sumar pnl de todos los tickets de venta cerrados
+                pnl_val = sum(t.get('pnl', 0.0) for t in trades_list if t.get('side') == 'SELL')
+            else:
+                pnl_val = getattr(stats, 'total_pnl', 0.0)
+                
             trades_val = getattr(stats, 'total_trades', 0)
             winrate_val = getattr(stats, 'win_rate', 0.0)
             
@@ -455,8 +463,8 @@ class SimulationRunner:
                 "net_loss": round(getattr(stats, 'net_loss', 0.0), 2),
                 "drawdown": round(getattr(stats, 'max_drawdown', 0.0), 2),
                 "insight": insight,
-                "sim_start": str(engine.sim_start_date) if engine.sim_start_date else "",
-                "sim_end": str(engine.sim_end_date) if engine.sim_end_date else "",
+                "sim_start_date": engine.sim_start_date or engine.actual_start or "",
+                "sim_end_date": engine.sim_end_date or engine.actual_end or "",
                 "sim_duration": round(time.time() - getattr(engine, '_engine_start_time', time.time()), 2),
                 "investment_style": engine.investment_style,
                 "blocking_summary": dict(engine.blocking_history or {}),
@@ -464,6 +472,13 @@ class SimulationRunner:
                 "total_ghosts": len(getattr(engine, 'ghost_history', []) or []) + len(getattr(engine, 'ghost_positions', []) or []),
                 "last_price": round(float(last_price), 2) if last_price else None,
                 "last_order_date": last_order_date,
+                "oracle_totals": {
+                    "approved": engine.oracle_approved_count,
+                    "blocked": engine.oracle_blocked_count,
+                    "avoided_loss": engine.oracle_blocked_count * 15.0 # Estimado para el histórico
+                },
+                "equity_history": getattr(engine, 'equity_history', []),
+                "trade_log": getattr(engine, 'trade_log', [])
             }
 
             self.total_sim_trades += int(trades_val)
@@ -525,6 +540,15 @@ class SimulationRunner:
                 total_sim_ghosts=self.total_sim_ghosts,
                 report=session_result
             )
+
+            # Si estamos en modo WORKER, guardamos en un archivo individual para evitar colisiones
+            target = os.getenv("TARGET_SYMBOL")
+            if target:
+                res_file = config.DATA_DIR / f"results_{target}.json"
+                with open(res_file, "w") as f:
+                    json.dump([session_result], f, indent=2)
+                log.info(f"💾 Resultado individual guardado en {res_file.name}")
+                return
 
             results = []
             if res_file.exists():
