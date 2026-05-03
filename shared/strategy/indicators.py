@@ -195,20 +195,41 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     # ML Features
     _vwap_dist = (close_now - vwap_now) / vwap_now * 100 if vwap_now > 0 else 0.0
     _hour_ny = float(df.index[-1].hour) if hasattr(df.index[-1], 'hour') else 10.0
+    # 5.1 Construir vector de features para IA y Oracle
+    from shared.utils.neural_filter import get_neural_filter
+    nf = get_neural_filter(symbol)
+    feature_vector = nf.build_features(
+        symbol=symbol,
+        hour_of_day=_hour_ny,
+        vwap_dist_pct=_vwap_dist,
+        rsi=rsi_now,
+        macd_hist=macd_now,
+        atr_pct=atr_pct,
+        vol_ratio=vol_ratio,
+        ema_spread_pct=(ema_f_now - ema_s_now) / (close_now if close_now > 0 else 1.0) * 100,
+        zscore_vwap=zscore_now,
+        regime=current_regime,
+        num_confirmations=len(confirmations),
+        adx=adx_now,
+        has_pattern=is_hammer or is_engulf or is_bb_rev,
+        is_adx_rising=adx_now > (adx_vals.iloc[-2] if len(adx_vals) > 1 else adx_now)
+    )
+
     ml_features = {
         'symbol': symbol,
         'hour_of_day': _hour_ny,
         'vwap_dist_pct': _vwap_dist,
         'rsi': rsi_now, 'macd_hist': macd_now, 
-        'ema_diff_pct': (ema_f_now - ema_s_now) / close_now * 100,
+        'ema_diff_pct': (ema_f_now - ema_s_now) / (close_now if close_now > 0 else 1.0) * 100,
         'atr_pct': atr_pct, 'adx': adx_now, 'chop': chop_now,
         'regime': current_regime,
         'vol_ratio': vol_ratio, 'zscore_vwap': zscore_now,
         'num_confirmations': len(confirmations),
         'has_pattern': is_hammer or is_engulf or is_bb_rev,
-        'is_adx_rising': adx_now > adx_vals.iloc[-2],
+        'is_adx_rising': adx_now > (adx_vals.iloc[-2] if len(adx_vals) > 1 else adx_now),
         'model_accuracy': getattr(ml_predictor, 'accuracy', 0.0),
-        'total_samples': ml_predictor.get_sample_count()
+        'total_samples': ml_predictor.get_sample_count(),
+        'features': feature_vector
     }
 
     # Reset signal if blocked
@@ -226,25 +247,8 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
 
         # 2. Neural Filter
         try:
-            from shared.utils.neural_filter import get_neural_filter
-            nf = get_neural_filter(symbol)
-            nf_features = nf.build_features(
-                symbol=symbol,
-                hour_of_day=ml_features.get('hour_of_day', 10.0),
-                vwap_dist_pct=ml_features.get('vwap_dist_pct', 0.0),
-                rsi=ml_features.get('rsi', 50.0), 
-                macd_hist=ml_features.get('macd_hist', 0.0),
-                atr_pct=ml_features.get('atr_pct', 0.0), 
-                vol_ratio=ml_features.get('vol_ratio', 1.0),
-                ema_spread_pct=ml_features.get('ema_diff_pct', 0.0),
-                zscore_vwap=zscore_now, 
-                regime=current_regime,
-                num_confirmations=len(confirmations),
-                adx=adx_now,
-                has_pattern=ml_features.get('has_pattern', False),
-                is_adx_rising=ml_features.get('is_adx_rising', False)
-            )
-            prob_win_nf, _ = nf.predict(nf_features)
+            # Ya tenemos el feature_vector calculado arriba
+            prob_win_nf, _ = nf.predict(feature_vector)
         except Exception as e:
             log.error(f"Error en Neural Filter: {e}")
             prob_win_nf = 0.5

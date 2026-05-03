@@ -1,5 +1,6 @@
 # 🚀 Resultados del Time Travel Trainer
 
-| Ciclo | Mes Aprendido | PnL ESTUDIO | PnL VALIDACIÓN | Trades | Empresas (+/-) |
-| :---: | :--- | :--- | :--- | :---: | :---: |
-| 1 | 2025-05 | 🔴 $-16098.01 | 🟢 $17686.21 | 234 | 87/21 |
+| Ciclo | Mes Estudio | Mes Validación | PnL Estudio | PnL Validación | Trades Est. | Trades Valid. | Empresas (+/-) |
+| :---: | :--- | :--- | :--- | :--- | :---: | :---: | :---: |
+| 1 | 2025-05 | 2025-06 | 🔴 $-16098.01 | 🟢 $17686.21 | 120 | 234 | 87/21 |
+| 2 | 2025-08 | 2025-09 | 🔴 $-18616.75 | 🟢 $17686.21 | 120 | 234 | 87/21 |

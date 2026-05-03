@@ -10,6 +10,59 @@ app = Flask(__name__)
 LOG_FILE = "scratch/time_travel.log"
 SIM_DETAILS_LOG = "scratch/simulation_details.log"
 RESULTS_FILE = "data/backtest_results.json"
+ASSETS_FILE = "simulation_config.json"
+
+def get_history():
+    data = []
+    report_file = "scratch/TIME_TRAVEL_RESULTS.md"
+    if not os.path.exists(report_file):
+        return []
+    try:
+        with open(report_file, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                if "|" in line and "Ciclo" not in line and "---" not in line:
+                    parts = [p.strip() for p in line.split("|") if p.strip()]
+                    # Formato v3 (8 columnas): | Ciclo | Mes Estudio | Mes Validación | PnL Estudio | PnL Validación | Trades Est. | Trades Valid. | Empresas (+/-) |
+                    if len(parts) >= 8:
+                        data.append({
+                            "cycle": parts[0],
+                            "month": parts[1],
+                            "eval_month": parts[2],
+                            "pnl_study": parts[3],
+                            "pnl_val": parts[4],
+                            "trades_study": parts[5],
+                            "trades_val": parts[6],
+                            "stats": parts[7]
+                        })
+                    # Formato v2 (7 columnas): | Ciclo | Mes Estudio | Mes Validación | PnL Estudio | PnL Validación | Trades | Empresas (+/-) |
+                    elif len(parts) == 7:
+                        data.append({
+                            "cycle": parts[0],
+                            "month": parts[1],
+                            "eval_month": parts[2],
+                            "pnl_study": parts[3],
+                            "pnl_val": parts[4],
+                            "trades_study": "-",
+                            "trades_val": parts[5],
+                            "stats": parts[6]
+                        })
+                    # Formato v1 (6 columnas): | Ciclo | Mes Aprendido | PnL ESTUDIO | PnL VALIDACIÓN | Trades | Empresas (+/-) |
+                    elif len(parts) == 6:
+                        data.append({
+                            "cycle": parts[0],
+                            "month": parts[1],
+                            "eval_month": "-",
+                            "pnl_study": parts[2],
+                            "pnl_val": parts[3],
+                            "trades_study": "-",
+                            "trades_val": parts[4],
+                            "stats": parts[5]
+                        })
+        return data[::-1]
+    except Exception as e:
+        print(f"Error reading history: {e}")
+        return []
 
 def get_metrics():
     # Leer logs principales
@@ -17,53 +70,51 @@ def get_metrics():
     if os.path.exists(LOG_FILE):
         try:
             with open(LOG_FILE, "r") as f:
-                # Leer 20,000 líneas para no perder metadatos de misiones largas o cambios de fase
-                lines = f.readlines()[-20000:]
+                lines = f.readlines()[-5000:]
         except: pass
         
-    # Leer logs detallados (para bloqueos)
+    # Leer logs detallados
     sim_lines = []
     if os.path.exists(SIM_DETAILS_LOG):
         try:
             with open(SIM_DETAILS_LOG, "r") as f:
-                # Leer más líneas para no perder el inicio del ciclo (20k líneas)
                 sim_lines = f.readlines()[-20000:]
         except: pass
+
     # 0. Valores por defecto
     current_asset = "..."
     progress = 0
     cycle = "1"
+    display_cycle = "1"
+    is_transitioning = False
     phase = "ESTUDIO"
     phase_icon = "📚"
     sim_dates = "2024-01-01 a 2024-01-31"
+    target_fleet = []
     
     # 1. Analizar LOG PRINCIPAL para estado de misión y símbolos
-    symbol_last_event = {}  # sym -> ('START'|'DONE', idx)
+    symbol_last_event = {}
     
-    # Recorremos 'lines' que viene de LOG_FILE (time_travel.log)
     for line in lines:
-        # Detectar Ciclo
         match_cycle = re.search(r"CICLO DE APRENDIZAJE (\d+)", line)
-        if match_cycle: cycle = match_cycle.group(1)
+        if match_cycle: 
+            cycle = match_cycle.group(1)
+            display_cycle = cycle
         
-        # Detectar Fechas (Ej: Fechas: 2025-05-01 a 2025-05-31)
         match_dates = re.search(r"Fechas: ([\d-]+ a [\d-]+)", line)
         if match_dates: 
             sim_dates = match_dates.group(1)
         
-        # Patrón alternativo para fechas
         match_alt_dates = re.search(r"HAPI_SIM_START_DATE=([\d-]+)", line)
         if match_alt_dates:
             sim_dates = f"{match_alt_dates.group(1)} a ..." 
 
-        # Rastrear progreso de símbolos (Ej: ▶️ [136/167] ZM en proceso...)
-        for m_start in re.finditer(r"▶️ \[(\d+)/167\] (\w+)", line):
-            symbol_last_event[m_start.group(2)] = ('START', int(m_start.group(1)))
+        for m_start in re.finditer(r"▶️ \[(\d+)/(\d+)\] (\w+)", line):
+            symbol_last_event[m_start.group(3)] = ('START', int(m_start.group(1)))
         
-        for m_done in re.finditer(r"[✅❌] \[\d+/167\] (\w+)", line):
+        for m_done in re.finditer(r"[✅❌] \[\d+/\d+\] (\w+)", line):
             symbol_last_event[m_done.group(1)] = ('DONE', 0)
         
-        # Detectar Fase
         if "📚 ENTRENANDO" in line:
             phase = "ESTUDIO"
             phase_icon = "📚"
@@ -71,28 +122,8 @@ def get_metrics():
             phase = "VALIDACIÓN"
             phase_icon = "🎓"
 
-    # 1.1 Analizar LOG DETALLADO solo para bloqueos de Alpha
     alpha_blocks = sum(1 for l in sim_lines if "🚫 [AlphaOptimizer]" in l)
     total_scans = sum(1 for l in sim_lines if "🎯 GATILLO INTELIGENTE" in l)
-
-    # Derivar activos en vuelo desde LOGS
-    active_symbols = {sym for sym, (state, _) in symbol_last_event.items() if state == 'START'}
-    
-    # 🕵️‍♂️ SENSOR DE PULSO DIRECTO (DOCKER PS)
-    # Si los logs fallan o van lentos, Docker nos dirá la verdad
-    try:
-        import subprocess
-        d_ps = subprocess.check_output(["docker", "ps", "--format", "{{.Command}}"], encoding="utf-8")
-        for line in d_ps.split("\n"):
-            # Buscamos símbolos en los comandos de ejecución de los contenedores
-            # El comando suele ser 'python simulation_mode/main_sim.py' pero el TARGET_SYMBOL está en ENV
-            # Intentamos detectar por nombres de contenedores o inspección si es necesario
-            # Pero por ahora, usemos una técnica más audaz: ver si hay contenedores de hapi-scalping-bot
-            pass
-        
-        # Técnica alternativa: El orquestador ya sabe quién lanzó. 
-        # Vamos a confiar en la detección de hilos de sistema.
-    except: pass
 
     progress = max((idx for _, (_, idx) in symbol_last_event.items()), default=0)
 
@@ -100,12 +131,24 @@ def get_metrics():
     home_runs = []
     win_rate_cycle = 0.0
     completed_count = 0
-    remaining_count = 167
-    current_session_results = []
     total_pnl_global = 0.0
     total_pnl_cycle = 0.0
-    
-    current_mission_start = sim_dates.split(" a ")[0]
+    current_session_results = []
+    target_fleet = []
+
+    # Detectar flota objetivo dinámicamente (SIEMPRE, incluso sin resultados)
+    if os.path.exists(ASSETS_FILE):
+        try:
+            with open(ASSETS_FILE, "r") as f:
+                assets_data = json.load(f)
+                if isinstance(assets_data, dict) and "symbols" in assets_data:
+                    target_fleet = assets_data["symbols"]
+                elif isinstance(assets_data, list):
+                    target_fleet = assets_data
+                elif isinstance(assets_data, dict):
+                    target_fleet = list(assets_data.keys())
+        except Exception as e:
+            print(f"Error loading assets: {e}")
     
     if os.path.exists(RESULTS_FILE):
         try:
@@ -115,129 +158,92 @@ def get_metrics():
                 
                 current_session_results = [
                     r for r in all_results 
-                    if current_mission_start in str(r.get("sim_start_date",""))
+                    if str(r.get("session_num")) == str(cycle)
                 ]
                 
                 total_pnl_cycle = sum(float(r.get('pnl', 0)) for r in current_session_results)
-                
-                finished_syms = {r['symbol'] for r in current_session_results}
-                active_symbols -= finished_syms
-                
-                completed_count = len(finished_syms)
-                remaining_count = max(0, 167 - completed_count)
+                completed_count = len({r['symbol'] for r in current_session_results})
                 
                 if current_session_results:
                     wins = sum(1 for r in current_session_results if float(r.get('pnl', 0)) > 0)
-                    win_rate_cycle = (wins / len(current_session_results)) * 100 if len(current_session_results) > 0 else 0
+                    win_rate_cycle = (wins / len(current_session_results)) * 100
         except Exception as e:
-            print(f"Error JSON: {e}")
+            print(f"Error processing results: {e}")
 
-    # 3. Identificar activos en paralelo REALES (Sensor de Pulso de Estado)
+    # 3. Detectar estado de transición y pulso
+    active_symbols = set()
     try:
-        # Usamos state_sim.json que es donde el motor de simulación reporta en vivo
-        state_file = "data/state_sim.json"
-        if os.path.exists(state_file):
-            with open(state_file, "r") as f:
-                full_state = json.load(f)
-                now_ts = time.time()
-                for sym, s_data in full_state.items():
-                    # Si se actualizó hace menos de 60 segundos, está VIVO
-                    if now_ts - s_data.get("last_update", 0) < 60:
-                        if sym != "─": # Ignorar separador global
-                            active_symbols.add(sym)
-    except Exception as e:
-        print(f"Error en sensor de pulso: {e}")
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r") as f:
+                log_lines = f.readlines()
+                for line in log_lines[-20:]:
+                    if "REFLEXIONANDO" in line or "🧠 LA IA ESTÁ REFLEXIONANDO" in line:
+                        is_transitioning = True
+                        break
+                
+                for line in reversed(log_lines[-200:]):
+                    if "INICIANDO CICLO DE APRENDIZAJE" in line:
+                        display_cycle = line.split("APRENDIZAJE")[-1].strip()
+                        break
 
-    parallel_assets = sorted(list(active_symbols))
-    
-    # Limitar a los últimos 8 para la visualización compacta
-    parallel_assets = parallel_assets[-8:]
-    
-    current_asset_text = ", ".join(parallel_assets) if parallel_assets else "Sincronizando flota..."
-    if len(parallel_assets) > 4:
-        current_asset_text = ", ".join(parallel_assets[:4]) + "<br>" + ", ".join(parallel_assets[4:])
+                starts, completes = set(), set()
+                for line in log_lines[-5000:]:
+                    if "▶️" in line:
+                        for s in target_fleet: 
+                            if f" {s} " in line or f"] {s} " in line: starts.add(s)
+                    if "✅" in line or "❌" in line:
+                        for s in target_fleet: 
+                            if f" {s} " in line or f"] {s} " in line: completes.add(s)
+                active_symbols.update(starts - completes)
+    except: pass
 
-    # 4. Construir Radar de Resultados
-    for a in active_symbols:
-        partial = next((r for r in current_session_results if r.get('symbol') == a), None)
-        if partial:
+    # 4. Construir Radar de Resultados DINÁMICO
+    home_runs = []
+    for sym in target_fleet:
+        res = next((r for r in current_session_results if r.get('symbol') == sym), None)
+        if res:
             home_runs.append({
-                "symbol": a, "pnl": f"${float(partial.get('pnl',0)):,.2f}",
-                "trades": partial.get('total_trades', 0),
-                "win_rate": f"{float(partial.get('win_rate',0)):.1f}%",
-                "status": "EJECUTANDO", "fees": f"${float(partial.get('total_fees',0)):,.2f}"
+                "symbol": sym, "pnl": f"${float(res.get('pnl',0)):,.2f}",
+                "trades": res.get('total_trades', 0), "win_rate": f"{float(res.get('win_rate',0)):.1f}%",
+                "status": "COMPLETADO", "fees": f"${float(res.get('total_fees',0)):,.2f}"
+            })
+        elif sym in active_symbols:
+            home_runs.append({
+                "symbol": sym, "pnl": "...", "trades": "-", "win_rate": "-", "status": "EJECUTANDO", "fees": "-"
             })
         else:
             home_runs.append({
-                "symbol": a, "pnl": "...", "trades": "-", "win_rate": "-", "status": "EJECUTANDO", "fees": "-"
+                "symbol": sym, "pnl": "PENDIENTE", "trades": "-", "win_rate": "-", "status": "PENDIENTE", "fees": "-"
             })
 
-    for r in reversed(current_session_results):
-        if r['symbol'] not in active_symbols:
-            home_runs.append({
-                "symbol": r.get('symbol'), "pnl": f"${float(r.get('pnl',0)):,.2f}",
-                "trades": r.get('total_trades', 0), "win_rate": f"{float(r.get('win_rate',0)):.1f}%",
-                "status": "COMPLETADO", "fees": f"${float(r.get('total_fees',0)):,.2f}"
-            })
-    # 5. Listado de símbolos con calendario disponible
-    calendar_symbols = []
-    try:
-        cal_path = "data/trade_calendar.json"
-        if os.path.exists(cal_path):
-            with open(cal_path, "r") as f:
-                cal_data = json.load(f)
-                all_cal_syms = set()
-                for day_trades in cal_data.values():
-                    for t in day_trades:
-                        sym = t.get("symbol")
-                        if sym: all_cal_syms.add(sym.strip())
-                calendar_symbols = list(all_cal_syms)
-    except: pass
-
+    total_count = len(target_fleet) if target_fleet else 1
+    remaining_count = max(0, total_count - completed_count)
+    current_asset_text = ", ".join(list(active_symbols)) if active_symbols else "Sincronizando flota..."
+            
     return {
-        "cycle": cycle,
-        "total_sessions": total_cycles if 'total_cycles' in locals() else 1,
+        "cycle": display_cycle,
+        "is_transitioning": is_transitioning,
+        "total_sessions": len(get_history()),
         "completed_count": completed_count,
         "remaining_count": remaining_count,
         "phase": phase,
         "phase_icon": phase_icon,
         "sim_dates": sim_dates,
-        "asset": current_asset_text,
+        "current_asset": current_asset_text,
         "total_pnl": round(total_pnl_cycle, 2),
         "total_pnl_global": round(total_pnl_global, 2),
         "total_fees": round(sum(float(r.get('total_fees',0)) for r in current_session_results), 2),
         "win_rate_cycle": round(win_rate_cycle, 1),
-        "progress": progress,
-        "progress_pct": round((progress / 167) * 100, 1),
+        "progress": completed_count,
+        "progress_pct": round((completed_count / total_count) * 100, 1) if total_count > 0 else 0,
+        "total_count": total_count,
         "alpha_blocks": alpha_blocks,
         "selectivity": round((alpha_blocks / total_scans * 100), 1) if total_scans > 0 else 0,
         "home_runs": home_runs,
-        "calendar_symbols": calendar_symbols,
         "timestamp": datetime.now().strftime("%H:%M:%S"),
         "history": get_history()
     }
 
-def get_history():
-    history_file = "scratch/TIME_TRAVEL_RESULTS.md"
-    if not os.path.exists(history_file): return []
-    try:
-        with open(history_file, "r") as f:
-            lines = f.readlines()
-        data = []
-        for line in lines:
-            if "|" in line and "Ciclo" not in line and "---" not in line and "#" not in line:
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 6:
-                    data.append({
-                        "cycle": parts[0],
-                        "month": parts[1],
-                        "pnl_study": parts[2],
-                        "pnl_val": parts[3],
-                        "trades": parts[4],
-                        "stats": parts[5]
-                    })
-        return data[::-1] # Invertir para ver lo más reciente primero
-    except: return []
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -257,256 +263,58 @@ HTML_TEMPLATE = """
             --text-gray: #8b949e;
             --neon-yellow: #f2ff00;
         }
-        .cal-btn {
-            background: rgba(0, 242, 255, 0.1);
-            border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            cursor: pointer;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 5px;
-            transition: all 0.3s;
-            font-family: 'Inter', sans-serif;
-        }
-        .cal-btn:hover { background: var(--neon-cyan); color: #000; }
-        
-        body {
-            background-color: var(--bg-dark);
-            color: white;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #1f2937;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-        h1 {
-            font-family: 'Orbitron', sans-serif;
-            color: var(--neon-cyan);
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 1.5rem;
-        }
-        .status-badge {
-            background: rgba(57, 255, 20, 0.1);
-            color: var(--neon-green);
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 1px solid var(--neon-green);
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #30363d;
-            transition: transform 0.3s ease;
-        }
-        .card:hover { transform: translateY(-5px); border-color: var(--neon-cyan); }
-        .card-title {
-            color: var(--text-gray);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        .card-value {
-            font-size: 2rem;
-            font-weight: bold;
-            font-family: 'Orbitron', sans-serif;
-        }
-        .progress-container {
-            width: 100%;
-            background: #21262d;
-            height: 10px;
-            border-radius: 5px;
-            margin-top: 15px;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #00f2ff, #39ff14);
-            width: 0%;
-            transition: width 1s ease-in-out;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th {
-            text-align: left;
-            color: var(--text-gray);
-            font-size: 0.8rem;
-            padding: 10px;
-            border-bottom: 1px solid #30363d;
-        }
-        td {
-            padding: 15px 10px;
-            border-bottom: 1px solid #30363d;
-        }
-        .pnl-plus { color: var(--neon-green); font-weight: bold; }
-        
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            background-color: var(--card-bg);
-            margin: 5% auto;
-            padding: 30px;
-            border: 1px solid var(--neon-cyan);
-            border-radius: 15px;
-            width: 80%;
-            max-width: 900px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 0 30px rgba(0,242,255,0.2);
-        }
-        .close-modal {
-            color: var(--text-gray);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close-modal:hover { color: var(--neon-red); }
-
-        .btn-history {
-            background: rgba(0,242,255,0.1);
-            border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.75rem;
-            transition: 0.3s;
-        }
-        .btn-history:hover {
-            background: var(--neon-cyan);
-            color: black;
-            box-shadow: 0 0 15px var(--neon-cyan);
-        }
-        
-        .capital-banner {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-            background: linear-gradient(135deg, rgba(0,242,255,0.06), rgba(57,255,20,0.04));
-            border: 1px solid rgba(0,242,255,0.2);
-            border-radius: 50px;
-            padding: 10px 28px;
-            margin-bottom: 25px;
-            font-size: 0.82rem;
-            flex-wrap: wrap;
-        }
-        .capital-banner .cb-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-gray);
-        }
-        .capital-banner .cb-value {
-            color: var(--neon-cyan);
-            font-weight: bold;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.9rem;
-        }
-        .capital-banner .cb-sep {
-            width: 1px;
-            height: 20px;
-            background: rgba(0,242,255,0.2);
-        }
-        .footer {
-            text-align: center;
-            color: var(--text-gray);
-            font-size: 0.8rem;
-            margin-top: 50px;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .thinking-box { text-align: center; max-width: 500px; padding: 40px; }
+        .brain-icon-pulse { font-size: 4rem; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.5; } }
+        .loader-bar { width: 100%; height: 6px; background: #333; border-radius: 3px; margin: 20px 0; overflow: hidden; }
+        .loader-progress { width: 30%; height: 100%; background: var(--neon-cyan); animation: slide 1.5s infinite linear; }
+        @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+        .modal { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        .modal-content { background-color: var(--card-bg); margin: 5% auto; padding: 25px; border: 1px solid var(--neon-cyan); width: 80%; max-width: 900px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,242,255,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 15px; margin-bottom: 20px; }
+        .close-btn { color: var(--text-gray); font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: white; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1f2937; padding-bottom: 20px; margin-bottom: 30px; }
+        h1 { font-family: 'Orbitron', sans-serif; color: var(--neon-cyan); margin: 0; font-size: 1.5rem; }
+        .status-badge { background: rgba(57, 255, 20, 0.1); color: var(--neon-green); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--neon-green); font-size: 0.8rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 20px; border: 1px solid #30363d; }
+        .card-title { color: var(--text-gray); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; }
+        .card-value { font-size: 2rem; font-weight: bold; font-family: 'Orbitron', sans-serif; }
+        .progress-container { width: 100%; background: #21262d; height: 10px; border-radius: 5px; margin-top: 15px; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #00f2ff, #39ff14); width: 0%; transition: width 1s; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; color: var(--text-gray); font-size: 0.8rem; padding: 10px; border-bottom: 1px solid #30363d; }
+        td { padding: 15px 10px; border-bottom: 1px solid #30363d; }
+        .capital-banner { display: flex; align-items: center; gap: 30px; background: rgba(0,242,255,0.06); border-radius: 50px; padding: 10px 28px; margin-bottom: 25px; }
+        .cb-value { color: var(--neon-cyan); font-weight: bold; font-family: 'Orbitron', sans-serif; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div>
-                <h1>Alpha Mission Control</h1>
-                <p style="color: var(--text-gray); margin: 5px 0 0 0;">AI Double-Layer Monitoring System</p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <button class="btn-history" onclick="toggleModal(true)">📑 Historial de Ciclos</button>
+            <h1>Alpha Mission Control</h1>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button onclick="toggleModal(true)" style="background:rgba(0,242,255,0.1); border:1px solid var(--neon-cyan); color:var(--neon-cyan); padding:8px 15px; border-radius:8px; cursor:pointer; font-family:'Orbitron'; font-size:0.8rem;">📜 HISTORIAL</button>
                 <div class="status-badge">● System Online</div>
             </div>
         </header>
 
-        <!-- Modal de Historial -->
-        <div id="historyModal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal" onclick="toggleModal(false)">&times;</span>
-                <h2 style="font-family: 'Orbitron', sans-serif; color: var(--neon-cyan); margin-bottom: 20px;">📜 Historial de Misiones</h2>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--neon-cyan); color: var(--text-gray); text-align: left;">
-                            <th style="padding: 12px;">Ciclo</th>
-                            <th>Mes</th>
-                            <th>PnL ESTUDIO</th>
-                            <th>PnL VALIDACIÓN (2026)</th>
-                            <th>Trades</th>
-                            <th>Win/Loss</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table-body">
-                        <!-- Dinámico -->
-                    </tbody>
-                </table>
+        <div id="thinking-modal" class="modal-overlay" style="display: none;">
+            <div class="card modal-content thinking-box">
+                <div class="brain-icon-pulse">🧠</div>
+                <h2>Reflexión de la IA</h2>
+                <p id="thinking-msg">Consolidando patrones del Ciclo <span id="current-cycle-modal">?</span>...</p>
+                <div class="loader-bar"><div class="loader-progress"></div></div>
+                <small>Ajustando redes neuronales para el próximo examen</small>
             </div>
         </div>
 
-        <!-- Banner de Capital Inicial -->
         <div class="capital-banner">
-            <div class="cb-item">
-                💰 Capital por empresa:
-                <span class="cb-value">$10,000.00</span>
-            </div>
-            <div class="cb-sep"></div>
-            <div class="cb-item">
-                🌐 Capital total desplegado:
-                <span class="cb-value">$1,670,000</span>
-                <span style="color:var(--text-gray); font-size:0.75rem;">(167 empresas)</span>
-            </div>
-            <div class="cb-sep"></div>
-            <div class="cb-item">
-                📈 ROI del ciclo:
-                <span class="cb-value" id="roi-value">0.00%</span>
-            </div>
+            <div class="cb-item">ROI del ciclo: <span class="cb-value" id="roi-value">0.00%</span></div>
         </div>
 
         <div class="grid">
@@ -553,7 +361,7 @@ HTML_TEMPLATE = """
         <div class="card">
             <h2 style="font-family: 'Orbitron', sans-serif; font-size: 1.1rem; margin-top: 0;">Radar de Resultados (Ciclo Actual Completo)</h2>
             <div style="max-height: 400px; overflow-y: auto;">
-                <table id="results-table">
+                <table>
                     <thead>
                         <tr>
                             <th style="position: sticky; top: 0; background: var(--card-bg); z-index: 1;">Símbolo</th>
@@ -564,7 +372,7 @@ HTML_TEMPLATE = """
                             <th style="position: sticky; top: 0; background: var(--card-bg); z-index: 1;">Estado</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="results-table">
                         <!-- Dinámico -->
                     </tbody>
                 </table>
@@ -634,9 +442,18 @@ HTML_TEMPLATE = """
                 document.getElementById('blocks-desc').innerText = data.alpha_blocks + ' trades filtrados por bajo valor';
                 
                 let progText = document.getElementById('progress-text');
-                if(progText) progText.innerText = 'Avance global: ' + data.progress + ' / 167 (' + data.progress_pct + '%)';
+                if(progText) progText.innerText = 'Avance global: ' + data.progress + ' / ' + data.total_count + ' (' + data.progress_pct + '%)';
                 
                 document.getElementById('sim-dates-footer').innerText = data.sim_dates;
+                // Gestionar Modal de Reflexión
+                const modal = document.getElementById('thinking-modal');
+                if(data.is_transitioning) {
+                    modal.style.display = 'flex';
+                    document.getElementById('current-cycle-modal').innerText = data.cycle;
+                } else {
+                    modal.style.display = 'none';
+                }
+
                 document.getElementById('cycle-num').innerText = 'Exploración Ciclo ' + data.cycle;
                 
                 let topCycle = document.getElementById('top-cycle-value');
@@ -653,16 +470,18 @@ HTML_TEMPLATE = """
                         <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                             <td style="padding: 12px; font-weight:bold; color:var(--neon-cyan)">Ciclo ${h.cycle}</td>
                             <td style="color:var(--text-gray)">${h.month}</td>
+                            <td style="color:var(--neon-yellow); font-size:0.85rem;">${h.eval_month || '-'}</td>
                             <td style="opacity:0.8">${h.pnl_study}</td>
                             <td style="font-family:'Orbitron',sans-serif">${h.pnl_val}</td>
-                            <td>${h.trades}</td>
+                            <td style="text-align:center">${h.trades_study}</td>
+                            <td style="text-align:center">${h.trades_val}</td>
                             <td>${h.stats}</td>
                         </tr>
                     `).join('');
                 }
 
                 // ROI del ciclo
-                const roi = ((data.total_pnl / (167 * 10000)) * 100).toFixed(3);
+                const roi = ((data.total_pnl / (data.total_count * 10000)) * 100).toFixed(3);
                 const roiEl = document.getElementById('roi-value');
                 if(roiEl) {
                     roiEl.innerText = (roi >= 0 ? '+' : '') + roi + '%';
@@ -675,6 +494,9 @@ HTML_TEMPLATE = """
                     remaining.innerText = data.remaining_count;
                     remaining.style.color = data.remaining_count === 0 ? 'var(--neon-green)' : 'var(--neon-cyan)';
                 }
+                
+                const remainingText = document.getElementById('remaining-text');
+                if(remainingText) remainingText.innerText = ' de ' + data.total_count + ' — completadas:';
                 if(completed) {
                     completed.innerText = data.completed_count;
                 }
@@ -744,55 +566,66 @@ HTML_TEMPLATE = """
                     phaseCard.style.borderColor = "var(--neon-green)";
                 }
 
-                const tbody = document.querySelector('#results-table tbody');
-                tbody.innerHTML = '';
-                data.home_runs.forEach(r => {
-                    let statusBadge = `<span class="status-badge" style="border-color: var(--neon-green); color: var(--neon-green);">COMPLETADO</span>`;
-                    let pnlColor = r.pnl.includes('-') ? 'var(--neon-red)' : 'var(--neon-green)';
+                const tbody = document.getElementById('results-table');
+                if (tbody) {
+                    let tableHTML = '';
+                    data.home_runs.forEach(r => {
+                        let statusBadge = `<span class="status-badge" style="border-color: var(--neon-green); color: var(--neon-green);">COMPLETADO</span>`;
+                        let pnlColor = r.pnl.includes('-') ? 'var(--neon-red)' : 'var(--neon-green)';
 
-                    if (r.status === 'EJECUTANDO') {
-                        statusBadge = `
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <span class="status-badge" style="font-size:0.65rem; border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan);">EN PROCESO ⚙️</span>
-                                <button onclick="fetchSymbolUpdate('${r.symbol}')" id="btn-update-${r.symbol}"
-                                        style="background:rgba(0,242,255,0.1); border:1px solid var(--neon-cyan); border-radius:6px; color:var(--neon-cyan); cursor:pointer; font-size:0.75rem; padding:4px 10px; font-family:'Orbitron';">
-                                    📊 Ver
-                                </button>
-                            </div>`;
-                        pnlColor = 'var(--neon-cyan)';
-                    }
+                        if (r.status === 'EJECUTANDO') {
+                            statusBadge = `
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <span class="status-badge" style="font-size:0.65rem; border-color: var(--neon-cyan); color: var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan);">EN PROCESO ⚙️</span>
+                                    <button onclick="fetchSymbolUpdate('${r.symbol}')" id="btn-update-${r.symbol}"
+                                            style="background:rgba(0,242,255,0.1); border:1px solid var(--neon-cyan); border-radius:6px; color:var(--neon-cyan); cursor:pointer; font-size:0.75rem; padding:4px 10px; font-family:'Orbitron';">
+                                        📊 Ver
+                                    </button>
+                                </div>`;
+                            pnlColor = 'var(--neon-cyan)';
+                        } else if (r.status === 'PENDIENTE') {
+                            statusBadge = `<span class="status-badge" style="border-color: var(--text-gray); color: var(--text-gray);">PENDIENTE</span>`;
+                            pnlColor = 'var(--text-gray)';
+                        }
 
-                    const hasCalendar = data.calendar_symbols && data.calendar_symbols.includes(r.symbol);
-                    const calBtn = hasCalendar ? `<button class="cal-btn" onclick="showTradeCalendar('${r.symbol}')" title="Ver Auditoría">📅</button>` : '';
+                        const hasCalendar = data.calendar_symbols && data.calendar_symbols.includes(r.symbol);
+                        const calBtn = hasCalendar ? `<button class="cal-btn" onclick="showTradeCalendar('${r.symbol}')" title="Ver Auditoría">📅</button>` : '';
 
-                    const row = `<tr>
-                        <td style="font-weight:bold; color:var(--text-main)">
-                            ${r.symbol}
-                            ${calBtn}
-                        </td>
-                        <td style="color: ${pnlColor}">${r.pnl}</td>
-                        <td style="color: var(--neon-red); font-size: 0.85rem;">${r.fees || '$0.00'}</td>
-                        <td>${r.trades}</td>
-                        <td>${r.win_rate}</td>
-                        <td>${statusBadge}</td>
-                    </tr>`;
-                    tbody.innerHTML += row;
-                });
+                        tableHTML += `<tr>
+                            <td style="font-weight:bold; color:var(--text-main)">
+                                ${r.symbol}
+                                ${calBtn}
+                            </td>
+                            <td style="color: ${pnlColor}">${r.pnl}</td>
+                            <td style="color: var(--neon-red); font-size: 0.85rem;">${r.fees || '$0.00'}</td>
+                            <td>${r.trades}</td>
+                            <td>${r.win_rate}</td>
+                            <td>${statusBadge}</td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = tableHTML;
+                }
             } catch (e) { console.error("Error updating dashboard:", e); }
         }
 
         // Función para actualizar una fila específica sin salir de la página
         async function fetchSymbolUpdate(symbol) {
             const btn = document.getElementById('btn-update-' + symbol);
-            if (btn) { btn.innerText = '⏳'; btn.disabled = true; }
+            if (btn) { 
+                btn.innerHTML = '<span style="color:var(--neon-green)">✔️ OK</span>';
+                setTimeout(() => { btn.innerHTML = '📊 Ver'; }, 2000);
+            }
             try {
-                const res = await fetch('/api/symbol/' + symbol.replace('.', '-'));
+                // Normalizar símbolo para la URL (p.ej. BRK.B -> BRK-B)
+                const safeSymbol = symbol.replace('.', '-');
+                const res = await fetch('/api/symbol/' + safeSymbol);
                 const d = await res.json();
                 
                 // Buscar la fila y actualizar celdas
                 const rows = document.querySelectorAll('#results-table tbody tr');
                 rows.forEach(row => {
-                    if (row.cells[0].innerText === symbol) {
+                    // El primer hijo contiene el símbolo y a veces un botón de calendario
+                    if (row.cells[0].innerText.includes(symbol)) {
                         const pnl = parseFloat(d.pnl || 0);
                         row.cells[1].innerText = '$' + pnl.toFixed(2);
                         row.cells[1].style.color = pnl >= 0 ? 'var(--neon-green)' : 'var(--neon-red)';
@@ -805,8 +638,10 @@ HTML_TEMPLATE = """
                         }
                     }
                 });
-            } catch(e) { console.error("Error updating symbol row:", e); }
-            if (btn) { btn.innerText = '📊 Ver'; btn.disabled = false; }
+            } catch(e) { 
+                console.error("Error updating symbol row:", e);
+                if (btn) btn.innerHTML = '<span style="color:var(--neon-red)">❌ ERROR</span>';
+            }
         }
 
         async function showTradeCalendar(symbol) {
@@ -867,11 +702,40 @@ HTML_TEMPLATE = """
         }
     </script>
 
+    <!-- Modal de Historial -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="font-family: 'Orbitron', sans-serif; color: var(--neon-cyan); margin:0;">Historial de Ciclos Time Travel</h2>
+                <span class="close-btn" onclick="toggleModal(false)">&times;</span>
+            </div>
+            <div style="max-height: 500px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="text-align: left; color: var(--text-gray); font-size: 0.8rem; border-bottom: 1px solid #30363d;">
+                            <th style="padding: 10px;">Ciclo</th>
+                            <th style="padding: 10px;">Mes Estudio</th>
+                            <th style="padding: 10px;">Mes Validación</th>
+                            <th style="padding: 10px;">PnL Estudio</th>
+                            <th style="padding: 10px;">PnL Validación</th>
+                            <th style="padding: 10px; text-align:center">Trades Est.</th>
+                            <th style="padding: 10px; text-align:center">Trades Valid.</th>
+                            <th style="padding: 10px;">Empresas (+/-)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        <!-- Se llena vía JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Calendario -->
     <div id="calendarModal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2 id="cal-symbol-title">Auditoría de Trades</h2>
+                <h2 id="cal-symbol-title" style="margin:0;">Auditoría de Trades</h2>
                 <span class="close-btn" onclick="toggleCalModal(false)">&times;</span>
             </div>
             <div id="calendar-body" class="modal-body">
@@ -930,14 +794,28 @@ def api_symbol(symbol):
     res_file = os.path.join("data", f"results_{symbol}.json")
     
     # Buscar en backtest_results.json primero (ya terminó y fue consolidado)
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    try:
+        current_cycle = 1
+        report_file = "scratch/TIME_TRAVEL_RESULTS.md"
+        if os.path.exists(report_file):
+            with open(report_file, "r") as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                if "|" in line and "Ciclo" not in line and "---" not in line:
+                    parts = [p.strip() for p in line.split("|") if p.strip()]
+                    if parts and parts[0].isdigit():
+                        current_cycle = int(parts[0])
+                        break
+    except: pass
+
     if os.path.exists(RESULTS_FILE):
         try:
             with open(RESULTS_FILE, "r") as f:
                 all_results = json.load(f)
+
             match = next((r for r in reversed(all_results) 
                          if r.get('symbol') == symbol 
-                         and r.get('timestamp','').startswith(today_str)), None)
+                         and r.get('session_num') == current_cycle), None)
             if match:
                 return jsonify({
                     "status": "COMPLETADO",

@@ -54,7 +54,7 @@ class SimulationRunner:
         if target:
             log.info(f"🐳 MODO WORKER ORQUESTADO: Procesando exclusivamente {target}")
             args.symbol = target
-            self.session_num = 1
+            self.session_num = int(os.getenv("SESSION_NUM", "1"))
             # Forzamos que sea el único elemento porsiacaso la lógica intente iterar
             self.all_symbols = [target]
             self.symbol_idx = 0

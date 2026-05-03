@@ -5,6 +5,8 @@ import random
 import subprocess
 from pathlib import Path
 import calendar
+import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
@@ -30,7 +32,7 @@ def generate_random_month(year_choices=[2024, 2025]):
     return start_date, end_date
 
 def run_single_simulation(args):
-    i, sym, total, start_date, end_date, stage, env, base_dir = args
+    i, sym, total, start_date, end_date, stage, env, base_dir, session_num = args
     
     docker_cmd = [
         "docker", "run", "--rm",
@@ -45,12 +47,18 @@ def run_single_simulation(args):
         "-e", f"HAPI_SIM_START_DATE={start_date}",
         "-e", f"HAPI_SIM_END_DATE={end_date}",
         "-e", f"SIM_STAGE={stage}",
+        "-e", f"SESSION_NUM={session_num}",
         "-e", f"FREEZE_LEARNING={env['FREEZE_LEARNING']}",
         "hapi-scalping-bot:latest",
         "python", "simulation_mode/main_sim.py"
     ]
     with print_lock:
         print(f"  ▶️ [{i+1}/{total}] {sym} en proceso...")
+    # 📡 Sincronizar inicio con el log para el Dashboard (ANTES de arrancar)
+    with file_lock:
+        with open(os.path.join(base_dir, "scratch/simulation_details.log"), "a") as f_log:
+            f_log.write(f"\n  ▶️ [{i+1}/{total}] {sym} en proceso...\n")
+            
     with open(os.path.join(base_dir, "scratch/simulation_details.log"), "a") as f_log:
         proc = subprocess.run(
             docker_cmd, 
@@ -74,8 +82,8 @@ def run_single_simulation(args):
                         with open(master_file, "r") as f:
                             master_data = json.load(f)
                     
-                    # Evitar duplicados
-                    master_data = [r for r in master_data if not (r.get("symbol") == sym and r.get("session_num") == env.get("session_num", 1))]
+                    # Evitar duplicados para ESTA sesión específica
+                    master_data = [r for r in master_data if not (r.get("symbol") == sym and r.get("session_num") == session_num)]
                     master_data.extend(new_data)
                     
                     with open(master_file, "w") as f:
@@ -127,27 +135,29 @@ def run_single_simulation(args):
     else:
         return f"  ❌ [{i+1}/{total}] {sym} falló (Code {proc.returncode})."
 
-def run_simulation_batch(base_dir, symbols, start_date, end_date, stage, desc):
-    print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] ⏳ {desc} | Fechas: {start_date} a {end_date}")
+def run_simulation_batch(base_dir, symbols, start_date, end_date, stage, desc, session_num, max_workers=10):
+    print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ⏳ {desc} | Fechas: {start_date} a {end_date}")
     
     env = {"FREEZE_LEARNING": "true" if stage == "VALIDATING" else "false"}
     total = len(symbols)
     
-    # Forzamos 8 hilos en paralelo para máxima potencia según pedido del usuario
-    max_workers = 8
-    print(f"🚀 Hyper-Drive Activo: Procesando con {max_workers} hilos en paralelo...")
+    print(f"🚀 Lanzando flota de {total} activos con {max_workers} bots en paralelo...")
     
     tasks = []
     for i, sym in enumerate(symbols):
-        tasks.append((i, sym, total, start_date, end_date, stage, env, base_dir))
+        tasks.append((i, sym, total, start_date, end_date, stage, env, base_dir, session_num))
         
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(run_single_simulation, task): task for task in tasks}
         for future in as_completed(futures):
+            res = future.result()
             with print_lock:
-                print(future.result())
+                print(res)
+                # 📡 Sincronizar con el log para que el Dashboard vea el progreso
+                with open(os.path.join(base_dir, "scratch/simulation_details.log"), "a") as f_log:
+                    f_log.write(f"\n{res}\n")
 
-def evaluate_results(base_dir, eval_start_date):
+def evaluate_results(base_dir, eval_start_date, session_num=None):
     res_file = Path(os.path.join(base_dir, "data/backtest_results.json"))
     results = []
     if res_file.exists():
@@ -163,12 +173,16 @@ def evaluate_results(base_dir, eval_start_date):
     loss_symbols = 0
     processed = set()
     
-    # Tomar solo la última evaluación reciente por símbolo
+    # Filtrar por sesión Y fecha para no leer datos de ciclos anteriores
     for r in reversed(results):
         sym = r.get("symbol")
         if sym in processed: continue
         
-        if eval_start_date in str(r.get("sim_start_date", "")):
+        date_match = eval_start_date in str(r.get("sim_start_date", ""))
+        # Si se pasa session_num, filtrar estrictamente por él
+        session_match = (session_num is None) or (r.get("session_num") == session_num)
+        
+        if date_match and session_match:
             pnl = float(r.get("pnl", 0.0))
             total_pnl += pnl
             total_trades += int(r.get("total_trades", 0))
@@ -198,22 +212,19 @@ def get_last_cycle_num(report_file):
 def main():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     assets_file = os.path.join(base_dir, 'assets.json')
+    config_file = os.path.join(base_dir, 'simulation_config.json')
     report_file = Path(os.path.join(base_dir, "scratch/TIME_TRAVEL_RESULTS.md"))
     
-    # Cargar símbolos a procesar
-    with open(assets_file, 'r') as f:
-        data = json.load(f)
-    symbols = [a['symbol'] for a in data.get('assets', [])]
-    
-    # --- CONFIGURACIÓN DE RANGOS ---
-    # Estudio: Enero 2024 a Octubre 2025
-    # Examen Maestro: Noviembre 2025 a Abril 2026
-    
-    print("=========================================================\n")
-    
-    # Recuperar el último ciclo para no resetear a 1
-    last_cycle = get_last_cycle_num(report_file)
-    cycle_num = last_cycle + 1
+    # Cargar configuración dinámica
+    try:
+        with open(config_file, "r") as f:
+            config = json.load(f)
+            symbols = config.get("symbols", ["AAPL"])
+            cycle_num = config.get("initial_cycle", 1)
+    except Exception as e:
+        print(f"⚠️ Error cargando configuración: {e}. Usando valores por defecto.")
+        symbols = ['AAPL', 'TSLA', 'NVDA']
+        cycle_num = 1
     
     while True: # 🔄 Bucle Infinito de Aprendizaje
         print(f"\n\n==============================================")
@@ -228,43 +239,56 @@ def main():
             
         # 2. Fase de Entrenamiento (La IA APRENDE)
         run_simulation_batch(
-            base_dir, symbols, train_start, train_end, "TRAINING", f"📚 ENTRENANDO EN PASADO ({train_start[:7]})"
+            base_dir, symbols, train_start, train_end, "TRAINING", f"📚 ENTRENANDO EN PASADO ({train_start[:7]})", cycle_num
         )
         
         # Calcular resultados del entrenamiento (Estudio)
-        pnl_train, trades_train, wins_train, losses_train = evaluate_results(base_dir, train_start)
+        pnl_train, trades_train, wins_train, losses_train = evaluate_results(base_dir, train_start, cycle_num)
         
-        # 3. Fase de Validación (EXAMEN - 1 MES ALEATORIO DEL PRESENTE)
-        eval_start, eval_end = generate_random_month([2025, 2026])
-        # Asegurar que el mes de examen esté en el rango Nov-Abr
-        if eval_start < "2025-11-01":
-            eval_start, eval_end = "2025-11-01", "2025-11-30"
-        elif eval_start > "2026-04-01":
-            eval_start, eval_end = "2026-04-01", "2026-04-30"
+        # if trades_train == 0 and cycle_num > 1:
+        #     print("⚠️ Alerta: No se detectaron trades en el entrenamiento. Reintentando con otro mes...")
+        #     continue
+        
+        # 3. Fase de Validación (EXAMEN - MES ALEATORIO DENTRO DEL RANGO VÁLIDO)
+        # Rango válido: Nov 2025 - Abr 2026 (6 meses posibles)
+        import random
+        valid_eval_months = [
+            ("2025-11-01", "2025-11-30"),
+            ("2025-12-01", "2025-12-31"),
+            ("2026-01-01", "2026-01-31"),
+            ("2026-02-01", "2026-02-28"),
+            ("2026-03-01", "2026-03-31"),
+            ("2026-04-01", "2026-04-30"),
+        ]
+        eval_start, eval_end = random.choice(valid_eval_months)
 
         run_simulation_batch(
-            base_dir, symbols, eval_start, eval_end, "VALIDATING", f"🧪 EXAMEN EN EL PRESENTE ({eval_start[:7]})"
+            base_dir, symbols, eval_start, eval_end, "VALIDATING", f"🧪 EXAMEN EN EL PRESENTE ({eval_start[:7]})", cycle_num
         )
         
         # 4. Calcular resultados del examen (Validación)
-        pnl_eval, trades_eval, wins_eval, losses_eval = evaluate_results(base_dir, eval_start)
+        pnl_eval, trades_eval, wins_eval, losses_eval = evaluate_results(base_dir, eval_start, cycle_num)
         
-        # 5. Guardar en reporte
+        # 5. Guardar en reporte (con mes de validación explícito)
         report_file.parent.mkdir(exist_ok=True, parents=True)
         is_new = not report_file.exists()
         with open(report_file, "a") as f:
             if is_new:
                 f.write("# 🚀 Resultados del Time Travel Trainer\n\n")
-                f.write("| Ciclo | Mes Aprendido | PnL ESTUDIO | PnL VALIDACIÓN | Trades | Empresas (+/-) |\n")
-                f.write("| :---: | :--- | :--- | :--- | :---: | :---: |\n")
+                f.write("| Ciclo | Mes Estudio | Mes Validación | PnL Estudio | PnL Validación | Trades Est. | Trades Valid. | Empresas (+/-) |\n")
+                f.write("| :---: | :--- | :--- | :--- | :--- | :---: | :---: | :---: |\n")
             
             s_train = "🟢" if pnl_train > 0 else "🔴"
             s_eval = "🟢" if pnl_eval > 0 else "🔴"
-            f.write(f"| {cycle_num} | {train_start[:7]} | {s_train} ${pnl_train:.2f} | {s_eval} ${pnl_eval:.2f} | {trades_eval} | {wins_eval}/{losses_eval} |\n")
+            f.write(f"| {cycle_num} | {train_start[:7]} | {eval_start[:7]} | {s_train} ${pnl_train:.2f} | {s_eval} ${pnl_eval:.2f} | {trades_train} | {trades_eval} | {wins_eval}/{losses_eval} |\n")
         
         print(f"\n🎉 CICLO {cycle_num} COMPLETADO.")
         print(f"   Resultado del Examen Maestro (Nov-Abr): ${pnl_eval:.2f} Neto.")
         print(f"   Revisa el progreso en: scratch/TIME_TRAVEL_RESULTS.md")
+        # --- MOMENTO DE REFLEXIÓN ---
+        print("\n🧠 LA IA ESTÁ REFLEXIONANDO: Consolidando aprendizaje y ajustando estrategia...")
+        time.sleep(10) # Pausa de 10 segundos para visibilidad del usuario
+        
         cycle_num += 1
 
 if __name__ == '__main__':
