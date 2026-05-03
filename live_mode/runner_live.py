@@ -34,14 +34,17 @@ class LiveRunner:
                 if self._process_global_commands():
                     continue 
 
-                # 2. Re-cargar símbolos activos del Gestor (fuente de verdad)
-                self._reload_symbols()
-                
-                from shared.data.market_data import get_symbols
-                active_symbols = get_symbols()
+                # 2. Determinar símbolos a operar
+                if args.symbol:
+                    active_symbols = [args.symbol.upper()]
+                else:
+                    self._reload_symbols()
+                    from shared.data.market_data import get_symbols
+                    active_symbols = get_symbols()
                 
                 if not active_symbols:
-                    log.warning("⚠️ No hay símbolos activos en el gestor. Esperando...")
+                    symbol_source = "argumento" if args.symbol else "gestor"
+                    log.warning(f"⚠️ No hay símbolos activos (fuente: {symbol_source}). Esperando...")
                     smart_sleep(10)
                     continue
 
@@ -55,7 +58,7 @@ class LiveRunner:
                     self.session_num, 
                     self.run_bot_logic, 
                     self.init_broker, 
-                    save_checkpoint_fn=None # Live no usa checkpoints históricos
+                    checkpoint_fn=None # Live no usa checkpoints históricos
                 )
 
                 # Si logramos salir de aquí sin error, significa que hubo una interrupción voluntaria
@@ -100,7 +103,7 @@ class LiveRunner:
                 with open(cmd_file, "w") as f: json.dump(cmds, f)
                 
                 clear_state()
-                update_state("─", mode="LIVE", status="restarting")
+                update_state("🛡️ SYSTEM_PULSE", mode="LIVE", status="restarting")
                 return True
         except: pass
         return False

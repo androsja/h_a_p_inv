@@ -26,6 +26,7 @@ class SignalResult:
     is_ml_blocked: bool = False
     ai_win_prob: float = 0.5  # Neutral por defecto
     ai_recommendation: str = "ESPERANDO IA..."
+    effective_threshold: float = 0.60 # Umbral de confianza aplicado (Dinámico)
 
     def __repr__(self) -> str:
         return (

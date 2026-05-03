@@ -112,6 +112,9 @@ class BotState:
     is_ml_blocked: bool = False
     is_quality_blocked: bool = False
     last_action: str = ""
+    oracle_stats: dict = field(default_factory=dict) # 🛡️ Auditoría del Oracle Sentinel
+    effective_threshold: float = 0.60               # 🎯 Umbral dinámico aplicado
+
 
     # 🏆 Certificación de Maestría y Gestión de Capital
     mastery_score: float = 0.0          # 0-100%
@@ -127,4 +130,5 @@ class BotState:
     efficiency: float = 0.0
     stability_score: float = 0.0
     equity_history: List[float] = field(default_factory=list)
+    trade_log: List[dict] = field(default_factory=list) # Bit\u00e1cora de trades para el Orquestador
 

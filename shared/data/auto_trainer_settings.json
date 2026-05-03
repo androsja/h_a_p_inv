@@ -1,1 +1,1 @@
-{"max_concurrent_bots": 9, "performance_profile": "turbo", "is_running": true}
+{"max_concurrent_bots": 5, "performance_profile": "turbo", "force_sim_only": true, "is_running": false}

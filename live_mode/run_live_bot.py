@@ -254,8 +254,10 @@ def run_symbol_live(
 
                         # 🧠 Alimentar al modelo de ML con el resultado real
                         if hasattr(position, 'ml_features') and position.ml_features:
-                            log.info(f"[{symbol}] 🧠 SAVING REAL TRADE: Pnl=${net_pnl:.2f} Features={position.ml_features}")
-                            ml_predictor.save_trade(symbol, position.ml_features, net_pnl)
+                            log.info(f"[{symbol}] 🧠 SAVING REAL TRADE: Pnl=${net_pnl:.2f}")
+                            # Recuperar régimen guardado en metadata o usar actual
+                            regime_save = position.entry_metadata.get("regime", "NEUTRAL")
+                            ml_predictor.save_trade(symbol, position.ml_features, net_pnl, regime=regime_save)
                             
                             try:
                                 ml_f = position.ml_features
@@ -330,13 +332,13 @@ def run_symbol_live(
                     blocking_history[msg.split("(")[0].strip()] += 1
                     log.warning(f"[LIVE:{symbol}] 🎯🛑 OPORTUNIDAD EVITADA: {msg}")
 
-                # 🧠 CONSULTAR AL MODELO DE AI
-                is_win, prob_win = ml_predictor.predict_win(signal.ml_features)
+                # 🧠 CONSULTAR AL MODELO DE AI (Doble Capa: Probabilidad + Valor)
+                is_alpha, prob_win, expected_pnl = ml_predictor.predict_win(signal.ml_features, signal.regime)
                 
-                log.info(f"[LIVE:{symbol}] 🧠 IA PREDICTION | Probabilidad: {prob_win:.1%} (Score: {prob_win:.2f})")
+                log.info(f"[LIVE:{symbol}] 🧠 IA PREDICTION | Prob: {prob_win:.1%} | PnL Est: ${expected_pnl:.2f}")
                 
                 conf_mult = 1.0
-                if is_win:
+                if is_alpha:
                     if prob_win > 0.85: 
                         conf_mult *= 1.5 
                         log.info(f"[LIVE:{symbol}] 🚀 IA BOOST | Confianza ALTA (x1.5)")
@@ -355,12 +357,12 @@ def run_symbol_live(
                     confidence_multiplier=conf_mult
                 )
 
-                # ─ ML Tolerance Threshold ─
+                # ─ Alpha Filter Threshold ─
                 ai_blocked = False
-                if not is_win and prob_win < 0.48 and buy_plan.is_viable:
+                if not is_alpha and buy_plan.is_viable:
                     buy_plan.is_viable = False
                     ai_blocked = True
-                    msg = f"🧠 AI bloqueó entrada | MLP P={prob_win*100:.1f}%"
+                    msg = f"🧠 AI bloqueó entrada (Bajo Valor) | P={prob_win*100:.1f}% | Est=${expected_pnl:.2f}"
                     buy_plan.block_reason = msg
                     signal.signal = SIGNAL_HOLD
                     signal.blocks = [msg]

@@ -89,6 +89,7 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
     ema_s_now   = float(ema_s.iloc[-1])
     ema_20_now  = float(ema_20_val.iloc[-1])
     ema_200_now = float(ema_200_val.iloc[-1])
+    ema_200_prev= float(ema_200_val.iloc[-2]) if len(ema_200_val) > 1 else ema_200_now
     rsi_now     = float(rsi_vals.iloc[-1])
     macd_now    = float(macd_hist.iloc[-1])
     macd_prev   = float(macd_hist.iloc[-2])
@@ -182,12 +183,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
         is_quality_blocked = True
         blocks.append(f"🛑 Mercado lateral (CHOP={chop_now:.1f} > {config.QUALITY_CHOP_THRESHOLD})")
 
-    # 3. Filtro de tendencia mayor (Daily/Hourly structure)
-    if close_now < ema_200_now and not is_inverted:
-        # Solo bloqueamos señales de compra si estamos bajo la tendencia de fondo
-        if signal == SIGNAL_BUY:
+    # 3. Filtro de tendencia mayor (Daily/Hourly structure) y Pendiente
+    if not is_inverted and signal == SIGNAL_BUY:
+        if close_now < ema_200_now:
             is_quality_blocked = True
             blocks.append(f"🛑 Bajo EMA 200 (Tendencia Bajista)")
+        elif ema_200_now <= ema_200_prev:
+            is_quality_blocked = True
+            blocks.append(f"🛑 EMA 200 Plana o Descendente (Sin fuerza)")
 
     # ML Features
     _vwap_dist = (close_now - vwap_now) / vwap_now * 100 if vwap_now > 0 else 0.0
@@ -214,15 +217,14 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
 
     # AI Check (Solo si pasó los filtros de calidad)
     is_ml_blocked = False
-    prob_win = 0.5
+    prob_win_rf = 0.5
+    prob_win_nf = 0.5
+    
     if signal == SIGNAL_BUY:
-        # 1. Random Forest Predictor
-        is_win_pred, prob_win = ml_predictor.predict_win(ml_features)
-        if not is_win_pred:
-            is_ml_blocked = True
-            blocks.append(f"🤖 RandomForest bloqueó: P(win)={prob_win*100:.1f}%")
+        # 1. Alpha-Optimizer (RF Classifier + Regressor)
+        is_alpha, prob_win_rf, expected_pnl = ml_predictor.predict_win(ml_features, current_regime)
 
-        # 2. Neural Filter (Complementario)
+        # 2. Neural Filter
         try:
             from shared.utils.neural_filter import get_neural_filter
             nf = get_neural_filter(symbol)
@@ -242,12 +244,24 @@ def analyze(df: pd.DataFrame, symbol: str = "", asset_type: str = "normal") -> S
                 has_pattern=ml_features.get('has_pattern', False),
                 is_adx_rising=ml_features.get('is_adx_rising', False)
             )
-            proba, reason = nf.predict(nf_features)
-            if proba < config.CONFIDENCE_THRESHOLD:
-                is_ml_blocked = True
-                blocks.append(f"🧠 NeuralFilter: Probabilidad baja ({proba*100:.1f}%)")
+            prob_win_nf, _ = nf.predict(nf_features)
         except Exception as e:
-            log.error(f"Error crítico en Neural Filter: {e}")
+            log.error(f"Error en Neural Filter: {e}")
+            prob_win_nf = 0.5
+
+        # 🚀 Lógica de "Consenso Inteligente":
+        # Bloqueamos si el Alpha-Optimizer lo rechaza (is_alpha=False)
+        # O si hay un rechazo unánime por probabilidad.
+        threshold_strict = 0.45
+        threshold_balanced = config.CONFIDENCE_THRESHOLD # 0.55
+        
+        # Un trade es rechazado por la IA si no es Alpha o si las probabilidades son muy bajas
+        if not is_alpha or prob_win_nf < threshold_strict:
+            is_ml_blocked = True
+            reason = "BAJO VALOR" if not is_alpha else "PROB BAJA"
+            blocks.append(f"🤖 Alpha Block: {reason} | RF={prob_win_rf:.0%} | PnL_Est=${expected_pnl:.2f}")
+        
+        prob_win = (prob_win_rf + prob_win_nf) / 2.0
 
     # Log de depuración final (solo en modo DEBUG para no frenar la simulación)
     # Generar Recomendación Verbal Didáctica

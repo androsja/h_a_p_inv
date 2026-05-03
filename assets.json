@@ -29,7 +29,7 @@
         },
         {
             "symbol": "ACN",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "ADBE",
@@ -293,7 +293,7 @@
         },
         {
             "symbol": "MCHP",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "MDB",
@@ -301,7 +301,7 @@
         },
         {
             "symbol": "MDLZ",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "META",
@@ -333,7 +333,7 @@
         },
         {
             "symbol": "MU",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "NEE",
@@ -393,7 +393,7 @@
         },
         {
             "symbol": "PLTR",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "PM",
@@ -467,7 +467,7 @@
         },
         {
             "symbol": "SQ",
-            "enabled": false
+            "enabled": true
         },
         {
             "symbol": "SQQQ",

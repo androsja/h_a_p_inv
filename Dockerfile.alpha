@@ -1,0 +1,7 @@
+FROM python:3.9-slim
+WORKDIR /app
+RUN pip install flask
+COPY alpha_web_server.py .
+# No copiamos todo el repo para mantenerlo ligero, usaremos volúmenes para los logs
+EXPOSE 5001
+CMD ["python", "alpha_web_server.py"]

@@ -297,8 +297,14 @@ def update_state(
     last_action: str = "",
     mock_time: str = "",  # Reloj simulado para modo Replay
     stage: str = "TRAINING",
+    oracle_stats: dict = {},
+    effective_threshold: float = 0.60,
+    equity_history: Optional[List[float]] = None,
+    trades: Optional[List] = None,
+    trade_log: Optional[List] = None,
     **kwargs
 ) -> None:
+
     global _symbol_states, _trades
     global _global_sim_trades, _global_sim_wins, _global_sim_pnl, _global_sim_ghosts
     global _global_sim_fees, _global_sim_slippage, _global_sim_gross_profit, _global_sim_gross_loss
@@ -407,7 +413,8 @@ def update_state(
         total_ghosts=total_ghosts,
         ghost_trades_count=ghost_trades_count,
         position=position,
-        trades=[asdict(t) for t in _trades if t.symbol == symbol],
+        trades=trades if trades is not None else [asdict(t) for t in _trades if t.symbol == symbol],
+        trade_log=trade_log or [],
         candles=candles or [],
         status=status,
         next_scan_in=kwargs.get("next_scan_in", 0),
@@ -428,6 +435,12 @@ def update_state(
         total_samples=_symbol_model_stats.get(symbol, {}).get("total_samples", 0),
         is_quality_blocked=is_quality_blocked,
         last_action=last_action,
+        oracle_stats=oracle_stats,
+        effective_threshold=effective_threshold,
+        equity_history=equity_history if equity_history is not None else (
+            _symbol_states[symbol].equity_history if symbol in _symbol_states else []
+        ),
+
         **(_calculate_mastery_cert(symbol, ts_trades, ts_gross_profit, ts_gross_loss, ts_pnl))
     )
     

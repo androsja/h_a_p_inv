@@ -50,9 +50,10 @@ class OpenPosition:
 
     @property
     def minutes_open(self) -> float:
-        """Minutos que lleva abierta la posición."""
-        delta = datetime.now(timezone.utc) - self.opened_at
-        return delta.total_seconds() / 60
+        """Minutos que lleva abierta la posición en base al flujo de datos.
+        Asegura un comportamiento idéntico en Simulación y en Vivo."""
+        # Suponiendo velas de 5 minutos según config.DATA_INTERVAL
+        return float(self.hold_bars * 5.0)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -70,10 +71,11 @@ class AccountState:
         self.total_cash: float = total_cash
         self._pending_settlement: dict[date, float] = {}
         self.open_position: Optional[OpenPosition] = None
+        self.current_market_date: date = date.today()  # Actualizado dinámicamente por el engine
 
     def record_sale(self, amount: float) -> None:
         """Registra capital de una venta como bloqueado hasta T+1."""
-        today = date.today()
+        today = self.current_market_date
         self._pending_settlement[today] = (
             self._pending_settlement.get(today, 0.0) + amount
         )
@@ -84,7 +86,7 @@ class AccountState:
 
     def release_settled_cash(self) -> None:
         """Libera capital de ventas de días anteriores."""
-        today    = date.today()
+        today    = self.current_market_date
         released = {d: a for d, a in self._pending_settlement.items() if d < today}
         for d, amt in released.items():
             self.total_cash += amt

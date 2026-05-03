@@ -4,23 +4,32 @@ import os
 import threading
 from datetime import datetime
 from shared import config
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from shared.utils.logger import log
 import joblib
 from pathlib import Path
 
 DATASET_PATH = config.ML_DATASET_FILE
-MODEL_PATH   = config.DATA_DIR / "models" / "global_ai_model.joblib"
+MODEL_PATH   = config.DATA_DIR / "models" / "alpha_optimizer_model.joblib"
 
 class MLPredictor:
     def __init__(self):
-        self.model = None
+        self.classifier = None # Predice Win/Loss
+        self.regressor = None  # Predice PnL esperado ($)
         self.is_trained = False
         self.accuracy = 0.0
-        self.min_samples = 20  # Requiere al menos 20 trades en el historial para entrenar
-        self.blocking_count = 0 # Contador de trades bloqueados por ML en la sesión actual
-        self._frozen: bool = False   # ❄️ Si True, no guarda nuevos trades ni reentrena
+        self.mae = 0.0 # Mean Absolute Error del regresor
+        self.min_samples = 30  
+        self.blocking_count = 0 
+        self.alpha_blocking_count = 0 # Trades bloqueados por bajo valor esperado
+        self._frozen: bool = False   
         self._lock = threading.Lock()
+        
+        # Mapeo de regímenes a números para la IA
+        self.regime_map = {
+            "TREND_UP": 2, "MOMENTUM": 3, "NEUTRAL": 1, 
+            "RANGE": 0, "TREND_DOWN": -1, "CHAOS": -2
+        }
         
         # 📂 Asegurar que la carpeta de modelos existe
         MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -29,20 +38,26 @@ class MLPredictor:
 
     def _load_and_train(self):
         # 1. Intentar cargar modelo ya entrenado desde disco
-        if MODEL_PATH.exists():
+        # Solo lo cargamos si el aprendizaje está CONGELADO. 
+        # Si estamos en modo entrenamiento, ignoramos el disco para forzar el aprendizaje de nuevos datos.
+        freeze_learning = os.getenv("FREEZE_LEARNING", "false").lower() == "true"
+        
+        if MODEL_PATH.exists() and freeze_learning:
             try:
                 with self._lock:
                     loaded_data = joblib.load(MODEL_PATH)
-                    self.model = loaded_data['model']
+                    self.classifier = loaded_data['classifier']
+                    self.regressor = loaded_data['regressor']
                     self.accuracy = loaded_data.get('accuracy', 0.0)
+                    self.mae = loaded_data.get('mae', 0.0)
                     self.is_trained = True
-                log.info(f"🧠 [MLPredictor] Modelo cargado desde disco. Precisión previa: {self.accuracy*100:.1f}%")
-                
-                # Opcional: ¿Necesitamos re-entrenar porque el dataset es mucho más grande ahora?
-                # Si el dataset tiene < 50 trades nuevos desde el último guardado, no re-entrenamos.
+                log.info(f"🧠 [AlphaOptimizer] Cargado (Modo Consulta). Precisión: {self.accuracy*100:.1f}%")
                 return
             except Exception as e:
-                log.warning(f"⚠️ [MLPredictor] No se pudo cargar el modelo de disco: {e}")
+                log.warning(f"⚠️ [MLPredictor] No se pudo cargar: {e}")
+        
+        if not freeze_learning:
+            log.info("🔥 [AlphaOptimizer] MODO APRENDIZAJE ACTIVO: Ignorando cerebro viejo para evolucionar.")
 
         # 2. Si no hay modelo o falló, entrenar desde CSV
         if not DATASET_PATH.exists():
@@ -54,85 +69,115 @@ class MLPredictor:
                 df = pd.read_csv(DATASET_PATH)
                 log.info(f"📊 [MLPredictor] Procesando dataset para entrenamiento ({len(df)} filas)...")
                 
-                # Variables predictoras (features):
-                features = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct']
-                target = 'is_win'
+                # Variables predictoras (features) evolucionadas
+                features = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct', 'regime_code']
+                target_cls = 'is_win'
+                target_reg = 'pnl'
                 
-                # Verificar presencia de columnas
-                missing = [c for c in features + [target] if c not in df.columns]
+                # Manejar datasets antiguos que no tengan regime_code
+                if 'regime_code' not in df.columns:
+                    df['regime_code'] = 1 # Neutral por defecto
+                
+                # Verificar presencia de columnas críticas
+                cols_to_check = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct', target_cls, target_reg]
+                missing = [c for c in cols_to_check if c not in df.columns]
                 if missing:
-                    log.error(f"❌ [MLPredictor] Faltan columnas en el dataset: {missing}")
+                    log.error(f"❌ [AlphaOptimizer] Faltan columnas críticas: {missing}")
                     return
 
-                # Limpiar datos nulos
-                df = df.dropna(subset=features + [target])
+                df = df.dropna(subset=cols_to_check)
                 
                 if len(df) < self.min_samples:
-                    log.warning(f"⚠️ [MLPredictor] Datos insuficientes ({len(df)}). Min: {self.min_samples}")
+                    log.warning(f"⚠️ [AlphaOptimizer] Datos insuficientes ({len(df)}). Min: {self.min_samples}")
                     return
 
                 X = df[features]
-                y = df[target]
-                X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
-                y = y.astype(int)
+                y_cls = df[target_cls].astype(int)
+                y_reg = df[target_reg].astype(float)
 
-                log.info(f"⚙️ [MLPredictor] Entrenando Random Forest con {len(df)} muestras...")
+                log.info(f"⚙️ [AlphaOptimizer] Entrenando Doble Capa con {len(df)} muestras...")
                 
-                self.model = RandomForestClassifier(
-                    n_estimators=50, 
-                    max_depth=5, 
+                # 1. Entrenar Clasificador (Ofensivo)
+                self.classifier = RandomForestClassifier(
+                    n_estimators=150, 
+                    max_depth=8, 
                     random_state=42, 
                     class_weight='balanced'
                 )
-                self.model.fit(X, y)
-                self.is_trained = True
-                self.accuracy = float(self.model.score(X, y))
+                self.classifier.fit(X, y_cls)
                 
-                # 💾 Guardar modelo recién entrenado para la próxima vez
+                # 2. Entrenar Regresor (Home Runs)
+                self.regressor = RandomForestRegressor(
+                    n_estimators=100,
+                    max_depth=6,
+                    random_state=42
+                )
+                self.regressor.fit(X, y_reg)
+
+                self.is_trained = True
+                self.accuracy = float(self.classifier.score(X, y_cls))
+                
+                # Calcular MAE simple
+                preds_reg = self.regressor.predict(X)
+                self.mae = float(np.mean(np.abs(preds_reg - y_reg)))
+                
+                # 💾 Guardar modelos
                 joblib.dump({
-                    'model': self.model,
+                    'classifier': self.classifier,
+                    'regressor': self.regressor,
                     'accuracy': self.accuracy,
+                    'mae': self.mae,
                     'trained_at': datetime.now().isoformat(),
                     'samples_count': len(df)
                 }, MODEL_PATH)
                 
-                from shared.utils.logger import log_training
-                log_training("MLPredictor_RF", len(df), self.accuracy, extra="Fresh_train")
-                log.info(f"✅ [MLPredictor] Modelo entrenado y GUARDADO en disco.")
+                log.info(f"✅ [AlphaOptimizer] Sistema de Doble Capa GUARDADO.")
                 
             except Exception as e:
                 log.error(f"❌ [MLPredictor] Error crítico en entrenamiento: {e}")
                 import traceback
                 log.error(traceback.format_exc())
 
-    def predict_win(self, features: dict) -> tuple[bool, float]:
+    def predict_win(self, features: dict, regime: str = "NEUTRAL") -> tuple[bool, float, float]:
         """
-        Predice si un trade será ganador (True) o perdedor (False) en base a la memoria.
-        Retorna (predicción, probabilidad_de_ganar).
-        Si el modelo no está entrenado, asume True (operar normalmente).
+        Sistema Alpha-Optimizer:
+        1. Clasifica Probabilidad (Win/Loss)
+        2. Estima Valor (PnL Esperado)
+        Retorna (Aprobado, Probabilidad, PnL_Esperado)
         """
-        # Predicción no requiere lock (solo lectura)
-        if not self.is_trained or self.model is None:
-            return True, 0.5
+        if not self.is_trained or self.classifier is None:
+            return True, 0.5, 0.0
             
         try:
-            # Construir vector de entrada en el orden correcto
-            feature_names = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct']
+            # Enriquecer features con régimen
+            features_copy = features.copy()
+            features_copy['regime_code'] = self.regime_map.get(regime, 1)
             
-            x_input = pd.DataFrame([features], columns=feature_names)
+            feature_names = ['rsi', 'macd_hist', 'ema_diff_pct', 'vwap_dist_pct', 'atr_pct', 'regime_code']
+            x_input = pd.DataFrame([features_copy], columns=feature_names)
             
-            # vector[0] es la clase predominante predicha, predict_proba da las probabilidaes [prob_0, prob_1]
-            pred_class = self.model.predict(x_input)[0]
-            prob_win = self.model.predict_proba(x_input)[0][1]
+            # Capa 1: Probabilidad
+            prob_win = self.classifier.predict_proba(x_input)[0][1]
+            pred_win = bool(prob_win > 0.55) # Umbral de confianza subido
             
-            is_win = bool(pred_class == 1)
-            if not is_win:
+            # Capa 2: Valor Esperado (PnL)
+            expected_pnl = float(self.regressor.predict(x_input)[0])
+            
+            # FILTRO ALPHA (Maximización de Ganancias)
+            # Solo aprobamos si la IA está segura Y el premio vale la pena (> $1.50 estimado)
+            is_alpha_trade = pred_win and (expected_pnl > 1.5)
+            
+            if not pred_win:
                 self.blocking_count += 1
+            elif not is_alpha_trade:
+                self.alpha_blocking_count += 1
+                log.info(f"🚫 [AlphaOptimizer] Trade bloqueado por BAJO VALOR: Prob {prob_win:.1%} | PnL Est: ${expected_pnl:.2f}")
             
-            return is_win, float(prob_win)
+            return is_alpha_trade, float(prob_win), expected_pnl
+            
         except Exception as e:
-            log.error(f"Error prediciendo trade con ML: {e}")
-            return True, 0.5  # Si hay error, opera normal
+            log.error(f"Error en AlphaOptimizer: {e}")
+            return True, 0.5, 0.0
 
     def freeze(self) -> None:
         """❄️ Congela el modelo: no guarda nuevos trades ni reentrena el Random Forest."""
@@ -150,22 +195,19 @@ class MLPredictor:
     def is_frozen(self) -> bool:
         return self._frozen
 
-    def save_trade(self, symbol: str, features: dict, pnl: float):
-        """Guarda los resultados del trade en el recolector de memoria.
-        Si el modelo está congelado, no hace nada."""
-        # ❄️ Congelado: ignorar el guardado
-        if self._frozen:
-            from shared.utils.logger import log as _l
-            _l.debug("🧊 [MLPredictor] save_trade() ignorado — modelo congelado.")
-            return
+    def save_trade(self, symbol: str, features: dict, pnl: float, regime: str = "NEUTRAL"):
+        """Guarda resultados enriquecidos."""
+        if self._frozen: return
         
         try:
             is_win = 1 if pnl > 0 else 0
+            regime_code = self.regime_map.get(regime, 1)
             
             row = {
                 'symbol': symbol,
                 'pnl': pnl,
                 'is_win': is_win,
+                'regime_code': regime_code,
                 **features
             }
             

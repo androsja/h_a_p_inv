@@ -36,8 +36,6 @@ STOP_LOSS_PCT     = float(os.getenv("STOP_LOSS_PCT", "0.01"))      # 1% por trad
 TAKE_PROFIT_PCT   = float(os.getenv("TAKE_PROFIT_PCT", "0.02"))    # 2% por trade
 MAX_POSITION_USD  = float(os.getenv("MAX_POSITION_USD", "5000.0")) # Tamaño máximo de posición en vivo
 INITIAL_CASH_LIVE = float(os.getenv("INITIAL_CASH_LIVE", "10000.0")) # Balance inicial forzado para Live Paper
-TARGET_MIN_NET_PROFIT_USD = float(os.getenv("TARGET_MIN_NET_PROFIT_USD", "0.75")) # IBKR Tiered minimum round trip fee + regulatory
-TARGET_MIN_NET_PROFIT_USD   = float(os.getenv("TARGET_MIN_NET_PROFIT_USD","0.15"))   # $0.15 Apex
 
 # ─── Latencia Bogotá → Nueva York ───────────────────────────────────────────
 LATENCY_OFFSET_CENTS = float(os.getenv("LATENCY_OFFSET_CENTS", "2")) / 100
@@ -78,7 +76,7 @@ COMMAND_FILE     = DATA_DIR / "command.json"
 STATE_FILE       = DATA_DIR / "state.json" # Legacy/Default
 STATE_FILE_SIM   = DATA_DIR / "state_sim.json"
 STATE_FILE_LIVE  = DATA_DIR / "state_live.json"
-RESULTS_FILE     = DATA_DIR / "backtest_results.json"
+RESULTS_FILE     = DATA_DIR / os.getenv("RESULTS_FILE", "backtest_results.json")
 ML_DATASET_FILE  = DATA_DIR / "ml_dataset.csv"
 AI_MODEL_FILE    = DATA_DIR / "ai_model.joblib"
 AI_MODEL_FILE    = DATA_DIR / "ai_model.joblib"
@@ -108,21 +106,25 @@ REGIME_LOG_INTERVAL = 10  # segundos
 VELEZ_BOUNCE_MULT    = 1.002
 VWAP_BOUNCE_ZSCORE   = -2.0
 EMERGENCY_ZSCORE     = -2.5
+TARGET_MIN_NET_PROFIT_USD = 3.0  # Mínimo $3.00 libres por trade para vencer comisiones (Modo Quirúrgico)
 EMA_CROSS_RSI_MIN    = 35
 EMA_CROSS_RSI_MAX    = 70
 
 # Filtros de Calidad
 QUALITY_RSI_MIN      = 43
 QUALITY_RSI_MAX      = 47
-QUALITY_ADX_THRESHOLD = 20  # Bloqueo total si ADX < 20
+QUALITY_ADX_THRESHOLD = 22  # Punto Dulce: Suficiente fuerza para ganar, suficiente filtro para proteger.
 QUALITY_CHOP_THRESHOLD = 60 # Bloqueo total si Choppiness > 60
 QUALITY_ZSCORE_MIN   = -2.3
 CHOP_PERIOD          = 14
+CONFIDENCE_THRESHOLD = 0.55
+MIN_SAMPLES          = 10
 
 # ─── Heurísticas de IA (Cold-Start) ──────────────────────────────────────────
-# Parámetros para neural_filter.py cuando hay < 8 muestras
-COLD_START_MIN_SAMPLES    = 8
-COLD_START_BASE_SCORE     = 0.55
+# Parámetros para neural_filter.py cuando hay < 10 muestras
+COLD_START_MIN_SAMPLES    = 10
+
+COLD_START_BASE_SCORE     = 0.58
 
 # Umbrales Heurísticos
 HEURISTIC_RSI_UPPER       = 72

@@ -71,34 +71,53 @@ class NeuralTradeFilter:
         self._y: list[int]  = []   # 1 = trade ganador, 0 = perdedor
         self._lock = threading.Lock()
         self._frozen: bool = False   # ❄️ Si True, no aprende ni sobreescribe el modelo
+        self._is_global_base = False  # 🌐 Si True, usa el conocimiento maestro de 14k+ trades
         self._load()
+
 
     # ── Persistencia ─────────────────────────────────────────────────────────
 
     def _load(self):
         path = _model_path_for(self._symbol)
+        global_path = MODEL_DIR / "neural_GLOBAL.joblib"
+        
         try:
+            target_path = None
             if path.exists():
-                bundle = joblib.load(path)
+                target_path = path
+                self._is_global_base = False
+            elif global_path.exists() and self._symbol != "GLOBAL":
+                target_path = global_path
+                self._is_global_base = True
+                log.info(f"🌐 [{self._symbol}] Usando Cerebro Global Maestro (Herencia Directa).")
+
+            if target_path:
+                bundle = joblib.load(target_path)
                 self._model = bundle.get("model")
-                self._X     = bundle.get("X", [])
-                self._y     = bundle.get("y", [])
+                # Si es base global, NO cargamos los 14k trades en la lista local para no saturar 
+                # la RAM del bot individual. Dejamos que recolecte su propia 'especialidad'.
+                if not self._is_global_base:
+                    self._X = bundle.get("X", [])
+                    self._y = bundle.get("y", [])
                 
                 # Validación de arquitectura
-                if self._X:
-                    n_features = len(self._X[0])
+                _test_X = bundle.get("X", [])
+                if _test_X:
+                    n_features = len(_test_X[0])
                     if n_features != 13:
                         log.warning(f"⚠️ [{self._symbol}] Arquitectura cambió ({n_features}→13). Reseteando.")
                         self._model = None
                         self._X = []
                         self._y = []
 
+                state_desc = 'ACTIVO (GLOBAL)' if self._is_global_base else ('activo' if self._model else 'cold-start')
                 log.info(
-                    f"🧠 [{self._symbol}] Modelo cargado — {len(self._y)} trades, "
-                    f"estado={'activo' if self._model else 'cold-start'}"
+                    f"🧠 [{self._symbol}] Modelo cargado — {len(self._y)} trades locales, "
+                    f"estado={state_desc}"
                 )
         except Exception as e:
             log.warning(f"No se pudo cargar modelo [{self._symbol}]: {e}")
+
 
     def _save(self):
         if self._frozen:
@@ -174,16 +193,19 @@ class NeuralTradeFilter:
         with self._lock:
             n = len(self._y)
 
-            # ── Modo Cold-Start (datos insuficientes) ────────────────────────
-            if n < MIN_SAMPLES or self._model is None:
+            # ── Modo Cold-Start (datos insuficientes y sin base global) ──────────────
+            if self._model is None or (n < MIN_SAMPLES and not self._is_global_base):
                 return self._heuristic_predict(features, n)
 
             # ── Modo MLP ─────────────────────────────────────────────────────
             try:
                 X = np.array([features])
                 proba = self._model.predict_proba(X)[0][1]  # P(clase=1=win)
-                reason = f"MLP ({n} trades entrenados): P(win)={proba:.0%}"
+                
+                source = "Cerebro Global" if (self._is_global_base and n < MIN_SAMPLES) else f"{n} trades locales"
+                reason = f"MLP ({source}): P(win)={proba:.0%}"
                 return float(proba), reason
+
             except Exception as e:
                 log.warning(f"Error en predicción MLP: {e}")
                 return 0.5, "MLP error — usando neutro"
@@ -282,8 +304,10 @@ class NeuralTradeFilter:
                 "architecture":    "MLP (32, 16, 8)" if n >= MIN_SAMPLES else "Heurístico (Lineal)",
                 "memory_usage_kb": file_size_kb,
                 "is_frozen":       self._frozen,
+                "is_global_base":  self._is_global_base,
                 "features_count":  13
             }
+
 
     # ── Heurísticas Cold-Start ────────────────────────────────────────────────
 
@@ -406,10 +430,22 @@ class RPCNeuralTradeFilter:
         threading.Thread(target=_bg_post, daemon=True).start()
 
     def get_stats(self) -> dict:
+        """Proxy para obtener estadísticas de la IA central desde el trabajador."""
         return {
-            "total_samples": 0, "wins": 0, "losses": 0, "win_rate_hist": 0.0,
-            "model_accuracy": 0.0, "ai_mode": "RPC-Orchestrated", "threshold": CONFIDENCE_THRESHOLD
+            "total_samples": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_rate_hist": 0.0,
+            "model_accuracy": 0.0,
+            "ai_mode": "RPC-Orchestrated",
+            "threshold": CONFIDENCE_THRESHOLD,
+            "architecture": "Remote (Orchestrator)",
+            "memory_usage_kb": 0.0,
+            "is_frozen": self._frozen,
+            "is_global_base": True,
+            "features_count": 13
         }
+
 
     def reset(self):
         pass

@@ -32,9 +32,9 @@ def parse_args() -> argparse.Namespace:
     p = parser.parse_args()
     p.mode = "LIVE"
     
-    fixed = os.getenv("FIXED_SYMBOL", "").strip()
+    fixed = os.getenv("FIXED_SYMBOL") or os.getenv("TARGET_SYMBOL")
     if fixed and not p.symbol:
-        p.symbol = fixed
+        p.symbol = fixed.strip()
     return p
 
 def init_broker_callback(args: argparse.Namespace, **kwargs) -> BrokerInterface:
@@ -83,6 +83,7 @@ def main():
     set_assets_file(config.ASSETS_FILE_LIVE)
     
     log.info(f"🚀 Iniciando en modo LIVE | {'PAPER' if args.paper else 'REAL'}")
+    log.info(f"📍 Símbolo Detectado: {args.symbol}")
     log.info(market_status_str())
 
     # El Runner orquestará la ejecución
