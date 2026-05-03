@@ -60,12 +60,23 @@ def run_single_simulation(args):
             f_log.write(f"\n  ▶️ [{i+1}/{total}] {sym} en proceso...\n")
             
     with open(os.path.join(base_dir, "scratch/simulation_details.log"), "a") as f_log:
-        proc = subprocess.run(
-            docker_cmd, 
-            stdout=f_log, stderr=f_log
-        )
+        try:
+            proc = subprocess.run(
+                docker_cmd, 
+                stdout=f_log, stderr=f_log,
+                timeout=900 # 🛡️ Timeout de 15 min para evitar bloqueos infinitos
+            )
+            return_code = proc.returncode
+        except subprocess.TimeoutExpired:
+            with print_lock:
+                print(f"  ⚠️ TIMEOUT: {sym} excedió los 15 minutos. Saltando...")
+            return_code = 1
+        except Exception as e:
+            with print_lock:
+                print(f"  ❌ ERROR en {sym}: {e}")
+            return_code = 1
     
-    if proc.returncode == 0:
+    if return_code == 0:
         # Consolidar resultado JSON al terminar
         res_file = os.path.join(base_dir, f"data/results_{sym}.json")
         master_file = os.path.join(base_dir, "data/backtest_results.json")
@@ -82,8 +93,9 @@ def run_single_simulation(args):
                         with open(master_file, "r") as f:
                             master_data = json.load(f)
                     
-                    # Evitar duplicados para ESTA sesión específica
-                    master_data = [r for r in master_data if not (r.get("symbol") == sym and r.get("session_num") == session_num)]
+                    # Evitar duplicados para ESTA sesión específica y ESTA fase (basado en el inicio de la simulación)
+                    new_date = new_data[0].get("sim_start_date", "")[:10] if new_data else ""
+                    master_data = [r for r in master_data if not (r.get("symbol") == sym and str(r.get("session_num")) == str(session_num) and r.get("sim_start_date", "").startswith(new_date))]
                     master_data.extend(new_data)
                     
                     with open(master_file, "w") as f:
@@ -133,7 +145,7 @@ def run_single_simulation(args):
 
         return f"  ✅ [{i+1}/{total}] {sym} completado."
     else:
-        return f"  ❌ [{i+1}/{total}] {sym} falló (Code {proc.returncode})."
+        return f"  ❌ [{i+1}/{total}] {sym} falló (Code {return_code})."
 
 def run_simulation_batch(base_dir, symbols, start_date, end_date, stage, desc, session_num, max_workers=10):
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] ⏳ {desc} | Fechas: {start_date} a {end_date}")
@@ -242,6 +254,9 @@ def main():
             base_dir, symbols, train_start, train_end, "TRAINING", f"📚 ENTRENANDO EN PASADO ({train_start[:7]})", cycle_num
         )
         
+        # 🧠 MOMENTO DE REFLEXIÓN (Consolidación de patrones)
+        print(f"\n[{(datetime.now()).strftime('%Y-%m-%d %H:%M:%S')}] 🧠 LA IA ESTÁ REFLEXIONANDO... (Ajustando redes neuronales para el próximo examen)")
+        
         # Calcular resultados del entrenamiento (Estudio)
         pnl_train, trades_train, wins_train, losses_train = evaluate_results(base_dir, train_start, cycle_num)
         
@@ -265,6 +280,9 @@ def main():
         run_simulation_batch(
             base_dir, symbols, eval_start, eval_end, "VALIDATING", f"🧪 EXAMEN EN EL PRESENTE ({eval_start[:7]})", cycle_num
         )
+        
+        # 🧠 MOMENTO DE REFLEXIÓN (Finalizando ciclo)
+        print(f"\n[{(datetime.now()).strftime('%Y-%m-%d %H:%M:%S')}] 🧠 LA IA ESTÁ REFLEXIONANDO... (Consolidando métricas finales)")
         
         # 4. Calcular resultados del examen (Validación)
         pnl_eval, trades_eval, wins_eval, losses_eval = evaluate_results(base_dir, eval_start, cycle_num)
